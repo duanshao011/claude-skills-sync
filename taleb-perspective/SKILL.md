@@ -3,8 +3,8 @@ name: taleb-perspective
 description: "塔勒布思维视角；用户要求分析黑天鹅、尾部风险、反脆弱、杠铃策略、skin in the game 或极端风险时使用。"
 ---
 
-# taleb-perspective (alias for 塔勒布思维.skill)
+# taleb-perspective
 
-This is an ASCII alias for `/Users/shaobo/.claude/skills/塔勒布思维.skill`.
+This skill is a lightweight entry point to reduce Claude Code startup context.
 
-When this skill is relevant, first read `/Users/shaobo/.claude/skills/塔勒布思维.skill/references/` files.
+When this skill is relevant, first read `references/full-instructions.md` in this skill directory, then follow those full instructions. Keep using any existing `assets/`, `scripts/`, and other `references/` files exactly as the full instructions specify.

@@ -3,8 +3,8 @@ name: company-dissection
 description: "用10维框架系统拆解一家公司（商业模式/资产模式/微笑曲线/竞争优势/增长方向等）。触发词：公司拆解、拆解公司、分析公司、公司分析、商业模式分析。"
 ---
 
-# company-dissection (alias for 公司拆解.skill)
+# 公司拆解
 
-This is an ASCII alias for `/Users/shaobo/.claude/skills/公司拆解.skill`.
+This skill is a lightweight entry point to reduce Claude Code startup context.
 
-When this skill is relevant, first read `/Users/shaobo/.claude/skills/公司拆解.skill/references/` files.
+When this skill is relevant, first read `references/full-instructions.md` in this skill directory, then follow those full instructions. Keep using any existing `assets/`, `scripts/`, and other `references/` files exactly as the full instructions specify.

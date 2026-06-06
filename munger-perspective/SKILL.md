@@ -3,8 +3,8 @@ name: munger-perspective
 description: "芒格思维视角；用户要求用多元思维模型、反向思考、误判心理学、长期复利和检查清单分析时使用。"
 ---
 
-# munger-perspective (alias for 芒格思维.skill)
+# munger-perspective
 
-This is an ASCII alias for `/Users/shaobo/.claude/skills/芒格思维.skill`.
+This skill is a lightweight entry point to reduce Claude Code startup context.
 
-When this skill is relevant, first read `/Users/shaobo/.claude/skills/芒格思维.skill/references/` files.
+When this skill is relevant, first read `references/full-instructions.md` in this skill directory, then follow those full instructions. Keep using any existing `assets/`, `scripts/`, and other `references/` files exactly as the full instructions specify.
