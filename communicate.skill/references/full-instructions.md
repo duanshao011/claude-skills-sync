@@ -1,1 +1,0 @@
-/Users/shaobo/.claude/skills/沟通.skill/references/full-instructions.md
