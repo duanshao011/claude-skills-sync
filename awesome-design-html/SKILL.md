@@ -1,5 +1,6 @@
 ---
 name: 品牌风格skill
+name_en: brand-style-skill
 description: "品牌风格skill / brand-style-skill / awesome-design-html — 115个品牌主题HTML设计参考模板库。93个网页模板（Stripe, Linear, Notion, Apple, 飞书, 抖音, 豆包, 小红书, DeepSeek, Tesla等）+ 22个iOS应用模拟界面。触发词：品牌风格skill、brand-style-skill、品牌风格、品牌模板，或任意品牌名+风格/设计/页面/UI。"
 ---
 

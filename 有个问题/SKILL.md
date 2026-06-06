@@ -1,5 +1,6 @@
 ---
 name: 有个问题
+name_en: question-board
 description: "处理问题看板或具体问题：补足背景、搜索知识库、生成可执行建议。"
 ---
 

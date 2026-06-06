@@ -1,5 +1,6 @@
 ---
-name: image-generation
+name: 生图
+name_en: image-generation
 description: "生成或编辑图片；用户要求生图、画图、产品图、海报图、透明 PNG、图生图/改图，或指定 gpt-image-2 时使用。"
 ---
 

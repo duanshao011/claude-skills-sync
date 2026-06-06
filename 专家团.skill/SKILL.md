@@ -1,5 +1,6 @@
 ---
 name: 专家团
+name_en: expert-panel
 description: "专家团 — 思维操作系统统一入口。分析问题→匹配最合适的思维专家→深度回答。触发词：专家团、摇人、谁最懂、找个专家、best minds、问问专家。"
 ---
 
