@@ -1,5 +1,6 @@
 ---
 name: 清理电脑
+name_en: storage-analyzer
 description: >
   清理电脑 / storage-analyzer — macOS / Windows 只读存储分析助手（自动识别系统）。
   扫描整机磁盘占用，找出占空间大户，把每一项分成 🟢可自动清理 / 🟡需人工判断 /
