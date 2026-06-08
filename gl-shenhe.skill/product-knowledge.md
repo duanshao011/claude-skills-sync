@@ -1,8 +1,10 @@
 # 产品知识库
 
 > **文档更新时间：2026-06-08**
-> **核心推广产品：** SollaWave AI音乐泳镜、Holoswim 3、Holoswim 3 Pro
+> **本月核心种草产品：** Holoswim 3（定价待定）、SollaWave AI音乐泳镜
+> **暂不主推：** Holoswim 3 Pro（GPS功能，本月不提）
 > **已停推产品：** Holoswim 2 Pro、2Plus、2SE（仅供历史脚本审核参考）
+> **SKU说明：** 3s、3 Plus、3s Neo等变体统一按"Holoswim 3系列"处理，审核不区分
 
 本知识库以本品牌文件的产品知识为准，判断脚本中的产品参数是否准确、据此审核。
 
