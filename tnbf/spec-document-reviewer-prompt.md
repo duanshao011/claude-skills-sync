@@ -1,1 +1,0 @@
-/Users/shaobo/.claude/skills/brainstorming/spec-document-reviewer-prompt.md
