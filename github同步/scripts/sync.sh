@@ -424,32 +424,30 @@ do_setup() {
 # ─── 主入口 ──────────────────────────────────────────────────
 
 usage() {
-    cat <<EOF
-用法: sync.sh <子命令> [选项]
-
-子命令:
-  status      查看同步状态（分支、远程、未提交变更）
-  pull        从 GitHub 拉取更新
-  push        推送本地变更到 GitHub
-  sync        双向同步（先拉取，再推送）
-  setup       初始化 git 仓库和远程配置
-
-选项:
-  --path <dir>      目标目录（默认: $DEFAULT_PATH）
-  --branch <name>   分支名（默认: $DEFAULT_BRANCH）
-  --dry-run         仅预览，不实际执行（push/sync 可用）
-  --message <msg>   自定义 commit message（push/sync 可用）
-  --remote <url>    GitHub 仓库地址（setup 可用）
-
-示例:
-  sync.sh status
-  sync.sh pull
-  sync.sh push --dry-run
-  sync.sh push --message "fix: 更新触发词"
-  sync.sh sync
-  sync.sh setup --remote https://github.com/user/repo.git
-  sync.sh status --path ~/my-project
-EOF
+    echo "用法: sync.sh <子命令> [选项]"
+    echo ""
+    echo "子命令:"
+    echo "  status      查看同步状态（分支、远程、未提交变更）"
+    echo "  pull        从 GitHub 拉取更新"
+    echo "  push        推送本地变更到 GitHub"
+    echo "  sync        双向同步（先拉取，再推送）"
+    echo "  setup       初始化 git 仓库和远程配置"
+    echo ""
+    echo "选项:"
+    echo "  --path <dir>      目标目录（默认: $DEFAULT_PATH）"
+    echo "  --branch <name>   分支名（默认: $DEFAULT_BRANCH）"
+    echo "  --dry-run         仅预览，不实际执行（push/sync 可用）"
+    echo "  --message <msg>   自定义 commit message（push/sync 可用）"
+    echo "  --remote <url>    GitHub 仓库地址（setup 可用）"
+    echo ""
+    echo "示例:"
+    echo "  sync.sh status"
+    echo "  sync.sh pull"
+    echo "  sync.sh push --dry-run"
+    echo '  sync.sh push --message "fix: 更新触发词"'
+    echo "  sync.sh sync"
+    echo "  sync.sh setup --remote https://github.com/user/repo.git"
+    echo "  sync.sh status --path ~/my-project"
     exit 0
 }
 
