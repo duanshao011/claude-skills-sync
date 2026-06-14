@@ -239,10 +239,7 @@ do_push() {
     check_git_repo "$target"
     check_remote "$target" > /dev/null
 
-    # 暂存
-    exec_git "$target" add -A
-
-    # 检查是否有变更
+    # 检查是否有变更（不暂存，避免 dry-run 产生副作用）
     local changes
     changes=$(cd "$target" && git status --porcelain 2>/dev/null)
     if [ -z "$changes" ]; then
@@ -263,6 +260,9 @@ do_push() {
         info "[dry-run] 以上变更不会被提交和推送。"
         return 0
     fi
+
+    # 暂存所有变更
+    exec_git "$target" add -A
 
     # commit
     local msg
