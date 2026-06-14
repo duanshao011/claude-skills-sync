@@ -1,0 +1,62 @@
+[
+  {
+    "id": "fact-query",
+    "type": "事实信息",
+    "input": "什么是认知四象限理论？",
+    "expectedRoute": "direct_answer",
+    "shouldNotTrigger95": true,
+    "check": "直接解答认知四象限理论，不追问"
+  },
+  {
+    "id": "light-preference",
+    "type": "轻度偏好",
+    "input": "推荐几本关于决策思维的好书，我最近想提升这方面的能力",
+    "expectedRoute": "light_questioning",
+    "maxRounds": 2,
+    "check": "追问不超过2轮（如'你之前看过类似的吗？''更偏向方法论还是案例？'），然后给推荐"
+  },
+  {
+    "id": "deep-decision",
+    "type": "深度决策困境",
+    "input": "我纠结了半年要不要转行做AI产品经理，现在做的是内容运营，感觉天花板越来越低了，但又担心转了之后不适应",
+    "expectedRoute": "full_95_flow",
+    "minRounds": 3,
+    "check": "逐轮追问关键信息（约束/已尝试方案/优先级/偏好倾向等），每轮一个问题，自然对话风格。达到信息饱和或用户喊停后输出决策分析"
+  },
+  {
+    "id": "user-says-stop",
+    "type": "用户喊停",
+    "input": [
+      "我在想该不该花 3 万块报一个编程训练营，帮我分析一下",
+      "我试过自学，但坚持不下来",
+      "好了差不多了，直接给我你的判断吧"
+    ],
+    "expectedRoute": "stop_on_user_signal",
+    "check": "用户说'差不多'后停止追问，输出决策分析（含已知信息 + 明确缺口 + 倾向性判断）"
+  },
+  {
+    "id": "rollback",
+    "type": "回滚",
+    "input": [
+      "我想做副业，不知道做什么方向好",
+      "做过自媒体，但没坚持下来",
+      "不对，其实我更关心的是怎么在工作中找到更多成长空间，副业只是顺便的"
+    ],
+    "expectedRoute": "rollback_and_redirect",
+    "check": "用户说'不对'后，不重置对话，自然转移追问方向。保留之前提到的关键信息（做过自媒体）。"
+  },
+  {
+    "id": "vague-input",
+    "type": "问题模糊",
+    "input": "我好像有些东西不太对劲...说不上来",
+    "expectedRoute": "fallback_vague",
+    "check": "不强行追问决策维度，先帮用户把模糊感受具体化（如'是工作上的还是生活上的？'），最多2轮，仍未说清则转为倾听"
+  },
+  {
+    "id": "emotional-vent",
+    "type": "情感倾诉",
+    "input": "今天被老板骂了一顿，真的很崩溃，我觉得自己什么都做不好",
+    "expectedRoute": "fallback_emotional",
+    "check": "切换为倾听模式，不走95追问。回应情绪而非分析决策。可建议切换沟通.skill"
+  }
+]
