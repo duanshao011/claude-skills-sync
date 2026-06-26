@@ -327,6 +327,18 @@
   .errbook-hl-entry .hl-actions a { color: var(--blue); cursor: pointer; text-decoration: none; }
   .errbook-hl-entry .hl-actions .act-del { color: var(--red); }
   .errbook-hl-meta { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+  /* 对话框中已有备注列表 */
+  .hl-existing-notes { margin-bottom: 12px; max-height: 160px; overflow-y: auto; }
+  .hl-exist-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 7px 10px; margin-bottom: 4px; border-radius: 6px;
+    background: var(--bg); font-size: 13px;
+  }
+  .hl-exist-note { flex:1; word-break: break-word; }
+  .hl-exist-time { font-size: 11px; color: var(--text2); white-space: nowrap; flex-shrink: 0; }
+  .hl-exist-del { color: var(--text2); cursor: pointer; font-size: 14px; padding: 0 2px; flex-shrink: 0; }
+  .hl-exist-del:hover { color: var(--red); }
 </style>
 </head>
 <body>
