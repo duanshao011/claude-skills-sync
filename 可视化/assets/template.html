@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><!-- TITLE --></title>
+<style>
+  :root {
+    --bg: #f8f9fb;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --text2: #6b7280;
+    --accent: #e8551a;
+    --green: #059669;
+    --blue: #2563eb;
+    --yellow: #d97706;
+    --red: #dc2626;
+    --purple: #7c3aed;
+    --tag-bg: #f3f4f6;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); line-height:1.75; padding:20px;
+  }
+  .container { max-width:1100px; margin:0 auto; }
+
+  .header {
+    text-align:center; padding:50px 20px 40px;
+    border-bottom:1px solid var(--border); margin-bottom:40px;
+  }
+  .header h1 { font-size:28px; font-weight:700; margin-bottom:8px; }
+  .header .meta { color:var(--text2); font-size:14px; }
+  .header .meta span { margin:0 12px; }
+  .source-tags { display:flex; justify-content:center; gap:10px; margin-top:16px; flex-wrap:wrap; }
+  .source-tag {
+    display:inline-block; padding:4px 14px; border-radius:20px;
+    font-size:13px; background:var(--tag-bg); border:1px solid var(--border);
+  }
+
+  .legend {
+    display:flex; gap:20px; flex-wrap:wrap; margin-bottom:30px;
+    padding:16px 20px; background:var(--card); border-radius:10px;
+    border:1px solid var(--border); font-size:13px;
+  }
+  .legend-item { display:flex; align-items:center; gap:6px; }
+  .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+  .section {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:32px; margin-bottom:24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .section h2 {
+    font-size:20px; margin-bottom:24px; padding-bottom:12px;
+    border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px;
+  }
+  .section h2 .num {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:30px; height:30px; border-radius:8px; font-size:14px; font-weight:700;
+    background:var(--accent); color:#fff; flex-shrink:0;
+  }
+  .section h3 {
+    font-size:16px; margin:24px 0 12px; color:var(--accent);
+    padding-left:12px; border-left:3px solid var(--accent);
+  }
+  .section h4 { font-size:14px; margin:16px 0 8px; color:var(--text); font-weight:600; }
+  .section p { margin:8px 0; }
+
+  .info-grid {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+    gap:16px; margin:16px 0;
+  }
+  .info-card {
+    background:var(--tag-bg); border:1px solid var(--border);
+    border-radius:8px; padding:18px;
+  }
+  .info-card .card-label {
+    font-size:12px; color:var(--text2); text-transform:uppercase;
+    letter-spacing:1px; margin-bottom:8px;
+  }
+  .info-card .card-value { font-size:18px; font-weight:700; }
+  .info-card .card-desc { font-size:13px; color:var(--text2); margin-top:4px; }
+
+  .flow {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    padding:16px; background:var(--tag-bg); border-radius:8px;
+    font-size:14px; margin:12px 0;
+  }
+  .flow-step {
+    padding:6px 14px; border-radius:6px; border:1px solid var(--border);
+    white-space:nowrap; background:var(--card);
+  }
+  .flow-arrow { color:var(--accent); font-weight:700; flex-shrink:0; }
+
+  .data-table {
+    width:100%; border-collapse:collapse; margin:12px 0; font-size:14px;
+  }
+  .data-table th {
+    text-align:left; padding:10px 14px; background:var(--tag-bg);
+    color:var(--text2); font-weight:600; font-size:12px; letter-spacing:0.5px;
+  }
+  .data-table td {
+    padding:10px 14px; border-top:1px solid var(--border); vertical-align:top;
+  }
+  .data-table tr:hover td { background:rgba(0,0,0,0.02); }
+
+  .compare-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:12px 0;
+  }
+  .compare-col {
+    padding:20px; border-radius:8px; border:1px solid var(--border); background:var(--card);
+  }
+  .compare-col .col-title { font-weight:700; margin-bottom:12px; font-size:15px; }
+
+  .process {
+    counter-reset:step; list-style:none; margin:12px 0;
+  }
+  .process li {
+    counter-increment:step; padding:10px 0 10px 36px;
+    position:relative; border-left:1px dashed var(--border); margin-left:14px;
+  }
+  .process li::before {
+    content:counter(step);
+    position:absolute; left:-16px; top:8px;
+    width:28px; height:28px; border-radius:50%;
+    background:var(--accent); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700;
+  }
+  .process li:last-child { border-left:none; }
+
+  .quote {
+    border-left:3px solid var(--purple); padding:8px 16px;
+    margin:10px 0; color:var(--text2); font-style:italic; font-size:14px;
+    background:rgba(139,92,246,0.05);
+  }
+
+  .badge {
+    display:inline-block; padding:1px 8px; border-radius:4px;
+    font-size:11px; font-weight:600; letter-spacing:0.5px;
+  }
+  .badge-green { background:rgba(16,185,129,0.15); color:var(--green); }
+  .badge-red { background:rgba(239,68,68,0.15); color:var(--red); }
+  .badge-blue { background:rgba(59,130,246,0.15); color:var(--blue); }
+  .badge-yellow { background:rgba(245,158,11,0.15); color:var(--yellow); }
+
+  .num-highlight { font-weight:700; color:var(--accent); font-size:110%; }
+
+  .tag-row { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+  .tag {
+    font-size:11px; padding:2px 10px; border-radius:12px;
+    background:var(--tag-bg); border:1px solid var(--border);
+  }
+
+  hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+  .footnote { font-size:12px; color:var(--text2); margin-top:40px; padding-top:16px; border-top:1px solid var(--border); }
+
+  .unclear-block {
+    background:rgba(245,158,11,0.08); border:1px dashed var(--yellow);
+    border-radius:8px; padding:16px 20px; margin:12px 0; font-size:14px;
+  }
+  .unclear-block .unclear-title {
+    font-weight:700; color:var(--yellow); margin-bottom:8px; font-size:13px;
+  }
+
+  @media (max-width: 768px) {
+    .section { padding:20px; }
+    .compare-grid { grid-template-columns:1fr; }
+    .header h1 { font-size:22px; }
+  }
+
+  /* ====== 划线高亮系统 ====== */
+  .hl-mark {
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+    text-decoration-style: wavy;
+    cursor: pointer; position: relative; transition: background 0.2s;
+  }
+  .hl-mark:hover { background: rgba(232,85,26,0.08); border-radius: 2px; }
+
+  .hl-float-btn {
+    display: none; position: absolute; z-index: 998;
+    padding: 5px 14px; border-radius: 16px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; background: var(--accent); color: #fff;
+    box-shadow: 0 3px 12px rgba(232,85,26,0.3); white-space: nowrap;
+    transform: translateX(-50%); user-select: none;
+  }
+  .hl-float-btn.show { display: block; }
+
+  .hl-note-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.25);
+  }
+  .hl-note-overlay.open { display: block; }
+  .hl-note-dialog {
+    display: none; position: fixed; top: 50%; left: 50%; z-index: 1001;
+    transform: translate(-50%, -50%); width: 420px; max-width: 92vw;
+    background: var(--card); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    padding: 0; overflow: hidden;
+  }
+  .hl-note-dialog.open { display: block; }
+  .hl-note-dialog .d-header {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+  }
+  .hl-note-dialog .d-body { padding: 16px 18px; }
+  .hl-note-dialog .d-selected {
+    padding: 10px 14px; background: var(--tag-bg); border-radius: 6px;
+    font-size: 13px; line-height: 1.7; margin-bottom: 12px;
+    border-left: 3px solid var(--accent); max-height: 120px; overflow-y: auto;
+  }
+  .hl-note-dialog .d-selected em {
+    font-style: normal; text-decoration: underline;
+    text-decoration-color: var(--accent); text-decoration-style: wavy;
+    text-underline-offset: 3px;
+  }
+  .hl-note-dialog textarea {
+    width: 100%; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border);
+    font-size: 13px; font-family: inherit; resize: vertical; min-height: 60px;
+    background: var(--card); color: var(--text); box-sizing: border-box;
+  }
+  .hl-note-dialog textarea:focus { outline: none; border-color: var(--accent); }
+  .hl-note-dialog .d-actions {
+    display: flex; justify-content: flex-end; gap: 8px; padding: 0 18px 16px;
+  }
+  .hl-note-dialog .d-actions button {
+    padding: 7px 18px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+  }
+  .hl-note-dialog .btn-save { background: var(--accent); color: #fff; }
+  .hl-note-dialog .btn-cancel { background: var(--tag-bg); color: var(--text2); border: 1px solid var(--border); }
+
+  .hl-tooltip {
+    display: none; position: absolute; z-index: 999;
+    max-width: 300px; padding: 8px 12px; border-radius: 8px;
+    background: var(--card); color: var(--text); font-size: 12px; line-height: 1.5;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12); border: 1px solid var(--border);
+    pointer-events: none; white-space: pre-wrap; word-break: break-word;
+  }
+  .hl-tooltip.show { display: block; }
+
+  .hl-action-popup {
+    display: none; position: absolute; z-index: 999;
+    padding: 6px 10px; border-radius: 8px; background: var(--card);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15); border: 1px solid var(--border);
+    font-size: 12px; gap: 8px; align-items: center; white-space: nowrap;
+  }
+  .hl-action-popup.show { display: flex; }
+  .hl-action-popup button {
+    border: none; background: none; cursor: pointer; font-size: 12px;
+    padding: 2px 6px; border-radius: 4px; color: var(--text2);
+  }
+  .hl-action-popup button:hover { background: var(--tag-bg); }
+  .hl-action-popup .act-del { color: var(--red); }
+
+  /* 错题本 */
+  .errbook-fab {
+    position:fixed; bottom:28px; right:28px; z-index:999;
+    width:52px; height:52px; border-radius:50%; border:none; cursor:pointer;
+    background:var(--accent); color:#fff; font-size:22px; box-shadow:0 4px 16px rgba(232,85,26,0.35);
+    display:flex; align-items:center; justify-content:center;
+    transition:transform 0.2s, box-shadow 0.2s;
+  }
+  .errbook-fab:hover { transform:scale(1.08); box-shadow:0 6px 22px rgba(232,85,26,0.45); }
+  .errbook-fab .badge-count {
+    position:absolute; top:-4px; right:-4px; width:20px; height:20px; border-radius:50%;
+    background:var(--red); color:#fff; font-size:11px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; display:none;
+  }
+  .errbook-fab .badge-count.show { display:flex; }
+
+  .errbook-overlay {
+    display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.3);
+  }
+  .errbook-overlay.open { display:block; }
+  .errbook-panel {
+    position:fixed; top:0; right:0; z-index:1001;
+    width:420px; max-width:92vw; height:100vh;
+    background:var(--card); box-shadow:-4px 0 24px rgba(0,0,0,0.12);
+    display:flex; flex-direction:column; transform:translateX(100%);
+    transition:transform 0.25s ease;
+  }
+  .errbook-panel.open { transform:translateX(0); }
+  .errbook-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 20px; border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .errbook-header h2 { font-size:18px; margin:0; padding:0; border:none; }
+  .errbook-close {
+    cursor:pointer; font-size:22px; color:var(--text2); padding:4px 8px;
+    border:none; background:none;
+  }
+  .errbook-body { flex:1; overflow-y:auto; padding:16px 20px; }
+  .errbook-body .empty { text-align:center; color:var(--text2); padding:40px 0; font-size:14px; }
+  .errbook-group { margin-bottom:16px; }
+  .errbook-group-title {
+    font-size:13px; font-weight:700; color:var(--accent); margin-bottom:6px; cursor:pointer;
+  }
+  .errbook-group-title:hover { text-decoration:underline; }
+  .errbook-footer {
+    padding:12px 20px; border-top:1px solid var(--border);
+    font-size:12px; color:var(--text2); flex-shrink:0;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .errbook-clear { cursor:pointer; color:var(--red); font-size:12px; border:none; background:none; }
+
+  .errbook-hl-entry {
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px;
+    margin-bottom: 10px; background: var(--tag-bg);
+  }
+  .errbook-hl-entry .hl-ctx {
+    font-size: 12px; color: var(--text2); line-height: 1.6;
+    margin-bottom: 6px; max-height: 80px; overflow-y: auto;
+  }
+  .errbook-hl-entry .hl-ctx em {
+    font-style: normal; text-decoration: underline;
+    text-decoration-color: var(--accent); text-decoration-style: wavy;
+    text-underline-offset: 3px; color: var(--text); font-weight: 600;
+  }
+  .errbook-hl-entry .hl-note-text {
+    font-size: 13px; color: var(--text); margin: 6px 0; display: flex; gap: 6px;
+  }
+  .errbook-hl-entry .hl-actions { display: flex; gap: 10px; margin-top: 6px; font-size: 12px; }
+  .errbook-hl-entry .hl-actions a { color: var(--blue); cursor: pointer; text-decoration: none; }
+  .errbook-hl-entry .hl-actions .act-del { color: var(--red); }
+  .errbook-hl-meta { font-size: 11px; color: var(--text2); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER_PLACEHOLDER -->
+
+<!-- CONTENT_PLACEHOLDER -->
+
+<!-- FOOTNOTE_PLACEHOLDER -->
+
+</div><!-- /.container -->
+
+<!-- ====== UI组件（划线 + 错题本） ====== -->
+<div class="hl-float-btn" id="hlFloatBtn">💡 记一笔</div>
+<div class="hl-note-overlay" id="hlNoteOverlay"></div>
+<div class="hl-note-dialog" id="hlNoteDialog">
+  <div class="d-header">📝 记录疑问</div>
+  <div class="d-body">
+    <div class="d-selected" id="hlSelectedText"></div>
+    <textarea id="hlNoteInput" rows="3" placeholder="写下你的疑问或备注…"></textarea>
+  </div>
+  <div class="d-actions">
+    <button class="btn-cancel" id="hlNoteCancel">取消</button>
+    <button class="btn-save" id="hlNoteSave">保存</button>
+  </div>
+</div>
+<div class="hl-tooltip" id="hlTooltip"></div>
+<div class="hl-action-popup" id="hlActionPopup">
+  <button class="act-view">查看备注</button>
+  <button class="act-del">删除</button>
+</div>
+<button class="errbook-fab" id="errbookFab" title="错题本">
+  📋<span class="badge-count" id="errbookBadge">0</span>
+</button>
+<div class="errbook-overlay" id="errbookOverlay"></div>
+<div class="errbook-panel" id="errbookPanel">
+  <div class="errbook-header">
+    <h2>📋 错题本</h2>
+    <button class="errbook-close" id="errbookClose">✕</button>
+  </div>
+  <div class="errbook-body" id="errbookBody">
+    <div class="empty">还没有划线备注<br>在页面中划选文字，点击「💡 记一笔」开始记录</div>
+  </div>
+  <div class="errbook-footer">
+    <span>划线备注自动保存在浏览器本地</span>
+    <button class="errbook-clear" id="errbookClear">清空全部</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var HL_KEY='errbook_highlights', textIdCounter=0;
+  function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function loadJSON(k){ try{ return JSON.parse(localStorage.getItem(k))||(k===HL_KEY?[]:{}); }catch(e){ return k===HL_KEY?[]:{}; } }
+  function saveJSON(k,d){ localStorage.setItem(k,JSON.stringify(d)); }
+
+  function injectTextIds(){
+    var sels=['.section p','.section td','.section th','.section li','.section .quote','.section .info-card .card-value','.section .info-card .card-desc','.section h3','.section h4','.section .info-card .card-label','.section .flow-step','.section .unclear-block','.section .compare-col','.section .info-card','.section .col-title','.header','.footnote'];
+    for(var i=0;i<sels.length;i++){ try{ var es=document.querySelectorAll(sels[i]); for(var j=0;j<es.length;j++){ if(!es[j].hasAttribute('data-text-id')) es[j].setAttribute('data-text-id','tb'+(textIdCounter++)); } }catch(e){} }
+    var secs=document.querySelectorAll('.section'); for(var k=0;k<secs.length;k++){ if(!secs[k].hasAttribute('data-text-id')) secs[k].setAttribute('data-text-id','tb'+(textIdCounter++)); }
+  }
+
+  function getSectionId(sec){ var h=sec.querySelector('h2'); if(!h) return null; var t=(h.textContent||'').replace(/^[0-9?]+/,'').trim(); if(t.length>30) t=t.substring(0,30); return t||'未命名板块'; }
+  function getSectionForElement(el){ return el.closest('.section'); }
+
+  function getSelectionOffsets(){
+    var sel=window.getSelection(); if(!sel||sel.isCollapsed||!sel.toString().trim()) return null;
+    var range=sel.getRangeAt(0), c=range.commonAncestorContainer;
+    if(c.nodeType===Node.TEXT_NODE) c=c.parentElement;
+    var s=c; while(s&&!s.hasAttribute('data-text-id')) s=s.parentElement;
+    if(!s) s=c.closest('.section'); if(!s) s=document.querySelector('.container'); if(!s) return null;
+    if(!s.hasAttribute('data-text-id')) s.setAttribute('data-text-id','tb'+(textIdCounter++));
+    var cid=s.getAttribute('data-text-id'), ft=s.textContent;
+    var pr=document.createRange(); pr.setStart(s,0); pr.setEnd(range.startContainer,range.startOffset);
+    var so=pr.toString().length, st=sel.toString(), eo=so+st.length;
+    var cb=ft.substring(Math.max(0,so-80),so).trim(), ca=ft.substring(eo,Math.min(ft.length,eo+80)).trim();
+    return {containerId:cid,startOffset:so,endOffset:eo,selectedText:st,ctxBefore:cb,ctxAfter:ca,container:s};
+  }
+
+  var floatBtn=document.getElementById('hlFloatBtn'), currentHighlight=null, activeSelData=null;
+  function hideFloatBtn(){ floatBtn.classList.remove('show'); }
+
+  document.addEventListener('mouseup',function(e){ setTimeout(function(){
+    if(e.target.closest('.hl-mark')||e.target.closest('.hl-float-btn')||e.target.closest('.hl-note-dialog')||e.target.closest('.hl-note-overlay')||e.target.closest('.hl-action-popup')||e.target.closest('.errbook-panel')||e.target.closest('.errbook-overlay')) return;
+    var sd=getSelectionOffsets(); if(!sd||!sd.selectedText.trim()){ if(!e.target.closest('.hl-float-btn')) hideFloatBtn(); return; }
+    var sel=window.getSelection(); if(!sel||!sel.rangeCount) return;
+    var rect=sel.getRangeAt(0).getBoundingClientRect(); if(!rect||rect.width===0) return;
+    currentHighlight={selData:sd,rect:rect};
+    floatBtn.style.left=(rect.left+rect.width/2)+'px'; floatBtn.style.top=(rect.bottom+window.scrollY+8)+'px';
+    floatBtn.classList.add('show');
+  },10);});
+
+  document.addEventListener('mousedown',function(e){
+    if(e.target.closest('.hl-float-btn')||e.target.closest('.hl-note-dialog')||e.target.closest('.hl-note-overlay')||e.target.closest('.hl-action-popup')||e.target.closest('.hl-mark')||e.target.closest('.errbook-panel')) return;
+    hideFloatBtn();
+  });
+
+  var noteOverlay=document.getElementById('hlNoteOverlay'), noteDialog=document.getElementById('hlNoteDialog');
+  var hlSelectedText=document.getElementById('hlSelectedText'), hlNoteInput=document.getElementById('hlNoteInput');
+  var hlNoteSave=document.getElementById('hlNoteSave'), hlNoteCancel=document.getElementById('hlNoteCancel');
+  var editingHlId=null;
+
+  floatBtn.addEventListener('click',function(e){ e.stopPropagation(); e.preventDefault();
+    var sd=null; if(currentHighlight&&currentHighlight.selData) sd=currentHighlight.selData; else sd=getSelectionOffsets();
+    if(!sd){ hideFloatBtn(); return; }
+    hideFloatBtn(); activeSelData=sd; editingHlId=null;
+    var dt=(sd.ctxBefore?'…'+escHtml(sd.ctxBefore)+' ':'')+'<em>'+escHtml(sd.selectedText)+'</em>'+(sd.ctxAfter?' '+escHtml(sd.ctxAfter)+'…':'');
+    hlSelectedText.innerHTML=dt; hlNoteInput.value=''; noteOverlay.classList.add('open'); noteDialog.classList.add('open');
+    setTimeout(function(){ hlNoteInput.focus(); },150);
+  });
+
+  function closeNoteDialog(){ noteOverlay.classList.remove('open'); noteDialog.classList.remove('open'); editingHlId=null; activeSelData=null; }
+  hlNoteCancel.addEventListener('click',closeNoteDialog); noteOverlay.addEventListener('click',closeNoteDialog);
+
+  hlNoteSave.addEventListener('click',function(){
+    var nt=hlNoteInput.value.trim(); if(!nt) return;
+    if(editingHlId!==null){ var all=loadJSON(HL_KEY); for(var i=0;i<all.length;i++){ if(all[i].id===editingHlId){ all[i].note=nt; break; } } saveJSON(HL_KEY,all); closeNoteDialog(); removeAllHighlightDOM(); applyAllHighlights(); updateFab(); return; }
+    if(!activeSelData) return; var sd=activeSelData;
+    var sec=getSectionForElement(sd.container), st=sec?getSectionId(sec):'未知板块';
+    var entry={id:'hl_'+Date.now()+'_'+Math.random().toString(36).substr(2,5),containerId:sd.containerId,startOffset:sd.startOffset,endOffset:sd.endOffset,selectedText:sd.selectedText,contextBefore:sd.ctxBefore,contextAfter:sd.ctxAfter,note:nt,sectionTitle:st,timestamp:new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})};
+    var a2=loadJSON(HL_KEY); a2.push(entry); saveJSON(HL_KEY,a2); closeNoteDialog(); removeAllHighlightDOM(); applyAllHighlights(); updateFab();
+  });
+
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&noteDialog.classList.contains('open')) closeNoteDialog(); });
+
+  function applyHighlight(container,so,eo,hid){
+    try{
+      var w=document.createTreeWalker(container,NodeFilter.SHOW_TEXT),co=0,sn=null,sno=0,en=null,eno=0,tl=container.textContent.length;
+      if(so>=tl||eo>tl) return false;
+      while(w.nextNode()){ var n=w.currentNode,l=n.textContent.length; if(!sn&&co+l>so){ sn=n; sno=so-co; } if(!en&&co+l>=eo){ en=n; eno=eo-co; break; } co+=l; }
+      if(sn&&en){ var r=document.createRange(); r.setStart(sn,Math.max(0,sno)); r.setEnd(en,Math.min(en.textContent.length,eno)); var sp=document.createElement('span'); sp.className='hl-mark'; sp.setAttribute('data-hl-id',hid); r.surroundContents(sp); return true; }
+    }catch(e){} return false;
+  }
+
+  function removeAllHighlightDOM(){ var ms=document.querySelectorAll('.hl-mark'); for(var i=0;i<ms.length;i++){ var p=ms[i].parentNode; while(ms[i].firstChild) p.insertBefore(ms[i].firstChild,ms[i]); p.removeChild(ms[i]); } var ss=document.querySelectorAll('.section'); for(var j=0;j<ss.length;j++) ss[j].normalize(); }
+
+  function applyAllHighlights(){ var all=loadJSON(HL_KEY); for(var i=0;i<all.length;i++){ var hl=all[i],c=document.querySelector('[data-text-id="'+hl.containerId+'"]'); if(c&&c.textContent.substring(hl.startOffset,hl.endOffset)===hl.selectedText) applyHighlight(c,hl.startOffset,hl.endOffset,hl.id); } bindHighlightEvents(); }
+
+  var ttTimer=null, tooltip=document.getElementById('hlTooltip'), actionPopup=document.getElementById('hlActionPopup'), activeHlId=null;
+
+  function bindHighlightEvents(){
+    var ms=document.querySelectorAll('.hl-mark');
+    for(var i=0;i<ms.length;i++){ ms[i].onmouseenter=function(e){ var hid=this.getAttribute('data-hl-id'),all=loadJSON(HL_KEY),hl=null; for(var j=0;j<all.length;j++){ if(all[j].id===hid){ hl=all[j]; break; } } if(hl){ clearTimeout(ttTimer); ttTimer=setTimeout(function(){ tooltip.textContent='💭 '+hl.note; tooltip.classList.add('show'); },400); } }; ms[i].onmousemove=function(e){ tooltip.style.left=(e.clientX+14)+'px'; tooltip.style.top=(e.clientY-40)+'px'; }; ms[i].onmouseleave=function(){ clearTimeout(ttTimer); tooltip.classList.remove('show'); }; ms[i].onclick=function(e){ e.stopPropagation(); activeHlId=this.getAttribute('data-hl-id'); var r=this.getBoundingClientRect(); actionPopup.style.left=(r.left+r.width/2)+'px'; actionPopup.style.top=(r.bottom+window.scrollY+4)+'px'; actionPopup.style.transform='translateX(-50%)'; actionPopup.classList.add('show'); tooltip.classList.remove('show'); }; }
+  }
+
+  document.addEventListener('click',function(e){ if(!e.target.closest('.hl-mark')&&!e.target.closest('.hl-action-popup')) actionPopup.classList.remove('show'); });
+  actionPopup.querySelector('.act-view').addEventListener('click',function(){ if(!activeHlId) return; var all=loadJSON(HL_KEY),hl=null; for(var i=0;i<all.length;i++){ if(all[i].id===activeHlId){ hl=all[i]; break; } } if(hl){ editingHlId=hl.id; var dt=(hl.contextBefore?'…'+escHtml(hl.contextBefore)+' ':'')+'<em>'+escHtml(hl.selectedText)+'</em>'+(hl.contextAfter?' '+escHtml(hl.contextAfter)+'…':''); hlSelectedText.innerHTML=dt; hlNoteInput.value=hl.note; noteOverlay.classList.add('open'); noteDialog.classList.add('open'); } actionPopup.classList.remove('show'); });
+  actionPopup.querySelector('.act-del').addEventListener('click',function(){ if(!activeHlId) return; if(confirm('删除这条划线备注？')){ var all=loadJSON(HL_KEY); for(var i=0;i<all.length;i++){ if(all[i].id===activeHlId){ all.splice(i,1); break; } } saveJSON(HL_KEY,all); removeAllHighlightDOM(); applyAllHighlights(); updateFab(); } actionPopup.classList.remove('show'); activeHlId=null; });
+
+  // 错题本
+  var fab=document.getElementById('errbookFab'), overlay=document.getElementById('errbookOverlay'), panel=document.getElementById('errbookPanel'), body=document.getElementById('errbookBody'), badge=document.getElementById('errbookBadge'), closeBtn=document.getElementById('errbookClose'), clearBtn=document.getElementById('errbookClear');
+
+  function updateFab(){ var all=loadJSON(HL_KEY), t=all.length; if(t>0){ badge.textContent=t>99?'99+':t; badge.classList.add('show'); } else badge.classList.remove('show'); if(panel.classList.contains('open')) renderErrbook(); }
+
+  function renderErrbook(){
+    var all=loadJSON(HL_KEY), html='<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">📝 划线备注（'+all.length+'条）</div>';
+    if(all.length===0){ html+='<div class="empty">还没有划线备注<br>在页面中划选文字，点击「💡 记一笔」开始记录</div>'; }
+    else {
+      var groups={}; for(var i=0;i<all.length;i++){ var k=all[i].sectionTitle||'未知板块'; if(!groups[k]) groups[k]=[]; groups[k].push(all[i]); }
+      var keys=Object.keys(groups);
+      for(var k=0;k<keys.length;k++){ var items=groups[keys[k]]; html+='<div class="errbook-group"><div class="errbook-group-title">📌 '+escHtml(keys[k])+'（'+items.length+'条）</div>';
+        for(var j=0;j<items.length;j++){ var hl=items[j], cd=(hl.contextBefore?escHtml(hl.contextBefore)+' ':'')+'<em>'+escHtml(hl.selectedText)+'</em>'+(hl.contextAfter?' '+escHtml(hl.contextAfter):'');
+          html+='<div class="errbook-hl-entry"><div class="hl-ctx">'+cd+'</div><div class="hl-note-text"><span class="hl-icon">💭</span><span>'+escHtml(hl.note)+'</span></div><div class="errbook-hl-meta">'+(hl.timestamp||'')+'</div><div class="hl-actions"><a class="hl-jump" data-hl-id="'+hl.id+'">跳转到原文</a><a class="act-del" data-hl-id="'+hl.id+'">删除</a></div></div>'; }
+        html+='</div>';
+      }
+    }
+    body.innerHTML=html;
+    var jls=body.querySelectorAll('.hl-jump'); for(var a=0;a<jls.length;a++){ jls[a].addEventListener('click',function(){ var hid=this.getAttribute('data-hl-id'),mk=document.querySelector('.hl-mark[data-hl-id="'+hid+'"]'); if(mk){ mk.scrollIntoView({behavior:'smooth',block:'center'}); mk.style.background='rgba(232,85,26,0.15)'; mk.style.borderRadius='3px'; setTimeout(function(){ mk.style.background=''; mk.style.borderRadius=''; },2500); } closePanel(); }); }
+    var dbs=body.querySelectorAll('.hl-actions .act-del'); for(var b=0;b<dbs.length;b++){ dbs[b].addEventListener('click',function(){ var hid=this.getAttribute('data-hl-id'); if(confirm('删除这条划线备注？')){ var al=loadJSON(HL_KEY); for(var x=0;x<al.length;x++){ if(al[x].id===hid){ al.splice(x,1); break; } } saveJSON(HL_KEY,al); removeAllHighlightDOM(); applyAllHighlights(); updateFab(); renderErrbook(); } }); }
+    var tls=body.querySelectorAll('.errbook-group-title'); for(var c=0;c<tls.length;c++){ tls[c].addEventListener('click',function(){ var key=this.textContent.replace(/^📌 /,'').replace(/（\d+条）$/,''),secs=document.querySelectorAll('.section'); for(var d=0;d<secs.length;d++){ if(getSectionId(secs[d])===key){ secs[d].scrollIntoView({behavior:'smooth',block:'center'}); secs[d].style.boxShadow='0 0 0 3px var(--accent)'; setTimeout(function(){ secs[d].style.boxShadow=''; },2000); } } closePanel(); }); }
+  }
+
+  function openPanel(){ overlay.classList.add('open'); panel.classList.add('open'); renderErrbook(); document.body.style.overflow='hidden'; }
+  function closePanel(){ overlay.classList.remove('open'); panel.classList.remove('open'); document.body.style.overflow=''; }
+  fab.addEventListener('click',openPanel); overlay.addEventListener('click',closePanel); closeBtn.addEventListener('click',closePanel);
+  clearBtn.addEventListener('click',function(){ if(confirm('确定清空所有划线备注？此操作不可恢复。')){ localStorage.removeItem(HL_KEY); removeAllHighlightDOM(); updateFab(); renderErrbook(); } });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&panel.classList.contains('open')) closePanel(); });
+
+  injectTextIds(); applyAllHighlights(); updateFab();
+})();
+</script>
+</body>
+</html>
