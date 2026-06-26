@@ -453,29 +453,103 @@
 
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&noteDialog.classList.contains('open')) closeNoteDialog(); });
 
-  function applyHighlight(container,so,eo,hid){
+  function applyHighlight(container,so,eo,hid,allIdsStr){
     try{
       var w=document.createTreeWalker(container,NodeFilter.SHOW_TEXT),co=0,sn=null,sno=0,en=null,eno=0,tl=container.textContent.length;
       if(so>=tl||eo>tl) return false;
       while(w.nextNode()){ var n=w.currentNode,l=n.textContent.length; if(!sn&&co+l>so){ sn=n; sno=so-co; } if(!en&&co+l>=eo){ en=n; eno=eo-co; break; } co+=l; }
-      if(sn&&en){ var r=document.createRange(); r.setStart(sn,Math.max(0,sno)); r.setEnd(en,Math.min(en.textContent.length,eno)); var sp=document.createElement('span'); sp.className='hl-mark'; sp.setAttribute('data-hl-id',hid); r.surroundContents(sp); return true; }
+      if(sn&&en){ var r=document.createRange(); r.setStart(sn,Math.max(0,sno)); r.setEnd(en,Math.min(en.textContent.length,eno)); var sp=document.createElement('span'); sp.className='hl-mark'; sp.setAttribute('data-hl-id',hid); if(allIdsStr) sp.setAttribute('data-hl-ids',allIdsStr); r.surroundContents(sp); return true; }
     }catch(e){} return false;
+  }
+
+  // 根据 data-hl-ids 获取同位置所有备注（按时间由近及远排列）
+  function getRelatedHighlights(el){
+    var idsStr=el.getAttribute('data-hl-ids')||el.getAttribute('data-hl-id');
+    if(!idsStr) return [];
+    var ids; try{ ids=JSON.parse(idsStr); }catch(e){ ids=[idsStr]; }
+    var all=loadJSON(HL_KEY), result=[];
+    for(var i=0;i<ids.length;i++){
+      for(var j=0;j<all.length;j++){ if(all[j].id===ids[i]){ result.push(all[j]); break; } }
+    }
+    // 按时间戳由近及远（id越大越新）
+    result.sort(function(a,b){ return a.id>b.id?-1:1; });
+    return result;
   }
 
   function removeAllHighlightDOM(){ var ms=document.querySelectorAll('.hl-mark'); for(var i=0;i<ms.length;i++){ var p=ms[i].parentNode; while(ms[i].firstChild) p.insertBefore(ms[i].firstChild,ms[i]); p.removeChild(ms[i]); } var ss=document.querySelectorAll('.section'); for(var j=0;j<ss.length;j++) ss[j].normalize(); }
 
-  function applyAllHighlights(){ var all=loadJSON(HL_KEY); for(var i=0;i<all.length;i++){ var hl=all[i],c=document.querySelector('[data-text-id="'+hl.containerId+'"]'); if(c&&c.textContent.substring(hl.startOffset,hl.endOffset)===hl.selectedText) applyHighlight(c,hl.startOffset,hl.endOffset,hl.id); } bindHighlightEvents(); }
+  function applyAllHighlights(){
+    var all=loadJSON(HL_KEY);
+    // 按位置分组：同 containerId+startOffset+endOffset 的算同一条
+    var groups={}, locOrder=[];
+    for(var i=0;i<all.length;i++){
+      var hl=all[i], loc=hl.containerId+'|'+hl.startOffset+'|'+hl.endOffset;
+      if(!groups[loc]){ groups[loc]=[]; locOrder.push(loc); }
+      groups[loc].push(hl);
+    }
+    // 每组合并为一个DOM标记，存储全部ID
+    for(var g=0;g<locOrder.length;g++){
+      var items=groups[locOrder[g]], latest=items[items.length-1];
+      var c=document.querySelector('[data-text-id="'+latest.containerId+'"]');
+      if(c&&c.textContent.substring(latest.startOffset,latest.endOffset)===latest.selectedText){
+        // 按ID（时间）由近及远排列
+        items.sort(function(a,b){ return a.id>b.id?-1:1; });
+        var allIds=[]; for(var x=0;x<items.length;x++) allIds.push(items[x].id);
+        applyHighlight(c, latest.startOffset, latest.endOffset, latest.id, JSON.stringify(allIds));
+      }
+    }
+    bindHighlightEvents();
+  }
 
-  var ttTimer=null, tooltip=document.getElementById('hlTooltip'), actionPopup=document.getElementById('hlActionPopup'), activeHlId=null;
+  var ttTimer=null, tooltip=document.getElementById('hlTooltip'), actionPopup=document.getElementById('hlActionPopup'), activeHlIds=[];
 
   function bindHighlightEvents(){
     var ms=document.querySelectorAll('.hl-mark');
-    for(var i=0;i<ms.length;i++){ ms[i].onmouseenter=function(e){ var hid=this.getAttribute('data-hl-id'),all=loadJSON(HL_KEY),hl=null; for(var j=0;j<all.length;j++){ if(all[j].id===hid){ hl=all[j]; break; } } if(hl){ clearTimeout(ttTimer); ttTimer=setTimeout(function(){ tooltip.textContent='💭 '+hl.note; tooltip.classList.add('show'); },400); } }; ms[i].onmousemove=function(e){ tooltip.style.left=(e.clientX+14)+'px'; tooltip.style.top=(e.clientY-40)+'px'; }; ms[i].onmouseleave=function(){ clearTimeout(ttTimer); tooltip.classList.remove('show'); }; ms[i].onclick=function(e){ e.stopPropagation(); activeHlId=this.getAttribute('data-hl-id'); var r=this.getBoundingClientRect(); actionPopup.style.left=(r.left+r.width/2)+'px'; actionPopup.style.top=(r.bottom+window.scrollY+4)+'px'; actionPopup.style.transform='translateX(-50%)'; actionPopup.classList.add('show'); tooltip.classList.remove('show'); }; }
+    for(var i=0;i<ms.length;i++){ ms[i].onmouseenter=function(e){ var related=getRelatedHighlights(this); if(related.length>0){ clearTimeout(ttTimer); var preview=related[0].note; if(preview.length>50) preview=preview.substring(0,50)+'…'; var txt='💭 '+preview; if(related.length>1) txt='💭 共'+related.length+'条 | '+preview; ttTimer=setTimeout(function(){ tooltip.textContent=txt; tooltip.classList.add('show'); },400); } }; ms[i].onmousemove=function(e){ tooltip.style.left=(e.clientX+14)+'px'; tooltip.style.top=(e.clientY-40)+'px'; }; ms[i].onmouseleave=function(){ clearTimeout(ttTimer); tooltip.classList.remove('show'); }; ms[i].onclick=function(e){ e.stopPropagation(); activeHlIds=[]; var related=getRelatedHighlights(this); for(var r=0;r<related.length;r++) activeHlIds.push(related[r].id); var rect=this.getBoundingClientRect(); actionPopup.style.left=(rect.left+rect.width/2)+'px'; actionPopup.style.top=(rect.bottom+window.scrollY+4)+'px'; actionPopup.style.transform='translateX(-50%)'; actionPopup.querySelector('.act-view').textContent='查看备注'+(activeHlIds.length>1?'（'+activeHlIds.length+'条）':''); actionPopup.classList.add('show'); tooltip.classList.remove('show'); }; }
   }
 
   document.addEventListener('click',function(e){ if(!e.target.closest('.hl-mark')&&!e.target.closest('.hl-action-popup')) actionPopup.classList.remove('show'); });
-  actionPopup.querySelector('.act-view').addEventListener('click',function(){ if(!activeHlId) return; var all=loadJSON(HL_KEY),hl=null; for(var i=0;i<all.length;i++){ if(all[i].id===activeHlId){ hl=all[i]; break; } } if(hl){ editingHlId=hl.id; var dt=(hl.contextBefore?'…'+escHtml(hl.contextBefore)+' ':'')+'<em>'+escHtml(hl.selectedText)+'</em>'+(hl.contextAfter?' '+escHtml(hl.contextAfter)+'…':''); hlSelectedText.innerHTML=dt; hlNoteInput.value=hl.note; noteOverlay.classList.add('open'); noteDialog.classList.add('open'); } actionPopup.classList.remove('show'); });
-  actionPopup.querySelector('.act-del').addEventListener('click',function(){ if(!activeHlId) return; if(confirm('删除这条划线备注？')){ var all=loadJSON(HL_KEY); for(var i=0;i<all.length;i++){ if(all[i].id===activeHlId){ all.splice(i,1); break; } } saveJSON(HL_KEY,all); removeAllHighlightDOM(); applyAllHighlights(); updateFab(); } actionPopup.classList.remove('show'); activeHlId=null; });
+
+  actionPopup.querySelector('.act-view').addEventListener('click',function(){
+    if(activeHlIds.length===0) return;
+    var related=getRelatedHighlights(document.querySelector('.hl-mark[data-hl-id="'+activeHlIds[0]+'"]'));
+    if(related.length===0) return;
+    // 展示选中文本上下文
+    var dt=(related[0].contextBefore?'…'+escHtml(related[0].contextBefore)+' ':'')+'<em>'+escHtml(related[0].selectedText)+'</em>'+(related[0].contextAfter?' '+escHtml(related[0].contextAfter)+'…':'');
+    hlSelectedText.innerHTML=dt;
+    // 展示已有备注列表
+    var notesHtml='';
+    if(related.length>0){
+      notesHtml+='<div class="hl-existing-notes">';
+      for(var i=0;i<related.length;i++){
+        notesHtml+='<div class="hl-exist-item" data-hl-id="'+related[i].id+'"><span class="hl-exist-note">'+escHtml(related[i].note)+'</span><span class="hl-exist-time">'+escHtml(related[i].timestamp||'')+'</span><span class="hl-exist-del">✕</span></div>';
+      }
+      notesHtml+='</div>';
+    }
+    document.getElementById('hlExistingNotes').innerHTML=notesHtml;
+    // 清空输入框（用于新增备注）
+    hlNoteInput.value=''; editingHlId=null;
+    // 活跃选区数据设为第一条的（用于保存新备注时知道位置）
+    activeSelData={containerId:related[0].containerId,startOffset:related[0].startOffset,endOffset:related[0].endOffset,selectedText:related[0].selectedText,ctxBefore:related[0].contextBefore,ctxAfter:related[0].contextAfter,container:document.querySelector('[data-text-id="'+related[0].containerId+'"]')};
+    noteOverlay.classList.add('open'); noteDialog.classList.add('open');
+    // 绑定已有备注的删除按钮
+    setTimeout(function(){
+      var dels=document.querySelectorAll('#hlExistingNotes .hl-exist-del');
+      for(var d=0;d<dels.length;d++){ dels[d].onclick=function(e){ e.stopPropagation(); var hid=this.parentNode.getAttribute('data-hl-id'); if(confirm('删除这条备注？')){ var all=loadJSON(HL_KEY); for(var x=0;x<all.length;x++){ if(all[x].id===hid){ all.splice(x,1); break; } } saveJSON(HL_KEY,all); removeAllHighlightDOM(); applyAllHighlights(); updateFab(); closeNoteDialog(); } }; }
+    },100);
+    actionPopup.classList.remove('show');
+  });
+
+  actionPopup.querySelector('.act-del').addEventListener('click',function(){
+    if(activeHlIds.length===0) return;
+    var msg=activeHlIds.length>1?'确定删除该位置的全部 '+activeHlIds.length+' 条备注？':'删除这条划线备注？';
+    if(confirm(msg)){
+      var all=loadJSON(HL_KEY);
+      for(var i=all.length-1;i>=0;i--){ if(activeHlIds.indexOf(all[i].id)>=0) all.splice(i,1); }
+      saveJSON(HL_KEY,all); removeAllHighlightDOM(); applyAllHighlights(); updateFab();
+    }
+    actionPopup.classList.remove('show'); activeHlIds=[];
+  });
 
   // 错题本
   var fab=document.getElementById('errbookFab'), overlay=document.getElementById('errbookOverlay'), panel=document.getElementById('errbookPanel'), body=document.getElementById('errbookBody'), badge=document.getElementById('errbookBadge'), closeBtn=document.getElementById('errbookClose'), clearBtn=document.getElementById('errbookClear');
