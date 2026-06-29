@@ -651,5 +651,45 @@
   injectTextIds(); applyAllHighlights(); updateFab();
 })();
 </script>
+<script>
+(function(){
+  var tocList=document.getElementById('tocList'), sections=document.querySelectorAll('.section'), tocItems=[];
+  for(var i=0;i<sections.length;i++){
+    var sec=sections[i], h2=sec.querySelector('h2'); if(!h2) continue;
+    var secId='sec-'+i; sec.setAttribute('id',secId);
+    var title=h2.textContent.replace(/^\d+\s*/,'').trim();
+    var item=document.createElement('a'); item.className='toc-item'; item.textContent=title;
+    item.setAttribute('data-target',secId);
+    item.addEventListener('click',function(){ var t=document.getElementById(this.getAttribute('data-target'));
+      if(t){ t.scrollIntoView({behavior:'smooth',block:'start'}); }
+      document.getElementById('tocSidebar').classList.remove('open');
+      document.getElementById('tocOverlay').classList.remove('open');
+    });
+    tocList.appendChild(item); tocItems.push({el:item,target:sec});
+    var h3s=sec.querySelectorAll('h3');
+    for(var j=0;j<h3s.length;j++){
+      var subId=secId+'-s'+j; h3s[j].setAttribute('id',subId);
+      var sub=document.createElement('a'); sub.className='toc-item toc-sub'; sub.textContent=h3s[j].textContent.trim();
+      sub.setAttribute('data-target',subId);
+      sub.addEventListener('click',function(){ var t=document.getElementById(this.getAttribute('data-target'));
+        if(t){ t.scrollIntoView({behavior:'smooth',block:'start'}); }
+        document.getElementById('tocSidebar').classList.remove('open');
+        document.getElementById('tocOverlay').classList.remove('open');
+      });
+      tocList.appendChild(sub); tocItems.push({el:sub,target:h3s[j]});
+    }
+  }
+  var st=null;
+  window.addEventListener('scroll',function(){ if(st) clearTimeout(st); st=setTimeout(function(){
+    var top=window.scrollY+120, active=null;
+    for(var i=tocItems.length-1;i>=0;i--){ if(tocItems[i].target.getBoundingClientRect().top+window.scrollY<=top){ active=tocItems[i]; break; } }
+    for(var j=0;j<tocItems.length;j++) tocItems[j].el.classList.remove('active');
+    if(active){ active.el.classList.add('active'); active.el.scrollIntoView&&active.el.scrollIntoViewIfNeeded&&active.el.scrollIntoViewIfNeeded(false); }
+  },50);});
+  var toggle=document.getElementById('tocToggle'), sidebar=document.getElementById('tocSidebar'), overlay=document.getElementById('tocOverlay');
+  toggle.addEventListener('click',function(){ sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+  overlay.addEventListener('click',function(){ sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+})();
+</script>
 </body>
 </html>
