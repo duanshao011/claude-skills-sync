@@ -168,7 +168,51 @@
     font-weight:700; color:var(--yellow); margin-bottom:8px; font-size:13px;
   }
 
+  /* ====== 目录侧边栏 ====== */
+  .toc-sidebar {
+    width:220px; flex-shrink:0; position:sticky; top:20px;
+    height:fit-content; max-height:calc(100vh - 40px); overflow-y:auto; padding-top:12px;
+  }
+  .toc-sidebar::-webkit-scrollbar { width:4px; }
+  .toc-sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+  .toc-header {
+    font-size:13px; font-weight:700; color:var(--text2);
+    letter-spacing:1px; padding:0 12px 12px;
+    border-bottom:1px solid var(--border); margin-bottom:8px;
+  }
+  .toc-list { list-style:none; padding:0; margin:0; }
+  .toc-item {
+    display:block; padding:7px 12px; font-size:13px; color:var(--text2);
+    text-decoration:none; cursor:pointer; border-left:2px solid transparent;
+    border-radius:0 4px 4px 0; transition:all 0.15s; line-height:1.5;
+  }
+  .toc-item:hover { color:var(--text); background:rgba(0,0,0,0.03); }
+  .toc-item.active {
+    color:var(--accent); border-left-color:var(--accent);
+    background:rgba(232,85,26,0.06); font-weight:600;
+  }
+  .toc-item.toc-sub { padding-left:24px; font-size:12px; }
+  .toc-toggle {
+    display:none; position:fixed; top:16px; left:16px; z-index:997;
+    width:40px; height:40px; border-radius:8px; border:1px solid var(--border);
+    background:var(--card); color:var(--text); font-size:18px; cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1); align-items:center; justify-content:center;
+  }
+  .toc-overlay {
+    display:none; position:fixed; inset:0; z-index:995; background:rgba(0,0,0,0.3);
+  }
+  .toc-overlay.open { display:block; }
+
   @media (max-width: 768px) {
+    .page-layout { flex-direction:column; padding:10px; gap:0; }
+    .toc-sidebar {
+      width:260px; position:fixed; top:0; left:0; height:100vh; max-height:100vh;
+      background:var(--card); z-index:996; transform:translateX(-100%);
+      transition:transform 0.25s ease; box-shadow:4px 0 24px rgba(0,0,0,0.12);
+      padding:60px 16px 20px;
+    }
+    .toc-sidebar.open { transform:translateX(0); }
+    .toc-toggle { display:flex; }
     .section { padding:20px; }
     .compare-grid { grid-template-columns:1fr; }
     .header h1 { font-size:22px; }
