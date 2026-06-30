@@ -126,14 +126,14 @@
 
   // ========== 模块3：明细表 ==========
   let curGroup="eff", sortKey="roi", sortDir=-1, fQuad="", fInvest="", fKw="";
-  function fixedCols(){return[["creator","达人","lft"],["title","标题","lft"],["quadrant","象限","lft"]];}
+  function fixedCols(){return[["creator","达人","lft"],["note_id","笔记id","lft"],["quadrant","象限","lft"]];}
   function visibleNotes(){
     return DATA.notes.filter(n=>{
       if(fQuad && n.quadrant!==fQuad) return false;
       if(fInvest==="yes" && !n.is_invested) return false;
       if(fInvest==="no" && n.is_invested) return false;
       if(fKw){const k=fKw.toLowerCase();
-        if(!String(n.creator||"").toLowerCase().includes(k) && !String(n.title||"").toLowerCase().includes(k)) return false;}
+        if(!String(n.creator||"").toLowerCase().includes(k) && !String(n.note_id||"").toLowerCase().includes(k)) return false;}
       return true;
     });
   }
@@ -155,7 +155,7 @@
       const q=QUAD[n.quadrant];
       body+="<tr>";
       body+=`<td class="lft cell-creator">${n.creator||"—"}</td>`;
-      body+=`<td class="lft cell-title" title="${(n.title||"").replace(/"/g,'')}">${n.title||"—"}</td>`;
+      body+=`<td class="lft cell-id" title="${(n.title||"").replace(/"/g,'')}">${n.note_id||"—"}</td>`;
       body+=`<td class="lft"><span class="tag tag-${q.cls}">${n.quadrant}</span></td>`;
       grp.forEach(([k,l,fmt])=>{
         const v=n[k]; const tier=TIERSET.has(k)?(n.tiers&&n.tiers[k]||"na"):"";
