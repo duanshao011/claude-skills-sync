@@ -155,6 +155,8 @@ def classify(master):
     parts = [master[c + "_pct"] for c in ["visit_rate", "deal_rate", "roi"] if c + "_pct" in master]
     conv = pd.concat(parts, axis=1).mean(axis=1) if parts else pd.Series(0.0, index=master.index)
     master["conv_score"] = conv.fillna(0)
+    # 无进店=转化链路未启动，直接归零（避免大量0值并列 rank 把分数抬到中位）
+    master.loc[master["visit_uv"] <= 0, "conv_score"] = 0.0
 
     invested = master[master["is_invested"]]
     x_split = float(invested["spend"].median()) if len(invested) else 0.0
