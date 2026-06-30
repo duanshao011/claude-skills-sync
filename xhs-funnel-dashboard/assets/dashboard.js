@@ -188,29 +188,42 @@
 
   // ========== 模块4：趋势折线 ==========
   let trendChart, trendList=[];
-  function fillTrendOptions(kw){
-    const sel=document.getElementById("trendSel");
-    const k=(kw||"").toLowerCase().trim();
-    const list=trendList.filter(n=> !k ||
-      String(n.creator||"").toLowerCase().includes(k) ||
-      String(n.note_id||"").toLowerCase().includes(k));
-    const cur=sel.value;
-    sel.innerHTML=list.map(n=>`<option value="${n.note_id}">${n.creator||"?"} · ${n.note_id}</option>`).join("");
-    document.getElementById("trendCnt").textContent=`${list.length} 篇可选`;
-    if(list.length){
-      if(list.some(n=>n.note_id===cur)){ sel.value=cur; }
-      else { sel.value=list[0].note_id; drawTrend(list[0].note_id); }
-    }
-  }
   function renderTrends(){
-    const sel=document.getElementById("trendSel");
     trendList=DATA.notes.filter(n=>DATA.trends[n.note_id]&&DATA.trends[n.note_id].length)
       .sort((a,b)=>(b.gmv||0)-(a.gmv||0));
     trendChart=echarts.init(document.getElementById("trendChart"));
-    fillTrendOptions("");
-    if(trendList.length){drawTrend(trendList[0].note_id);}
-    sel.onchange=e=>drawTrend(e.target.value);
-    document.getElementById("trendKw").oninput=e=>fillTrendOptions(e.target.value);
+    const input=document.getElementById("trendInput");
+    const box=document.getElementById("trendListBox");
+    const cnt=document.getElementById("trendCnt");
+
+    function fill(kw){
+      const k=(kw||"").toLowerCase().trim();
+      const arr=trendList.filter(n=> !k ||
+        String(n.creator||"").toLowerCase().includes(k) ||
+        String(n.note_id||"").toLowerCase().includes(k));
+      cnt.textContent=`${arr.length} 篇可选`;
+      box.innerHTML = arr.length
+        ? arr.map(n=>`<div class="combo-item" data-id="${n.note_id}">
+            <span class="ci-name">${n.creator||"?"}</span><span class="ci-id">${n.note_id}</span></div>`).join("")
+        : `<div class="combo-empty">无匹配的达人 / 笔记id</div>`;
+      box.querySelectorAll(".combo-item").forEach(el=>el.onmousedown=ev=>{
+        ev.preventDefault(); pick(el.dataset.id);
+      });
+    }
+    function pick(id){
+      const n=trendList.find(x=>x.note_id===id); if(!n) return;
+      input.value=`${n.creator||"?"} · ${n.note_id}`;
+      box.classList.remove("open");
+      drawTrend(id);
+    }
+    input.onfocus=()=>{ fill(""); box.classList.add("open"); };   // 点击预加载全部
+    input.oninput=()=>{ fill(input.value); box.classList.add("open"); }; // 关键字过滤
+    input.onblur=()=>setTimeout(()=>box.classList.remove("open"),150);
+    document.addEventListener("click",e=>{
+      if(!document.getElementById("trendCombo").contains(e.target)) box.classList.remove("open");
+    });
+
+    if(trendList.length){ pick(trendList[0].note_id); }
     window.addEventListener("resize",()=>trendChart.resize());
   }
   function drawTrend(nid){
