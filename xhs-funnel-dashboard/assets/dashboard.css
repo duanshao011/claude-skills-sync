@@ -61,6 +61,22 @@ section{margin-bottom:30px}
 .toolbar .spacer{margin-left:auto}
 .cnt{color:var(--dim);font-size:12px}
 
+/* 可搜索下拉（combobox） */
+.combo{position:relative;width:380px}
+.combo>input{width:100%;background:var(--panel);color:var(--text);border:1px solid var(--border);
+  border-radius:7px;padding:8px 11px;font-size:12px;font-family:inherit;outline:none}
+.combo>input:focus{border-color:var(--accent)}
+.combo-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:30;
+  background:var(--panel);border:1px solid var(--border);border-radius:9px;
+  max-height:300px;overflow:auto;box-shadow:var(--shadow);display:none;padding:4px}
+.combo-list.open{display:block}
+.combo-item{display:flex;justify-content:space-between;align-items:center;gap:14px;
+  padding:8px 11px;border-radius:6px;cursor:pointer;font-size:12px}
+.combo-item:hover,.combo-item.active{background:#f0fbf9}
+.combo-item .ci-name{color:var(--text);font-weight:600;white-space:nowrap}
+.combo-item .ci-id{color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums}
+.combo-empty{padding:10px 11px;color:var(--dim);font-size:12px;text-align:center}
+
 /* 明细表 */
 .tbl-scroll{overflow:auto;max-height:620px}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
