@@ -8,6 +8,7 @@ html = open(src, encoding="utf-8").read()
 inj = ('<script>window.addEventListener("load",function(){setTimeout(function(){'
        'var i=document.getElementById("trendInput");'
        'if(i){i.focus();i.dispatchEvent(new Event("focus"));}},600);});</script>')
-html = html.replace("</body>", inj + "</body>")
+idx = html.rfind("</body>")   # 只替换最后一个，避开 echarts 内联代码里可能的 </body> 子串
+html = html[:idx] + inj + html[idx:]
 open(dst, "w", encoding="utf-8").write(html)
 print("injected ->", dst)
