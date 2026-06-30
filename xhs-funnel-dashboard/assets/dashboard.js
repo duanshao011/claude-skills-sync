@@ -2,9 +2,9 @@
 (function () {
   "use strict";
   const DATA = JSON.parse(document.getElementById("payload").textContent);
-  const C = { bg:"#0d1117", panel:"#161b22", border:"#1f2937", grid:"#21262d",
-    text:"#e6edf3", muted:"#8b949e", accent:"#2dd4bf",
-    hold:"#2dd4bf", seed:"#60a5fa", stop:"#f87171", watch:"#6b7280" };
+  const C = { bg:"#ffffff", panel:"#ffffff", border:"#e3e7ec", grid:"#eceff3",
+    text:"#1f2933", muted:"#5f6b7a", dim:"#9aa5b1", accent:"#0d9488",
+    hold:"#0d9488", seed:"#2563eb", stop:"#dc2626", watch:"#94a3b8" };
   const QUAD = {
     "加大投/稳住":{cls:"hold",col:C.hold}, "重点追投":{cls:"seed",col:C.seed},
     "止损":{cls:"stop",col:C.stop}, "观察":{cls:"watch",col:C.watch} };
