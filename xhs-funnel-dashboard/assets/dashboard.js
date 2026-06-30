@@ -192,7 +192,7 @@
     const sel=document.getElementById("trendSel");
     const withTrend=DATA.notes.filter(n=>DATA.trends[n.note_id]&&DATA.trends[n.note_id].length)
       .sort((a,b)=>(b.gmv||0)-(a.gmv||0));
-    sel.innerHTML=withTrend.map(n=>`<option value="${n.note_id}">${n.creator||"?"} · ${(n.title||"").slice(0,22)}</option>`).join("");
+    sel.innerHTML=withTrend.map(n=>`<option value="${n.note_id}">${n.creator||"?"} · ${n.note_id}</option>`).join("");
     trendChart=echarts.init(document.getElementById("trendChart"));
     if(withTrend.length){drawTrend(withTrend[0].note_id);}
     sel.onchange=e=>drawTrend(e.target.value);
@@ -205,11 +205,12 @@
       lineStyle:{width:2,color:col},itemStyle:{color:col},data:arr.map(r=>r[idx])});
     trendChart.setOption({
       backgroundColor:"transparent",
-      title:{text:`${note.creator||""} · ${(note.title||"").slice(0,30)}`,left:14,top:8,
+      title:{text:`${note.creator||""} · ${nid}`,left:14,top:8,
         textStyle:{color:C.muted,fontSize:12,fontWeight:400}},
       legend:{top:8,right:14,textStyle:{color:C.muted}},
       grid:{left:52,right:30,top:48,bottom:40},
-      tooltip:{trigger:"axis",backgroundColor:"#0b0f16",borderColor:C.border,textStyle:{color:C.text}},
+      tooltip:{trigger:"axis",backgroundColor:"#ffffff",borderColor:C.border,borderWidth:1,
+        textStyle:{color:C.text},extraCssText:"box-shadow:0 4px 16px rgba(16,24,40,.12);border-radius:8px"},
       xAxis:Object.assign({type:"category",data:dates,boundaryGap:false},axisStyle()),
       yAxis:Object.assign({type:"value"},axisStyle()),
       series:[mk("进店UV",1,C.seed),mk("加购UV",2,C.accent),mk("成交UV",3,"#f59e0b")]
