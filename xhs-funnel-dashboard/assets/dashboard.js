@@ -187,15 +187,30 @@
   }
 
   // ========== 模块4：趋势折线 ==========
-  let trendChart;
+  let trendChart, trendList=[];
+  function fillTrendOptions(kw){
+    const sel=document.getElementById("trendSel");
+    const k=(kw||"").toLowerCase().trim();
+    const list=trendList.filter(n=> !k ||
+      String(n.creator||"").toLowerCase().includes(k) ||
+      String(n.note_id||"").toLowerCase().includes(k));
+    const cur=sel.value;
+    sel.innerHTML=list.map(n=>`<option value="${n.note_id}">${n.creator||"?"} · ${n.note_id}</option>`).join("");
+    document.getElementById("trendCnt").textContent=`${list.length} 篇可选`;
+    if(list.length){
+      if(list.some(n=>n.note_id===cur)){ sel.value=cur; }
+      else { sel.value=list[0].note_id; drawTrend(list[0].note_id); }
+    }
+  }
   function renderTrends(){
     const sel=document.getElementById("trendSel");
-    const withTrend=DATA.notes.filter(n=>DATA.trends[n.note_id]&&DATA.trends[n.note_id].length)
+    trendList=DATA.notes.filter(n=>DATA.trends[n.note_id]&&DATA.trends[n.note_id].length)
       .sort((a,b)=>(b.gmv||0)-(a.gmv||0));
-    sel.innerHTML=withTrend.map(n=>`<option value="${n.note_id}">${n.creator||"?"} · ${n.note_id}</option>`).join("");
     trendChart=echarts.init(document.getElementById("trendChart"));
-    if(withTrend.length){drawTrend(withTrend[0].note_id);}
+    fillTrendOptions("");
+    if(trendList.length){drawTrend(trendList[0].note_id);}
     sel.onchange=e=>drawTrend(e.target.value);
+    document.getElementById("trendKw").oninput=e=>fillTrendOptions(e.target.value);
     window.addEventListener("resize",()=>trendChart.resize());
   }
   function drawTrend(nid){
