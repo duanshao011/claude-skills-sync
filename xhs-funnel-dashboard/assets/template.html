@@ -59,8 +59,11 @@
     <div class="sec-head"><span class="idx">4</span><h2>笔记每日趋势</h2>
       <span class="hint">选一篇看进店 / 加购 / 成交的逐日曲线</span></div>
     <div class="panel">
-      <div class="toolbar"><span style="color:var(--muted);font-size:12px">选择笔记</span>
-        <select id="trendSel" style="min-width:320px"></select></div>
+      <div class="toolbar"><span style="color:var(--muted);font-size:12px">搜索</span>
+        <input id="trendKw" placeholder="达人昵称 或 笔记id" style="width:200px">
+        <span style="color:var(--muted);font-size:12px">选择笔记</span>
+        <select id="trendSel" style="min-width:340px"></select>
+        <span class="spacer"></span><span class="cnt" id="trendCnt"></span></div>
       <div class="chart" id="trendChart"></div>
     </div>
   </section>
