@@ -223,7 +223,7 @@
       if(!document.getElementById("trendCombo").contains(e.target)) box.classList.remove("open");
     });
 
-    if(trendList.length){ pick(trendList[0].note_id); }
+    if(trendList.length){ fill(""); pick(trendList[0].note_id); }
     window.addEventListener("resize",()=>trendChart.resize());
   }
   function drawTrend(nid){
