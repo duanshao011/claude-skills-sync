@@ -69,35 +69,57 @@
       (groups[n.quadrant]=groups[n.quadrant]||[]).push(n);
     });
     const gmvMax = Math.max(1,...DATA.notes.map(n=>n.gmv||0));
+    const xMax = Math.max(10,...DATA.notes.map(n=>n.spend||0))*1.06;
+    const xs = DATA.summary.x_split||0;
     const series = Object.keys(QUAD).map(q=>({
       name:q, type:"scatter",
       symbolSize:d=> 8 + 26*Math.sqrt((d[2]||0)/gmvMax),
-      itemStyle:{color:QUAD[q].col, opacity:.82, borderColor:"rgba(0,0,0,.3)"},
-      emphasis:{focus:"series", itemStyle:{opacity:1, borderColor:"#fff", borderWidth:1}},
+      itemStyle:{color:QUAD[q].col, opacity:.85, borderColor:"#fff", borderWidth:.5},
+      emphasis:{focus:"series", itemStyle:{borderColor:"#111", borderWidth:1}},
       data:(groups[q]||[]).map(n=>[n.spend||0, n.conv_score||0, n.gmv||0, n.roi, n.visit_uv, n.deal_uv, n.creator, n.title, q])
     }));
+    // 四象限底色块 + 区域标注（让人一眼看懂每个角是什么）
+    const area = (x0,y0,x1,y1,col,name)=>([
+      {coord:[x0,y0], itemStyle:{color:col,opacity:.06}, name, label:{color:col,opacity:.9}},
+      {coord:[x1,y1]}
+    ]);
+    const markSeries = {type:"line", data:[], silent:true,
+      markArea:{silent:true,
+        label:{show:true, position:["50%","50%"], fontSize:13, fontWeight:700, lineHeight:18, align:"center"},
+        data:[
+          area(0, 0.5, xs,   1, C.seed,  "🎯 重点追投\n没投薯条 · 转化好"),
+          area(xs,0.5, xMax, 1, C.hold,  "加大投 / 稳住\n投了 · 转化好"),
+          area(0, 0,   xs,   0.5, C.watch,"观察\n没投 · 没起量"),
+          area(xs,0,   xMax, 0.5, C.stop, "止损\n投了 · 转化差"),
+        ]},
+      markLine:{silent:true, symbol:"none", lineStyle:{color:"#b6bfca", type:"dashed", width:1},
+        data:[{yAxis:0.5}, {xAxis:xs}],
+        label:{color:C.dim, fontSize:11,
+          formatter:p=>p.value===0.5?"转化分 0.5 分界":"已投中位 ¥"+Math.round(xs)}}
+    };
     const ch = echarts.init(document.getElementById("quadChart"));
     ch.setOption({
       backgroundColor:"transparent",
-      legend:{top:6, textStyle:{color:C.muted}, inactiveColor:"#3a4150"},
-      grid:{left:64, right:30, top:46, bottom:54},
-      tooltip:{backgroundColor:"#0b0f16", borderColor:C.border, textStyle:{color:C.text},
-        formatter:p=>{const d=p.data; const q=QUAD[d[8]];
+      legend:{top:6, textStyle:{color:C.muted}, inactiveColor:"#c5ccd6"},
+      grid:{left:78, right:34, top:46, bottom:66},
+      tooltip:{backgroundColor:"#ffffff", borderColor:C.border, borderWidth:1, textStyle:{color:C.text},
+        extraCssText:"box-shadow:0 4px 18px rgba(16,24,40,.14);border-radius:8px",
+        formatter:p=>{if(p.seriesType!=="scatter")return"";const d=p.data; const q=QUAD[d[8]];
           return `<div class="tt"><b>${d[6]}</b><br><span class="lbl">${d[7]||""}</span><br>
             <div class="row"><span class="lbl">象限</span><span class="q" style="color:${q.col}">${d[8]}</span></div>
             <div class="row"><span class="lbl">薯条消耗</span><span>${money(d[0])}</span></div>
             <div class="row"><span class="lbl">GMV</span><span>${money(d[2])}</span></div>
             <div class="row"><span class="lbl">ROI</span><span>${f2(d[3])}</span></div>
             <div class="row"><span class="lbl">进店/成交UV</span><span>${nf(d[4])} / ${nf(d[5])}</span></div></div>`;}},
-      xAxis:Object.assign({type:"value", name:"薯条消耗 ¥（越右投得越多 · 贴左轴=未投）",
-        nameLocation:"middle", nameGap:34, scale:true,
+      xAxis:Object.assign({type:"value",
+        name:"横轴：薯条投放消耗(元)　→　越靠右投得越多，最左端 0 = 没投薯条",
+        nameLocation:"middle", nameGap:40, min:0, max:xMax,
         axisLabel:{color:C.muted, formatter:v=>v>=1000?(v/1000)+"k":v}}, axisStyle()),
-      yAxis:Object.assign({type:"value", name:"转化综合分（进店率·成交率·ROI 百分位）",
-        nameLocation:"middle", nameGap:44, min:0, max:1}, axisStyle()),
-      series:series.concat([{type:"line", markLine:{silent:true, symbol:"none",
-        lineStyle:{color:"#3a4150", type:"dashed"},
-        data:[{yAxis:0.5}, {xAxis:DATA.summary.x_split}],
-        label:{color:C.dim, formatter:p=>p.value===0.5?"转化分0.5":"已投中位"}}, data:[]}])
+      yAxis:Object.assign({type:"value",
+        name:"纵轴：转化表现　↑　越高越好（进店率·成交率·ROI 的综合排名）",
+        nameLocation:"middle", nameGap:52, min:0, max:1,
+        axisLabel:{color:C.muted, formatter:v=> v===0?"差":v===1?"好":(v*100)+"分"}}, axisStyle()),
+      series:series.concat([markSeries])
     });
     window.addEventListener("resize",()=>ch.resize());
   }
