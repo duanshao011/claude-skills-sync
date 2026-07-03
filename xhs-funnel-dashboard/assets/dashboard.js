@@ -564,6 +564,9 @@
       if (costChart) { try { costChart.dispose(); } catch (ignore) {} costChart = null; }
       document.getElementById("costChart").innerHTML =
         '<div style="padding:80px;text-align:center;color:#9CA3AF">该笔记无成本数据</div>';
+      // 清空指标卡，避免残留汇总数据
+      document.getElementById("costKpis").innerHTML = "";
+      document.getElementById("costAdvice").style.display = "none";
       return;
     }
     const s = entry.summary || {};
