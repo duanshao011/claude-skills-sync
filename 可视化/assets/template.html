@@ -802,5 +802,20 @@
   overlay.addEventListener('click',function(){ sidebar.classList.remove('open'); overlay.classList.remove('open'); });
 })();
 </script>
+<!-- ====== 溯源面板折叠逻辑 ====== -->
+<script>
+(function(){
+  // 为页面中所有 .trace-toggle 绑定点击事件（支持动态生成的内容）
+  document.addEventListener('click',function(e){
+    var btn=e.target.closest('.trace-toggle');
+    if(!btn) return;
+    btn.classList.toggle('open');
+    var body=btn.nextElementSibling;
+    if(body&&body.classList.contains('trace-body')){
+      body.classList.toggle('open');
+    }
+  });
+})();
+</script>
 </body>
 </html>
