@@ -3,87 +3,130 @@ name: github同步
 name_en: github-sync
 description: >
   GitHub 双向同步 / github-sync -- 在设备间通过 GitHub 同步技能文件和项目。
-  本地→GitHub推送、GitHub→本地拉取、双向同步。默认操作目录 ~/.claude/skills，
-  支持 --path 指定其他 git 仓库目录。触发词：同步skill、skill同步、github同步、
+  本地→GitHub推送、GitHub→本地拉取、双向同步。默认同时检查所有跟踪仓库，
+  汇总差异后统一同步。触发词：同步skill、skill同步、github同步、
   github sync、推送skill、拉取skill、push skill、pull skill、sync skills、
   上传skill到github、从github更新skill、同步到github、从github更新。
 ---
 
-# github同步 — GitHub 双向同步
+# github同步 — GitHub 多仓库双向同步
 
-通过 GitHub 私有仓库在多台设备间同步 skill 文件。默认操作 `~/.claude/skills`。
+通过 GitHub 私有仓库在多台设备间同步所有跟踪项目。触发了就**对所有跟踪仓库做 status 检查，汇总差异后汇报**。
+
+## 跟踪仓库列表（默认同步全部）
+
+每次触发必须检查以下所有仓库的状态。如果某个路径不存在（比如新设备还没建），跳过并备注。
+
+| # | 仓库 | 本地路径 | GitHub Remote |
+|---|---|---|---|
+| 1 | Skill 文件 | `~/.claude/skills` | `duanshao011/claude-skills-sync` |
+| 2 | Skill 面板 | `~/Documents/Skill管理器` | `duanshao011/skill-manager` |
+
+> 博哥要新增或移除跟踪仓库，直接改这个表。不需要改脚本。
 
 ## 前置检查（必须先执行）
 
-每次触发，第一步一定是查看状态：
+对每个跟踪仓库逐一跑 status，汇总成一个报告：
 
 ```bash
-bash ~/.claude/skills/github同步/scripts/sync.sh status [--path <目录>]
+bash ~/.claude/skills/github同步/scripts/sync.sh status --path <仓库路径>
 ```
 
-根据结果判断下一步：
+## 汇报格式（必须按这个格式）
 
-| status 输出 | 下一步 |
+跑完所有仓库的 status 后，用下面的格式汇总给博哥：
+
+```
+📦 仓库: Skill 文件 (~/.claude/skills)
+   领先: X 提交  落后: Y 提交  工作区: 干净 / N个未提交文件
+   └─ 远程: duanshao011/claude-skills-sync
+
+📦 仓库: Skill 面板 (~/Documents/Skill管理器)
+   领先: X 提交  落后: Y 提交  工作区: 干净 / N个未提交文件
+   └─ 远程: duanshao011/skill-manager
+```
+
+然后根据汇总结果决策：
+
+| 汇总情况 | 下一步 |
 |---|---|
-| 工作区有未提交变更 | 询问博哥是否推送 |
-| 落后远程 N 提交 | 询问博哥是否拉取 |
-| 领先 + 落后都有 | 建议双向同步 |
-| 工作区干净 + 已同步 | 告知无需操作 |
-| 不是 git 仓库 | 引导读 `references/setup.md` |
-| 未配置 remote | 引导读 `references/setup.md` |
+| 所有仓库干净且已同步 | 告知「全部已同步，无变化」|
+| 任一仓库落后远程 | 先对所有仓库执行 pull，再汇报拉取结果 |
+| 任一仓库有领先/未提交 | 展示变更明细，问博哥是否推送 |
+| 领先 + 落后都有 | 先 pull 再确认 push |
 
 ## 四种操作
 
-### 1. status — 查看状态
+### 1. status — 查看所有仓库状态
+
+对每个跟踪仓库逐一跑：
 
 ```bash
-bash ~/.claude/skills/github同步/scripts/sync.sh status [--path <目录>]
+bash ~/.claude/skills/github同步/scripts/sync.sh status --path <仓库路径>
 ```
 
-展示分支、远程地址、领先/落后提交数、未提交文件列表。**所有操作前必须先跑 status。**
+汇总后按「汇报格式」输出。
 
-### 2. pull — 从 GitHub 拉到本地
+### 2. pull — 所有仓库拉取
+
+对每个跟踪仓库逐一 pull。**无需确认，直接执行。**
 
 ```bash
-bash ~/.claude/skills/github同步/scripts/sync.sh pull [--path <目录>] [--dry-run]
+bash ~/.claude/skills/github同步/scripts/sync.sh pull --path <仓库路径>
 ```
 
-直接执行，无需确认。脚本自动处理：
-- 本地有未提交变更 → stash → pull → stash pop
-- stash pop 冲突 → 自动采用远程版本（checkout --theirs）
-
-把脚本输出的结果展示给博哥。如有冲突文件，提醒博哥检查。
+每个仓库拉取完成后汇报结果。脚本自动处理 stash/冲突，冲突文件以远程为准并提醒博哥检查。
 
 ### 3. push — 推送到 GitHub
 
 ```bash
-bash ~/.claude/skills/github同步/scripts/sync.sh push [--path <目录>] [--message "自定义提交信息"] [--dry-run]
+bash ~/.claude/skills/github同步/scripts/sync.sh push --path <仓库路径> [--message "自定义提交信息"]
 ```
 
-**🔴 必须先展示 status 结果并明确获得博哥确认后才能执行！**
+**🔴 必须先汇总展示所有仓库的变更明细并明确获得博哥确认后才能执行！**
 
 确认流程：
-1. 先跑 status，把变更文件列表展示给博哥
-2. 问「博哥，确认推送到 GitHub？」（不可用其他措辞）
-3. 获得肯定答复后执行 push
-4. push 被拒时脚本会自动 pull 后重试，无需额外处理
+1. 汇总展示所有仓库的变更文件列表 + 领先提交数
+2. 问「博哥，确认推送以上所有仓库到 GitHub？」（不可用其他措辞）
+3. 获得肯定答复后，逐仓库执行 push
+4. 每个仓库 push 完成后汇报结果
 
 ### 4. sync — 双向同步
 
 ```bash
-bash ~/.claude/skills/github同步/scripts/sync.sh sync [--path <目录>] [--message "自定义提交信息"]
+bash ~/.claude/skills/github同步/scripts/sync.sh sync --path <仓库路径> [--message "自定义提交信息"]
 ```
 
-先 pull → 再 push。**push 阶段同样需要确认。** 分两步：
-1. 先执行 `sync.sh pull`，展示拉取结果
-2. 再走 push 确认流程
+先所有仓库 pull → 再统一走 push 确认流程。
+
+## 变更明细展示（push 前必须展示）
+
+博哥说「看看有什么改动」，或者 push 之前，对每个有领先/变更的仓库展示：
+
+```bash
+cd <仓库路径> && git log origin/main..HEAD --oneline   # 领先的提交列表
+cd <仓库路径> && git status --short                      # 未提交的文件变更
+cd <仓库路径> && git diff --stat origin/main..HEAD       # 文件级变更统计
+```
+
+用简明格式输出，不要 dump 原始 git 输出。例如：
+
+```
+📦 Skill 面板 — 18 个提交待推送
+   最近 5 条:
+   · 41f4bb3 Add git sync feature and refresh UX improvements
+   · 1a6a51d Add category context menu management
+   · f2575a1 Render category move menu outside list
+   · ea7dbff Add detail action toast feedback
+   · 81a1049 Remove detail page category selector
+   📊 文件变更: 12 files, +340 -89
+```
 
 ## 关键规则
 
-- **默认目录**：`~/.claude/skills`。博哥说「同步到github」但没有指明路径时，就是同步 skill 目录。
-- **博哥说「同步我的项目」并给了路径**：用 `--path` 指向那个目录。
+- **默认全仓库同步**：博哥说「同步到github」不指明路径时，对全部跟踪仓库执行。
+- **博哥说「同步我的项目」并给了路径**：**追加**到跟踪仓库列表一起检查，不要替换默认列表。
 - **push 必须确认**：这是红线，不得自动执行。`sync` 中的 push 阶段也一样。
-- **dry-run 也要展示**：博哥说「先看看有什么要推的」，用 `--dry-run` 预览。
 - **冲突自动以远程为准**：脚本会自动处理，但必须告知博哥哪些文件被覆盖了。
 - **网络错误不重试**：直接告诉博哥网络不行，让他检查代理。
 - **commit message 默认格式**：`sync: <主机名> <日期时间>`。博哥想自定义时用 `--message`。
@@ -94,7 +137,7 @@ bash ~/.claude/skills/github同步/scripts/sync.sh sync [--path <目录>] [--mes
 |---|---|
 | 网络不可用 | 「博哥，网络不通，检查下代理」 |
 | 认证失败 / 403 | 引导运行 `gh auth login`，或读 `references/setup.md` |
-| 不是 git 仓库 | 引导运行 `sync.sh setup`，或读 `references/setup.md` |
+| 不是 git 仓库 / 路径不存在 | 跳过该仓库并备注，继续处理其他仓库 |
 | 冲突已解决 | 告知博哥哪些文件被远程覆盖 |
 | 已经是最新 | 直接告知，不做多余操作 |
 
