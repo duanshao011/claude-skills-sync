@@ -250,11 +250,13 @@
       if (ok && k === "lx" && s.hit != null) {
         countTxt = fmt.int(s.rows) + " 条 · 命中本期 " + fmt.int(s.hit) + " 条";
       }
+      const period = ok && s.period ? `<span class="src-period">📅 ${s.period}</span>` : "";
       return `<div class="src-card">
         <div class="src-badge ${ok ? "ok" : "miss"}">${ok ? "✓" : "—"}</div>
         <div class="src-info">
           <div class="src-name">${s.name} <span class="src-count ${ok ? "" : "miss"}">${countTxt}</span></div>
           <div class="src-desc">${ok ? path : (s.reason || "缺失该表，相关字段列将标注")}</div>
+          ${period}
         </div>
       </div>`;
     }).join("");
