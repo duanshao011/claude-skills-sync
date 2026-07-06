@@ -764,65 +764,10 @@
     return null;
   }
 
-  // ===== 图表三 · 查询面板：NL 规则引擎 + 筛选 + CSV 导出 =====
+  // ===== 图表三 · 查询面板：字段筛选 + CSV 导出 =====
 
-  // 字段别名 → note 上的实际 key
-  const NL_FIELD_MAP = {
-    "gmv": "gmv", "商家gmv": "gmv",
-    "roi": "roi",
-    "阅读uv": "read_uv_funnel",   // 星河阅读UV 更接近"投放视角"
-    "阅读播放uv": "read_uv_funnel", "阅读/播放uv": "read_uv_funnel",
-    "蒲公英阅读uv": "read_uv_content",
-    "进店uv": "visit_uv",
-    "加购uv": "cart_uv",
-    "成交uv": "deal_uv",
-    "投放金额": "spend", "累计金额": "spend", "薯条金额": "spend",
-    "uv价值": "uv_value", "进店uv价值": "uv_value",
-    "uv成本": "uv_cost", "阅读uv成本": "uv_cost",
-    "累计投放天数": "chili_days", "投放天数": "chili_days",
-  };
-
-  function nlNormalize(s) {
-    return String(s || "").trim()
-      .replace(/[，]/g, ",").replace(/[（(]/g, "(").replace(/[）)]/g, ")")
-      .replace(/([\d.]+)\s*万/g, (_, n) => (parseFloat(n) * 10000).toString())
-      .replace(/([\d.]+)\s*千/g, (_, n) => (parseFloat(n) * 1000).toString())
-      .replace(/([\d.]+)\s*百/g, (_, n) => (parseFloat(n) * 100).toString())
-      .toLowerCase();
-  }
-
-  function nlMapField(name) {
-    const k = name.replace(/\s/g, "").toLowerCase();
-    return NL_FIELD_MAP[k] || null;
-  }
-
-  function nlNormOp(op) {
-    const m = { "大于等于": ">=", "不小于": ">=", ">=": ">=",
-                "小于等于": "<=", "不大于": "<=", "<=": "<=",
-                "大于": ">", ">": ">",
-                "小于": "<", "<": "<",
-                "等于": "=", "=": "=", "==": "=" };
-    return m[op.toLowerCase()] || null;
-  }
-
-  function nlCmp(a, op, b) {
-    if (a == null || isNaN(a)) return false;
-    if (op === ">") return a > b;
-    if (op === ">=") return a >= b;
-    if (op === "<") return a < b;
-    if (op === "<=") return a <= b;
-    if (op === "=") return Math.abs(a - b) < 1e-6;
-    return false;
-  }
-
-  function nlDateToStr(d) {
-    // Date → YYYY-MM-DD
-    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
-    return y + "-" + m + "-" + day;
-  }
-
-  // 解析单条条件；返回 {kind: 'pred'|'top', ...} 或 null
-  function nlParseOne(raw) {
+  // 解析单条条件（保留占位，本地NL引擎已按博哥要求下线）
+  function _nlParseOne_removed(raw) {
     if (!raw) return null;
     const s = nlNormalize(raw);
     let m;
