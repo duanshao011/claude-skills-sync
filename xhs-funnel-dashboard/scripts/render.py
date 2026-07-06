@@ -84,9 +84,9 @@ COLUMN_GROUPS = [
         "key": "star",
         "label": "淘宝星河（后端转化）",
         "columns": [
-            {"key": "read_uv_funnel", "label": "阅读UV", "unit": "", "type": "int",
-             "formula": "星河『阅读/播放UV』，全部流量+归因30天口径，按笔记ID聚合",
-             "meaning": "星河后端归因视角的阅读用户数（与蒲公英口径不同）", "source": "星河"},
+            {"key": "read_uv_funnel", "label": "阅读/播放UV", "unit": "", "type": "int",
+             "formula": "星河原表『阅读/播放UV』，全部流量+归因30天口径，按笔记ID聚合",
+             "meaning": "星河后端归因视角的阅读/播放用户数（与蒲公英『阅读UV』口径不同）", "source": "星河"},
             {"key": "cart_uv", "label": "加购UV", "unit": "", "type": "int",
              "formula": "星河『商品加购UV』", "meaning": "加购去重用户数", "source": "星河"},
             {"key": "deal_uv", "label": "成交UV", "unit": "", "type": "int",
