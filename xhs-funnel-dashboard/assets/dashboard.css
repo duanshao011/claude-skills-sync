@@ -216,61 +216,64 @@ body{
 
 /* ---------- 图表三查询面板 ---------- */
 .query-panel{
-  padding:14px 18px;border-top:1px solid var(--divider);
-  background:#FAFBFC;display:flex;flex-direction:column;gap:10px;
+  padding:14px 24px;background:#fff;
+  border-top:1px solid var(--divider);
 }
-.qp-row{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
-.qp-field{display:flex;align-items:center;gap:8px;flex:1;min-width:220px}
-.qp-field.qp-nl{flex:2;min-width:400px}
-.qp-field.qp-daterange{gap:6px;min-width:280px}
+.qp-fields{
+  display:flex;flex-wrap:wrap;align-items:center;
+  gap:12px 22px;
+}
+.qp-field{
+  display:flex;align-items:center;gap:10px;
+}
 .qp-label{
-  font-size:12px;color:var(--muted);font-weight:500;
-  flex:none;white-space:nowrap;
+  font-size:13px;color:var(--text-2);font-weight:400;
+  white-space:nowrap;flex:none;
 }
 .qp-input{
-  flex:1;min-width:0;height:32px;padding:0 10px;
-  border:1px solid var(--border);border-radius:6px;
+  height:32px;padding:0 12px;
+  border:1px solid var(--border);border-radius:4px;
   background:#fff;font-size:13px;color:var(--text);outline:none;
   transition:border-color .15s,box-shadow .15s;
+  font-family:inherit;box-sizing:border-box;
 }
+#qpCreator{width:180px}
+#qpNoteId{width:280px;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+.qp-input:hover{border-color:var(--muted)}
 .qp-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,36,66,.10)}
-.qp-date{flex:0 0 130px;color-scheme:light;cursor:pointer}
-.qp-dash{color:var(--dim);font-size:12px}
-.qp-combo{flex:1;min-width:0;position:relative}
-.qp-combo-list{max-height:280px}
-.qp-hint-btn{
-  flex:none;height:28px;padding:0 10px;font-size:12px;color:var(--brand);
-  background:transparent;border:1px dashed var(--border);border-radius:4px;
-  cursor:pointer;white-space:nowrap;
+.qp-input::placeholder{color:var(--dim);font-size:12.5px}
+.qp-daterange-body{
+  display:flex;align-items:center;gap:8px;
+  padding:0 4px;height:32px;border:1px solid var(--border);border-radius:4px;
+  background:#fff;transition:border-color .15s;
 }
-.qp-hint-btn:hover{border-color:var(--brand);background:var(--brand-soft)}
-.qp-buttons{display:flex;gap:8px;flex:none;margin-left:auto}
+.qp-daterange-body:hover{border-color:var(--muted)}
+.qp-daterange-body:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,36,66,.10)}
+.qp-date{
+  width:120px;height:28px;border:none;padding:0 6px;
+  font-size:13px;color:var(--text);color-scheme:light;cursor:pointer;
+  background:transparent;
+}
+.qp-date::placeholder{color:var(--dim)}
+.qp-date:focus{outline:none;box-shadow:none}
+.qp-daterange-body .qp-date{border:none}
+.qp-dash{color:var(--dim);font-size:12px;user-select:none}
+.qp-buttons{
+  display:flex;gap:10px;flex:none;margin-left:auto;
+}
 .qp-btn{
-  height:32px;padding:0 18px;border-radius:6px;font-size:13px;font-weight:500;
-  cursor:pointer;transition:all .15s;border:1px solid transparent;white-space:nowrap;
+  height:32px;padding:0 20px;border-radius:4px;
+  font-size:13px;font-weight:500;font-family:inherit;
+  cursor:pointer;transition:all .15s;
+  border:1px solid transparent;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;
 }
-.qp-btn-primary{background:var(--brand);color:#fff}
-.qp-btn-primary:hover{background:var(--brand-2)}
-.qp-btn-plain{background:#fff;color:var(--text);border-color:var(--border)}
-.qp-btn-plain:hover{border-color:var(--muted);background:var(--panel-hover)}
-.qp-btn-outline{background:#fff;color:#0369A1;border-color:#0EA5E9}
-.qp-btn-outline:hover{background:#E0F2FE}
-.qp-status{
-  padding:6px 10px;background:var(--brand-soft);color:var(--brand-strong);
-  border-radius:4px;font-size:12px;line-height:1.5;
-}
-.qp-status.warn{background:#FFF7E6;color:#B45309;border:1px solid #FEDD9E}
-.qp-help{
-  padding:12px 14px;background:#fff;border:1px solid var(--divider);border-radius:6px;
-  font-size:12px;line-height:1.7;color:var(--text-2);
-}
-.qp-help-title{font-weight:600;color:var(--text);margin-bottom:6px;font-size:13px}
-.qp-help ul{margin:0;padding-left:18px}
-.qp-help code{
-  padding:1px 6px;background:var(--brand-soft);color:var(--brand-strong);
-  border-radius:3px;font-family:Menlo,Consolas,monospace;font-size:11px;
-}
-.qp-help-fields{margin-top:8px;padding-top:8px;border-top:1px dashed var(--divider);color:var(--dim)}
+.qp-btn-primary{background:var(--brand);color:#fff;box-shadow:0 1px 3px rgba(255,36,66,.20)}
+.qp-btn-primary:hover{background:var(--brand-2);box-shadow:0 2px 6px rgba(255,36,66,.28)}
+.qp-btn-primary:active{transform:translateY(1px);box-shadow:0 1px 2px rgba(255,36,66,.20)}
+.qp-btn-plain{background:#fff;color:var(--text-2);border-color:var(--border)}
+.qp-btn-plain:hover{border-color:var(--muted);color:var(--text);background:#F9FAFB}
+.qp-btn-plain:active{background:#F3F4F6}
 
 /* ---------- 全链路表格 ---------- */
 /* 表格容器：内部横向+纵向滚动，thead/前两列 sticky */
