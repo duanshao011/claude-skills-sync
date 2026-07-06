@@ -1124,6 +1124,8 @@
     });
 
     let notes = DATA.notes.slice();
+    // 查询面板筛选（达人昵称/笔记ID/发布日期/自然语言）
+    notes = applyPanelFilter(notes);
     if (TABLE.keyword) {
       const terms = TABLE.keyword.toLowerCase().split(/\s+/).filter(Boolean);
       notes = notes.filter(n => {
