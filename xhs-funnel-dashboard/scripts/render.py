@@ -61,6 +61,9 @@ COLUMN_GROUPS = [
             {"key": "component_click_total", "label": "组件点击总量", "unit": "", "type": "int",
              "formula": "正文 + 评论区 + 底栏 三处组件点击量之和",
              "meaning": "笔记全部挂件吸引力总和", "source": "系统计算"},
+            {"key": "component_cost", "label": "组件点击成本", "unit": "元", "type": "num",
+             "formula": "薯条推广总金额 / 组件点击总量",
+             "meaning": "拉动一次组件点击的付费成本，越低越好", "source": "系统计算", "needs": ["薯条"]},
             {"key": "play_5s", "label": "5s播放率", "unit": "%", "type": "ratio",
              "formula": "蒲公英原表『5s播放率』", "meaning": "视频前5秒完成播放的比例", "source": "蒲公英"},
             {"key": "finish_rate", "label": "完播率", "unit": "%", "type": "ratio",
@@ -129,8 +132,6 @@ COLUMN_GROUPS = [
              "formula": "累计金额 / 成交UV", "meaning": "拉动一单成交的付费成本，越低越好", "source": "系统计算", "needs": ["薯条"]},
             {"key": "read_uv_cost", "label": "阅读UV成本", "unit": "元", "type": "num",
              "formula": "累计金额 / 蒲公英阅读UV", "meaning": "拉动一个阅读用户的付费成本，越低越好", "source": "系统计算", "needs": ["薯条"]},
-            {"key": "component_cost", "label": "组件点击成本", "unit": "元", "type": "num",
-             "formula": "累计金额 / 组件点击总量", "meaning": "拉动一次组件点击的付费成本，越低越好", "source": "系统计算", "needs": ["薯条"]},
         ],
     },
     {
@@ -164,6 +165,7 @@ DEFAULT_COLUMNS = [
     # 蒲公英（前端内容）
     "read_uv_content", "content_ctr", "avg_view_time",
     "body_cta_click", "comment_cta_click", "component_click_total",
+    "component_cost",
     # 淘宝星河（后端转化）—— 阅读UV/加购UV/成交UV/商家GMV/UV价值/UV成本
     "read_uv_funnel", "cart_uv", "deal_uv", "gmv", "uv_value", "uv_cost",
     # 薯条投放（成本统计）—— 累计金额/累计投放天数/ROI
