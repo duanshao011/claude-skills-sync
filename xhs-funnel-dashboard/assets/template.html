@@ -96,10 +96,8 @@
       <div class="qp-row">
         <div class="qp-field">
           <label class="qp-label">达人昵称</label>
-          <div class="combo qp-combo" id="qpCreatorCombo">
-            <input type="text" id="qpCreator" class="qp-input combo-input" placeholder="搜索或选择达人" autocomplete="off">
-            <ul class="combo-list qp-combo-list" id="qpCreatorList" hidden></ul>
-          </div>
+          <input type="text" id="qpCreator" class="qp-input" placeholder="输入达人昵称（模糊匹配）" list="qpCreatorDatalist" autocomplete="off">
+          <datalist id="qpCreatorDatalist"></datalist>
         </div>
         <div class="qp-field">
           <label class="qp-label">笔记ID</label>
