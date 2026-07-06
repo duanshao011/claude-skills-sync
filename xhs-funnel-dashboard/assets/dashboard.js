@@ -1482,6 +1482,7 @@
   renderKpis();
   renderSources();
   initTableCols();
+  initQueryPanel();
   renderTable();
   bindModal();
   initTableCombo();
