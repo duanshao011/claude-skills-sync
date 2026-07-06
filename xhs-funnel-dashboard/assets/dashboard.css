@@ -239,10 +239,11 @@ body{
   border-bottom:2px solid rgba(0,0,0,.05);
 }
 .funnel-table thead .group-row th.group-h:hover{background:inherit;color:inherit}
-.funnel-table thead .group-row th.grp-base { background:#F1F5F9; color:#475569; border-top:4px solid #94A3B8 }
-.funnel-table thead .group-row th.grp-pgy  { background:#FFE8EC; color:#E11D48; border-top:4px solid #FF2442 }
-.funnel-table thead .group-row th.grp-star { background:#FFF3E0; color:#C2410C; border-top:4px solid #F97316 }
-.funnel-table thead .group-row th.grp-lx   { background:#E0F2FE; color:#0369A1; border-top:4px solid #0EA5E9 }
+.funnel-table thead .group-row th.grp-base  { background:#F1F5F9; color:#475569; border-top:4px solid #94A3B8 }
+.funnel-table thead .group-row th.grp-pgy   { background:#FFE8EC; color:#E11D48; border-top:4px solid #FF2442 }
+.funnel-table thead .group-row th.grp-star  { background:#FFF3E0; color:#C2410C; border-top:4px solid #F97316 }
+.funnel-table thead .group-row th.grp-chili { background:#F3E8FF; color:#7E22CE; border-top:4px solid #A855F7 }
+.funnel-table thead .group-row th.grp-lx    { background:#E0F2FE; color:#0369A1; border-top:4px solid #0EA5E9 }
 
 /* Sticky 层级设计（关键，避免横滚时右侧表头浮在冻结列上）：
    z=1  普通表头（sticky top，横滚时会随右侧滚动区一起横向移动）
