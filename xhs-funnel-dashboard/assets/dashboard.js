@@ -936,18 +936,10 @@
   }
 
   function initQueryPanel() {
-    // 达人昵称候选（从 DATA.notes 提唯一列表）
+    // 达人昵称候选：注入 <datalist> 供浏览器原生下拉提示
     const creators = Array.from(new Set((DATA.notes || []).map(n => n.creator).filter(Boolean))).sort();
-
-    // 达人昵称的下拉：复用现有 combo 组件
-    const creatorCandidates = creators.map(c => ({ note_id: c, creator: c }));
-    makeCombo({
-      inputId: "qpCreator", listId: "qpCreatorList", candidates: creatorCandidates,
-      filterKeys: ["creator"], moduleKey: "qpc",
-      placeholder: "搜索或选择达人",
-      onSelect: (id) => { TABLE.filter.creator = id || ""; applyQuery(); },
-      onClear: () => { TABLE.filter.creator = ""; applyQuery(); },
-    });
+    const dl = document.getElementById("qpCreatorDatalist");
+    if (dl) dl.innerHTML = creators.map(c => `<option value="${c.replace(/"/g, "&quot;")}"></option>`).join("");
 
     const qCreator = document.getElementById("qpCreator");
     const qNoteId = document.getElementById("qpNoteId");
