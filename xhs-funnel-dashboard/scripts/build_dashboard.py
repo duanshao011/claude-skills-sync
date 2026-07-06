@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """小红书全链路投放分析看板 · 主编排。
 
-读四表 → 清洗 → 合并 → 派生指标 → 相对水位线 → 四象限
+读四表 → 清洗 → 合并 → 派生指标 → 相对水位线
 → 窗口对齐校验 → 注入前端 → 输出单个自包含 HTML。
 
 用法：
@@ -10,6 +10,8 @@
                             [--start 20260501 --end 20260531]
                             [--output-dir 目录] [--prefix 前缀]
 
+默认输出固定文件名 `全链路投放看板.html`（覆盖同名）；
+仅当需要归档时才传 --prefix 保留历史版本。
 四张表任意缺失都可运行，缺表的字段前端会标注"需上传XX表"。
 """
 import argparse
@@ -75,7 +77,7 @@ def check_alignment(smeta, cmeta):
     overlap = _months(s_lo, s_hi) & _months(c_lo, c_hi)
     if overlap:
         return True, "", period
-    msg = f"星河({_md(s_lo)}–{_md(s_hi)})与薯条({_md(c_lo)}–{_md(c_hi)})月份不重叠，止损象限可能虚高"
+    msg = f"星河({_md(s_lo)}–{_md(s_hi)})与薯条({_md(c_lo)}–{_md(c_hi)})月份不重叠，整体ROI可能虚高"
     return False, msg, period
 
 
@@ -93,7 +95,7 @@ def _try(fn, path, label):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pugongying", default=DEF_PGY)
-    ap.add_argument("--star", default=DEF_STAR)
+    ap.add_argument("--star", nargs="+", default=[])  # 支持多张星河，后传优先(新版覆盖旧版)
     ap.add_argument("--chili", default=DEF_CHILI)
     ap.add_argument("--lingxi", default=DEF_LX)
     ap.add_argument("--start", default=None)
@@ -112,14 +114,27 @@ def main():
     source_status["pgy"]["name"] = "蒲公英"
     source_status["pgy"]["rows"] = int(len(pgy)) if pgy is not None else 0
 
-    star_result, source_status["star"] = _try(load_star, args.star, "星河")
-    source_status["star"]["name"] = "淘宝星河"
-    if star_result is not None:
-        star_agg, daily, smeta = star_result
-        source_status["star"]["rows"] = int(len(star_agg))
+    # 星河支持多张：过滤存在的路径；全都不存在则视为未上传
+    star_paths = [p for p in (args.star or []) if p and os.path.exists(p)]
+    if star_paths:
+        try:
+            star_agg, daily, smeta = load_star(star_paths)
+            source_status["star"] = {
+                "loaded": True, "path": " · ".join(star_paths), "rows": int(len(star_agg)),
+                "name": "淘宝星河",
+            }
+        except Exception as e:
+            star_agg, daily, smeta = None, None, {}
+            source_status["star"] = {
+                "loaded": False, "path": " · ".join(star_paths), "rows": 0,
+                "reason": f"加载失败：{e}", "name": "淘宝星河",
+            }
     else:
         star_agg, daily, smeta = None, None, {}
-        source_status["star"]["rows"] = 0
+        source_status["star"] = {
+            "loaded": False, "path": "", "rows": 0,
+            "reason": "文件未提供或不存在", "name": "淘宝星河",
+        }
 
     chili_result, source_status["chili"] = _try(load_chili, args.chili, "薯条")
     source_status["chili"]["name"] = "薯条"
@@ -172,12 +187,12 @@ def main():
                             trends_all=trends_all, cost_all=cost_all)
     html = render_html(payload)
 
-    prefix = args.prefix or datetime.now().strftime("%m%d_%H%M")
-    out = os.path.join(args.output_dir, f"{prefix}_全链路投放看板.html")
+    # 默认固定文件名（覆盖同名），传 --prefix 才带前缀归档
+    fname = f"{args.prefix}_全链路投放看板.html" if args.prefix else "全链路投放看板.html"
+    out = os.path.join(args.output_dir, fname)
     with open(out, "w", encoding="utf-8") as f:
         f.write(html)
 
-    seed = master[master["quadrant"] == "重点追投"].sort_values("roi", ascending=False)
     top = master.sort_values("roi", ascending=False).head(1)
     print("\n" + "=" * 52)
     print("看板已生成:", out)
@@ -185,11 +200,6 @@ def main():
     print("窗口对齐:", "✓ 已对齐" if align_ok else f"⚠ {align_msg}" if align_msg else "—")
     print(f"总投入(薯条·实际支付推广完成) {summary['total_spend']:.0f} | 总GMV {summary['total_gmv']:.0f} | 整体ROI "
           + (f"{summary['overall_roi']:.2f}" if summary['overall_roi'] else "—"))
-    print("四象限:", summary["quadrant_counts"])
-    if len(seed):
-        s0 = seed.iloc[0]
-        s_roi = f"{s0['roi']:.1f}" if pd.notna(s0.get('roi')) else '—'
-        print(f"重点追投种子 {len(seed)} 篇，最高: {s0.get('creator', '—')} (ROI {s_roi})")
     if len(top):
         t = top.iloc[0]
         title_str = str(t.get('title', ''))[:20] if 'title' in t.index else ''

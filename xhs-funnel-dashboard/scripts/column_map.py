@@ -41,15 +41,15 @@ PGY_SCHEMA = {
 STAR_SCHEMA = {
     "note_id":         (["内容ID", "笔记ID", "笔记id"], None),
     "creator":         (["达人昵称", "博主昵称"], None),
-    "date":            (["日期"], None),
+    "date":            (["日期", "时间"], None),
     "flow_type":       (["流量类型"], None),
-    "attr_period":     (["归因周期"], None),
+    "attr_period":     (["归因周期", "归因口径"], None),
     "read_uv":         (["阅读/播放UV", "阅读UV"], None),
     "visit_uv":        (["进店UV"], None),
     "new_visit_uv":    (["新客进店uv", "新客进店UV"], None),
-    "search_visit_uv": (["搜索进店UV"], None),
+    "search_visit_uv": (["搜索进店UV", "手淘搜索进店UV"], None),
     "cart_uv":         (["商品加购UV", "加购UV"], None),
-    "deal_uv":         (["成交UV"], None),
+    "deal_uv":         (["成交UV", "全店成交UV"], None),
     "gmv":             (["商家GMV", "全店成交GMV(元)"], None),
 }
 

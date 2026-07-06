@@ -56,9 +56,12 @@
   // ---------- 格式化 ----------
   const fmt = {
     int(v) { return v == null ? "—" : Number(v).toLocaleString("zh-CN", { maximumFractionDigits: 0 }); },
-    num(v, d = 2) { return v == null ? "—" : Number(v).toLocaleString("zh-CN", { maximumFractionDigits: d }); },
+    // 数字类：严格2位小数（用于 ROI/兑换比等非金额比值）
+    num(v, d = 2) { return v == null ? "—" : Number(v).toLocaleString("zh-CN", { minimumFractionDigits: d, maximumFractionDigits: d }); },
+    // 率类：*100 后严格2位小数带 %
     ratio(v, d = 2) { return v == null ? "—" : (Number(v) * 100).toFixed(d) + "%"; },
-    money(v) { return v == null ? "—" : Number(v).toLocaleString("zh-CN", { maximumFractionDigits: 0 }); },
+    // 金额类：严格2位小数（元）
+    money(v) { return v == null ? "—" : Number(v).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     val(v, col) {
       if (v == null || (typeof v === "number" && !isFinite(v))) return "—";
       if (col.type === "int") return fmt.int(v);
@@ -243,9 +246,9 @@
       const s = src[k] || { name: k, loaded: false, rows: 0 };
       const ok = s.loaded;
       const path = (s.path || "").split(/[\\/]/).pop() || "";
-      let countTxt = ok ? s.rows + " 条" : "未上传";
+      let countTxt = ok ? fmt.int(s.rows) + " 条" : "未上传";
       if (ok && k === "lx" && s.hit != null) {
-        countTxt = s.rows + " 条 · 命中本期 " + s.hit + " 条";
+        countTxt = fmt.int(s.rows) + " 条 · 命中本期 " + fmt.int(s.hit) + " 条";
       }
       return `<div class="src-card">
         <div class="src-badge ${ok ? "ok" : "miss"}">${ok ? "✓" : "—"}</div>
@@ -265,6 +268,27 @@
     if (d == null) return "—";
     const s = String(d);
     return s.length === 8 ? s.slice(4, 6) + "/" + s.slice(6, 8) : s;
+  }
+
+  // 进店UV日均值虚线（type=average，UV类按整数显示）
+  function buildAvgMarkLine(color) {
+    return {
+      symbol: "none",
+      silent: true,
+      precision: 0,
+      lineStyle: { color: color, type: "dashed", width: 1.5, opacity: 0.75 },
+      label: {
+        formatter: function(p){ return "日均 " + Math.round(p.value); },
+        position: "insideEndTop",
+        fontSize: 11,
+        fontWeight: 600,
+        color: color,
+        backgroundColor: "rgba(255,255,255,0.85)",
+        padding: [2, 4],
+        borderRadius: 3,
+      },
+      data: [{ type: "average", name: "进店UV日均" }],
+    };
   }
 
   function renderTrendModule() {
@@ -329,7 +353,7 @@
       if (!trendChart) trendChart = echarts.init(document.getElementById("trendChart"));
       const dates = rows.map(r => fmtDate(r[0]));
       const series = [
-        { name: "进店UV（全部）", data: rows.map(r => r[1]), col: "#FF2442" },
+        { name: "进店UV（全部）", data: rows.map(r => r[1]), col: "#FF2442", avg: true },
         { name: "加购UV（全部）", data: rows.map(r => r[2]), col: "#F97316" },
         { name: "成交UV（全部）", data: rows.map(r => r[3]), col: "#EAB308" },
       ];
@@ -354,6 +378,7 @@
           smooth: true, symbol: "circle", symbolSize: 5,
           lineStyle: { color: s.col, width: 2 },
           itemStyle: { color: s.col },
+          ...(s.avg ? { markLine: buildAvgMarkLine(s.col) } : {}),
         })),
       });
       return;
@@ -380,9 +405,9 @@
 
     const kpis = [
       { l: "总阅读UV", v: fmt.int(readUv), rate: null, tip: "", u: "" },
-      { l: "总进店UV", v: fmt.int(visitUv), rate: visitRate != null ? visitRate.toFixed(1) + "%" : null, tip: "进店率 = 进店UV ÷ 阅读UV", u: "" },
-      { l: "总加购UV", v: fmt.int(cartUv), rate: cartRate != null ? cartRate.toFixed(1) + "%" : null, tip: "进店加购率 = 加购UV ÷ 进店UV", u: "" },
-      { l: "总成交UV", v: fmt.int(dealUv), rate: dealRate != null ? dealRate.toFixed(1) + "%" : null, tip: "进店转化率 = 成交UV ÷ 进店UV", u: "" },
+      { l: "总进店UV", v: fmt.int(visitUv), rate: visitRate != null ? visitRate.toFixed(2) + "%" : null, tip: "进店率 = 进店UV ÷ 阅读UV", u: "" },
+      { l: "总加购UV", v: fmt.int(cartUv), rate: cartRate != null ? cartRate.toFixed(2) + "%" : null, tip: "进店加购率 = 加购UV ÷ 进店UV", u: "" },
+      { l: "总成交UV", v: fmt.int(dealUv), rate: dealRate != null ? dealRate.toFixed(2) + "%" : null, tip: "进店转化率 = 成交UV ÷ 进店UV", u: "" },
       { l: "总GMV",  v: fmt.money(gmv), rate: null, tip: "", u: "元" },
       { l: "UV价值",  v: uvValue != null ? "¥" + uvValue.toFixed(2) : "—", rate: null, tip: "UV价值 = 总GMV ÷ 进店UV", u: "" },
     ];
@@ -400,7 +425,7 @@
     if (!trendChart) trendChart = echarts.init(document.getElementById("trendChart"));
     const dates = rows.map(r => fmtDate(r[0]));
     const series = [
-      { name: "进店UV", data: rows.map(r => r[1]), col: "#FF2442" },
+      { name: "进店UV", data: rows.map(r => r[1]), col: "#FF2442", avg: true },
       { name: "加购UV", data: rows.map(r => r[2]), col: "#F97316" },
       { name: "成交UV", data: rows.map(r => r[3]), col: "#EAB308" },
     ];
@@ -431,6 +456,7 @@
         smooth: true, symbol: "circle", symbolSize: 5,
         lineStyle: { color: s.col, width: 2 },
         itemStyle: { color: s.col },
+        ...(s.avg ? { markLine: buildAvgMarkLine(s.col) } : {}),
       })),
     });
   }
@@ -494,7 +520,6 @@
           <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span></div>
         </div>`
       ).join("");
-      document.getElementById("costAdvice").style.display = "none";
 
       if (!costChart) costChart = echarts.init(document.getElementById("costChart"));
       const dates = daily.map(r => fmtDate(r[0]));
@@ -547,12 +572,6 @@
             smooth: true, symbol: "none",
             lineStyle: { color: "#9CA3AF", width: 2, type: "dashed" },
           },
-          { name: "3日滚动进店成本（全部）", type: "line", yAxisIndex: 1,
-            data: daily.map(r => r[4]),
-            smooth: true, symbol: "circle", symbolSize: 4,
-            lineStyle: { color: "#F97316", width: 2.5 },
-            itemStyle: { color: "#F97316" },
-          },
         ],
       });
       return;
@@ -566,7 +585,6 @@
         '<div style="padding:80px;text-align:center;color:#9CA3AF">该笔记无成本数据</div>';
       // 清空指标卡，避免残留汇总数据
       document.getElementById("costKpis").innerHTML = "";
-      document.getElementById("costAdvice").style.display = "none";
       return;
     }
     const s = entry.summary || {};
@@ -580,7 +598,7 @@
       { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "" },
       { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "" },
       { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "" },
-      { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(0), u: "" },
+      { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(2), u: "" },
     ];
     document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
       `<div class="trend-kpi">
@@ -593,8 +611,6 @@
     const noteInfo = DATA.notes.find(n => n.note_id === noteId);
     const pubDateRaw = noteInfo && noteInfo.pub_date ? noteInfo.pub_date : null;
     const pubDateStr = pubDateRaw ? fmtDate(pubDateRaw.replace(/-/g, "")) : null;
-
-    document.getElementById("costAdvice").style.display = "none";
 
     // ECharts 柱状图（加固：try-catch + 自动恢复）
     try {
@@ -616,7 +632,6 @@
             const dStr = fmtDate(row[0]);
             const isPub = pubDateStr && dStr === pubDateStr;
             const cumCost = row[6] != null ? "¥" + Number(row[6]).toFixed(2) : "—";
-            const rollCost = row[7] != null ? "¥" + Number(row[7]).toFixed(2) : "—";
             const tdL = "color:#6B7280;text-align:right;padding-right:10px;white-space:nowrap";
             const tdR = "font-weight:600;text-align:right;font-variant-numeric:tabular-nums";
             const pubTag = isPub ? ' <span style="color:#FF2442;font-size:11px">笔记发布日期</span>' : "";
@@ -624,7 +639,6 @@
               <table style="border-spacing:0 2px;font-size:13px;line-height:1.6">
               <tr><td style="${tdL}">当日消耗</td><td style="${tdR}">${sp}</td></tr>
               <tr><td style="${tdL}">当日进店成本</td><td style="${tdR}">${vc}</td></tr>
-              <tr><td style="${tdL}">3日滚动进店成本</td><td style="${tdR}">${rollCost}</td></tr>
               <tr><td style="${tdL}">累计进店成本</td><td style="${tdR}">${cumCost}</td></tr>
               </table>`;
           },
@@ -645,12 +659,12 @@
           { type: "value", name: "元", position: "left",
             axisLine: { show: false }, axisTick: { show: false },
             splitLine: { lineStyle: { color: C.grid } },
-            axisLabel: { color: "#FF2442", fontSize: 11, fontWeight: 600, formatter: function(v){ return v>=1000 ? (v/1000).toFixed(1)+"k" : Math.round(v); } }, nameTextStyle: { color: "#FF2442", fontWeight: 600 },
+            axisLabel: { color: "#FF2442", fontSize: 11, fontWeight: 600, formatter: function(v){ return v>=1000 ? (v/1000).toFixed(1)+"k" : v.toFixed(2); } }, nameTextStyle: { color: "#FF2442", fontWeight: 600 },
           },
           { type: "value", name: "元/UV", position: "right",
             axisLine: { show: false }, axisTick: { show: false },
             splitLine: { show: false },
-            axisLabel: { color: "#F97316", fontSize: 11, fontWeight: 600, formatter: function(v){ return "¥"+v.toFixed(1); } },
+            axisLabel: { color: "#F97316", fontSize: 11, fontWeight: 600, formatter: function(v){ return "¥"+v.toFixed(2); } },
             nameTextStyle: { color: "#F97316", fontWeight: 600 },
           },
         ],
@@ -665,12 +679,6 @@
             data: daily.map(r => r[6]),
             smooth: true, symbol: "none",
             lineStyle: { color: "#9CA3AF", width: 2, type: "dashed" },
-          },
-          { name: "3日滚动进店成本", type: "line", yAxisIndex: 1,
-            data: daily.map(r => r[7]),
-            smooth: true, symbol: "circle", symbolSize: 4,
-            lineStyle: { color: "#F97316", width: 2.5 },
-            itemStyle: { color: "#F97316" },
           },
         ],
       });

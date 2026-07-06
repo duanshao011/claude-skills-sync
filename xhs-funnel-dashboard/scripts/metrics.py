@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""四表合并 + 派生指标 + 相对水位线 + 四象限分类。
+"""四表合并 + 派生指标 + 相对水位线。
 
 主体笔记 = 当期"有动作"的笔记 = 星河(有转化) ∪ 薯条(有消耗)。
 蒲公英作为档案全集，为这些笔记提供前端内容指标和达人合作成本。
@@ -147,6 +147,8 @@ def build_master(pgy, star_agg, chili_agg, lx=None):
     master["deal_cost"] = safe_div(master["spend"], master["deal_uv"])
     master["cart_cost"] = safe_div(master["spend"], master["cart_uv"])
     master["uv_value"] = safe_div(master["gmv"], master["visit_uv"])
+    # UV成本 = 投放金额 / 商家GMV（营销费率/ACoS：每 1 元 GMV 需要多少投放）
+    master["uv_cost"] = safe_div(master["spend"], master["gmv"])
 
     if "body_cta_click" in master:
         master["component_click_total"] = (
@@ -209,34 +211,6 @@ def add_waterlines(master):
     return master, waterlines
 
 
-def classify(master):
-    """转化综合分 = [进店率, 成交率, ROI] 百分位等权均值；切分线 Y=0.5、X=已投消耗中位数。
-
-    象限归类新增"投放强度"门槛：只有 spend >= 已投笔记消耗中位数的笔记才走"加大投/止损"判断，
-    低于中位数的轻投笔记归"观察"（尚不足以判断），未投笔记走"重点追投/观察"。
-    """
-    parts = [master[c + "_pct"] for c in ["visit_rate", "deal_rate", "roi"] if c + "_pct" in master]
-    conv = pd.concat(parts, axis=1).mean(axis=1) if parts else pd.Series(0.0, index=master.index)
-    master["conv_score"] = conv.fillna(0)
-    master.loc[master["visit_uv"] <= 0, "conv_score"] = 0.0
-
-    invested = master[master["is_invested"]]
-    x_split = float(invested["spend"].median()) if len(invested) else 0.0
-
-    def quad(row):
-        hi = row["conv_score"] >= 0.5
-        if row["is_invested"]:
-            # 投放强度不足（消耗<中位数）时不下"止损"结论，归观察
-            if row["spend"] < x_split:
-                return "观察" if not hi else "加大投/稳住"
-            return "加大投/稳住" if hi else "止损"
-        return "重点追投" if hi else "观察"
-
-    master["quadrant"] = master.apply(quad, axis=1)
-    master.attrs["x_split"] = x_split
-    return master
-
-
 def _f(v):
     """转干净 float；NaN/inf/非数 → None。供 cost payload 直接 JSON 序列化。"""
     try:
@@ -246,42 +220,12 @@ def _f(v):
     return None if (math.isnan(v) or math.isinf(v)) else v
 
 
-def _cost7d(daily_series, window=7):
-    """daily 行=[date_int, spend, visit_uv, cart_uv, deal_uv, gmv, ...]。
-    取最后投放日起往前 window 日历天的窗口聚合，返回 {spend, visit_uv, visit_cost, gmv, roi}。"""
-    dates = [pd.to_datetime(str(r[0]), format="%Y%m%d", errors="coerce") for r in daily_series]
-    valid = [d for d in dates if pd.notna(d)]
-    if not valid:
-        return None
-    anchor = max(valid)
-    lo = anchor - pd.Timedelta(days=window - 1)
-    spend = visit = gmv = 0.0
-    has = False
-    for row, d in zip(daily_series, dates):
-        if pd.isna(d) or d < lo or d > anchor:
-            continue
-        has = True
-        spend += row[1] or 0.0
-        visit += row[2] or 0.0
-        gmv += row[5] or 0.0
-    if not has:
-        return None
-    return {
-        "spend": _f(spend), "visit_uv": _f(visit),
-        "visit_cost": _f(spend / visit) if visit else None,
-        "gmv": _f(gmv), "roi": _f(gmv / spend) if spend else None,
-    }
-
-
 def build_cost_daily(chili_daily, star_daily, master):
     """图表二·单篇成本分析数据。只为有薯条消耗的笔记构建。
 
     每篇产出：
       summary  — 累计消耗/GMV/ROI/进店UV成本/加购成本/成交成本/历史最高单日消耗
-                + near7d(近7天进店成本+方向)
-      daily    — [启动日, 当日实付, 进店UV, 加购UV, 成交UV, GMV]
-               （单日成本/ROI 前端算；无成交时 ROI 显示「—」）
-    机理：进店=领先指标(滞后小)，近7天进店成本 vs 累计 → 判断效率方向。
+      daily    — [启动日, 当日实付, 进店UV, 加购UV, 成交UV, GMV, 累计进店成本]
     薯条「启动日」× 星河「成交日(归因30)」按天对齐为近似——前端 hover 注明。
     """
     if chili_daily is None or not len(chili_daily):
@@ -318,22 +262,13 @@ def build_cost_daily(chili_daily, star_daily, master):
                 _f(sr.get("gmv")) if sr is not None else None,
             ])
 
-        # ===== 每日追加：累计进店成本 + 3日滚动进店成本 =====
+        # ===== 每日追加：累计进店成本 =====
         n = len(daily)
-        # 累计成本
         cum_s, cum_v = 0.0, 0.0
         for i in range(n):
             cum_s += daily[i][1] or 0.0
             cum_v += daily[i][2] or 0.0
             daily[i].append(_f(cum_s / cum_v) if cum_v > 0 else None)
-        # 3日滚动成本
-        for i in range(n):
-            ws, wv = 0.0, 0.0
-            lo = max(0, i - 2)  # 含当天共3天窗口
-            for j in range(lo, i + 1):
-                ws += daily[j][1] or 0.0
-                wv += daily[j][2] or 0.0
-            daily[i].append(_f(ws / wv) if wv > 0 else None)
 
         row = master.loc[nid] if nid in master.index else None
         if row is not None:
@@ -351,28 +286,6 @@ def build_cost_daily(chili_daily, star_daily, master):
         else:
             summary = {"spend": _f(sum(cmap.values()))}
 
-        # 近3天窗口 + 方向判断
-        near3d = _cost7d(daily, window=3)  # 复用 _cost7d，传 window=3
-        if near3d:
-            summary["near3d"] = near3d
-            tc = summary.get("visit_uv_cost")
-            wc = near3d.get("visit_cost")
-            if tc and wc and tc > 0:
-                chg = (wc - tc) / tc
-                pct = abs(chg) * 100
-                if chg >= 0.50:
-                    summary["advice"] = {"level": "strong", "text": f"近3天进店成本较累计升 {pct:.0f}%，效率明显转弱，建议减投/止损"}
-                elif chg >= 0.20:
-                    summary["advice"] = {"level": "warn", "text": f"近3天进店成本较累计升 {pct:.0f}%，效率转弱，建议观察/降预算"}
-                elif chg <= -0.10:
-                    summary["advice"] = {"level": "good", "text": f"近3天进店成本较累计降 {pct:.0f}%，效率良好，可继续/加投"}
-                else:
-                    summary["advice"] = {"level": "stable", "text": "近3天进店成本与累计持平，效率稳定，可维持"}
-            else:
-                summary["advice"] = {"level": "na", "text": "近3天无进店数据，暂难判断趋势"}
-        else:
-            summary["advice"] = {"level": "na", "text": "近3天投放天数不足，暂难判断趋势"}
-
         cost[nid] = {"summary": summary, "daily": daily}
     return cost
 
@@ -380,7 +293,6 @@ def build_cost_daily(chili_daily, star_daily, master):
 def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None):
     master = build_master(pgy, star_agg, chili_agg, lx)
     master, waterlines = add_waterlines(master)
-    master = classify(master)
     cost = build_cost_daily(chili_daily, star_daily, master)
 
     # ===== 全部笔记汇总日趋势（搜索框清空时默认展示） =====
@@ -417,20 +329,13 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
         daily_list = []
         for d in all_dates:
             daily_list.append([d, _f(spend_map.get(d)), _f(visit_map.get(d))])
-        # 追加累计成本 + 3日滚动成本
+        # 追加累计成本
         n = len(daily_list)
         cum_s, cum_v = 0.0, 0.0
         for i in range(n):
             cum_s += daily_list[i][1] or 0.0
             cum_v += daily_list[i][2] or 0.0
             daily_list[i].append(_f(cum_s / cum_v) if cum_v > 0 else None)
-        for i in range(n):
-            ws, wv = 0.0, 0.0
-            lo = max(0, i - 2)
-            for j in range(lo, i + 1):
-                ws += daily_list[j][1] or 0.0
-                wv += daily_list[j][2] or 0.0
-            daily_list[i].append(_f(ws / wv) if wv > 0 else None)
         cost_all = {
             "summary": {
                 "spend": _f(master["spend"].sum()),
@@ -451,7 +356,5 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
         "total_gmv": total_gmv,
         "overall_roi": (total_gmv / total_spend) if total_spend else None,
         "invested_count": int(master["is_invested"].sum()),
-        "quadrant_counts": master["quadrant"].value_counts().to_dict(),
-        "x_split": master.attrs.get("x_split", 0.0),
     }
     return master, waterlines, summary, cost, trends_all, cost_all

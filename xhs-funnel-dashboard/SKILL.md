@@ -90,9 +90,10 @@ description: 小红书全链路投放数据看板。蒲公英(前端内容)+淘�
    OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python scripts/build_dashboard.py \
      --pugongying "蒲公英.xlsx" --star "星河.xlsx" \
      --chili "薯条.xlsx" --lingxi "灵犀.xlsx" \
-     --output-dir "输出目录" --prefix "0701"
+     --output-dir "输出目录"
    ```
    只传博哥给的表，其余参数省略即为不加载。可选 `--start 20260501 --end 20260531` 按蒲公英发布日期筛当期。
+   **默认输出固定文件名 `全链路投放看板.html`（覆盖同名，不带日期前缀）** —— 博哥要用同一路径反复打开，别每次生成新文件。归档需求才传 `--prefix "0706"`。星河支持多张 `--star 旧版.xlsx 新版.xlsx`，后传优先(重叠去重)。
 3. **看回执**：脚本打印各表加载状态(✓/✗)、周期、口径(含"实际支付·推广完成")、总投入/GMV/ROI。
 4. **Edge 无头自检**（不让博哥当测试员）：
    ```

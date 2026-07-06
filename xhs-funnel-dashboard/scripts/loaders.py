@@ -91,7 +91,20 @@ STAR_NUM = ["read_uv", "visit_uv", "new_visit_uv", "search_visit_uv",
             "cart_uv", "deal_uv", "gmv"]
 
 
-def load_star(path):
+def _parse_star_date(series):
+    """星河日期归一：'2026-07-04'/'2026-07-04\\t'/'20260704'/int → int YYYYMMDD。"""
+    s = series.astype(str).str.strip().str.replace("\t", "", regex=False)
+    dt = pd.to_datetime(s, errors="coerce")
+    d = dt.dt.strftime("%Y%m%d")
+    d = pd.to_numeric(d, errors="coerce")
+    # 兜底：已经是纯数字 YYYYMMDD 的字符串
+    fallback = pd.to_numeric(s, errors="coerce")
+    d = d.fillna(fallback)
+    return d.astype("Int64")
+
+
+def _load_one_star(path):
+    """读一张星河 xlsx/csv → 标准列 + 已锁口径 + 已归一日期的 DataFrame。"""
     if str(path).lower().endswith(".csv"):
         raw = pd.read_csv(path, encoding="utf-8-sig", dtype=str)
     else:
@@ -99,41 +112,85 @@ def load_star(path):
     df = _std_frame(raw, STAR_SCHEMA, "star")
     df["note_id"] = df["note_id"].astype(str).str.strip()
 
-    meta = {}
+    file_meta = {}
+    # 流量类型：新版有(全部流量)；旧版无(整表默认已是全部流量)
     if "flow_type" in df:
-        if (df["flow_type"] == "全部流量").any():
-            df = df[df["flow_type"] == "全部流量"]
-            meta["flow_type"] = "全部流量"
+        ft = df["flow_type"].astype(str).str.strip()
+        if (ft == "全部流量").any():
+            df = df[ft == "全部流量"]
+            file_meta["flow_type"] = "全部流量"
         else:
-            top = df["flow_type"].mode().iloc[0]
-            df = df[df["flow_type"] == top]
-            meta["flow_type"] = top
+            top = ft.mode().iloc[0]
+            df = df[ft == top]
+            file_meta["flow_type"] = top
+    else:
+        file_meta["flow_type"] = "全部流量"  # 旧版默认口径
+
+    # 归因周期：新版"归因周期"/旧版"归因口径"，都规约到数值 30
     if "attr_period" in df:
-        periods = pd.to_numeric(df["attr_period"], errors="coerce")
-        pick = 30 if (periods == 30).any() else int(periods.max())
-        df = df[periods == pick]
-        meta["attr_period"] = pick
+        cleaned = df["attr_period"].astype(str).str.replace("\t", "", regex=False).str.strip()
+        periods = pd.to_numeric(cleaned, errors="coerce")
+        if periods.notna().any():
+            pick = 30 if (periods == 30).any() else int(periods.max())
+            df = df[periods == pick]
+            file_meta["attr_period"] = pick
 
     for c in STAR_NUM:
         if c in df:
             df[c] = _to_num(df[c])
 
     if "date" in df:
-        d = pd.to_numeric(df["date"], errors="coerce")
-        if d.notna().any():
-            meta["date_min"], meta["date_max"] = int(d.min()), int(d.max())
+        df["date"] = _parse_star_date(df["date"])
+        df = df[df["date"].notna()]
+        if len(df):
+            file_meta["date_min"] = int(df["date"].min())
+            file_meta["date_max"] = int(df["date"].max())
+
+    return df, file_meta
+
+
+def load_star(path):
+    """支持单个路径或路径列表。传多张时按顺序读入，重叠日期后传优先(keep='last')。
+
+    典型场景：旧版1234月 + 新版456月，两张都覆盖4月。传参顺序 [旧版, 新版]，
+    重叠区新版覆盖旧版；旧版1-3月保留（新版覆盖不到）。
+    """
+    paths = [path] if isinstance(path, str) else list(path)
+    frames, file_metas = [], []
+    for p in paths:
+        df_one, meta_one = _load_one_star(p)
+        df_one["_src"] = p  # 源文件标记，便于溯源
+        frames.append(df_one)
+        file_metas.append(meta_one)
+
+    df = pd.concat(frames, ignore_index=True)
+
+    # 重叠去重：同 (note_id, date) 保留后传的一份（新版口径优先）
+    if "date" in df:
+        df = df.drop_duplicates(subset=["note_id", "date"], keep="last")
+
+    # 汇总 meta：期间取并集
+    meta = {"flow_type": file_metas[0].get("flow_type", "全部流量"),
+            "attr_period": file_metas[0].get("attr_period", 30)}
+    date_mins = [m.get("date_min") for m in file_metas if m.get("date_min")]
+    date_maxs = [m.get("date_max") for m in file_metas if m.get("date_max")]
+    if date_mins:
+        meta["date_min"] = min(date_mins)
+    if date_maxs:
+        meta["date_max"] = max(date_maxs)
+    meta["files"] = paths
 
     keep = [c for c in STAR_NUM if c in df]
     agg = df.groupby("note_id")[keep].sum()
 
     if "creator" in df:
-        agg["creator"] = df.drop_duplicates(subset="note_id", keep="first").set_index("note_id")["creator"]
+        agg["creator"] = df.drop_duplicates(subset="note_id", keep="last").set_index("note_id")["creator"]
 
     daily = None
     if "date" in df:
         dcols = ["note_id", "date"] + [c for c in ["visit_uv", "cart_uv", "deal_uv", "gmv"] if c in df]
         daily = df[dcols].copy()
-        daily["date"] = pd.to_numeric(daily["date"], errors="coerce").astype("Int64")
+        daily["date"] = daily["date"].astype("Int64")
         daily = daily.groupby(["note_id", "date"], as_index=False)[
             [c for c in ["visit_uv", "cart_uv", "deal_uv", "gmv"] if c in df]
         ].sum()

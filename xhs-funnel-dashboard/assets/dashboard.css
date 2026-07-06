@@ -198,7 +198,6 @@ body{
 }
 
 /* 近7天决策提示条 */
-.cost-advice{margin-bottom:12px}
 .adv-bar{
   padding:10px 16px;border-radius:6px;font-size:13px;font-weight:600;
   text-align:center;letter-spacing:.3px;
@@ -332,15 +331,6 @@ body{
 .table-legend .lg-sw.na{background:var(--dim-2)}
 .table-legend .lg-note{color:var(--dim);margin-left:4px}
 .table-legend .lg-note b{color:var(--muted);font-weight:600}
-
-/* ---------- 四象限 ---------- */
-.quad-legend{color:var(--muted);font-size:12px;display:inline-flex;align-items:center;gap:6px;margin-left:16px}
-.quad-legend .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-.quad-legend .dot.d1{background:var(--hold)}
-.quad-legend .dot.d2{background:var(--stop)}
-.quad-legend .dot.d3{background:var(--seed)}
-.quad-legend .dot.d4{background:var(--watch)}
-.quad-chart{height:460px;padding:16px 24px 24px}
 
 /* ---------- 悬停 tip 卡片（fixed 定位，避免表格内部滚动时飘位）---------- */
 .tip-card{

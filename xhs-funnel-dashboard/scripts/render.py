@@ -167,7 +167,7 @@ NOTE_FIELDS = [
     "note_id", "creator", "title", "note_type", "fans", "fans_tier", "content_tag",
     "pub_date",
     "in_pgy", "in_star", "in_chili", "in_lx",
-    "spend", "total_amount", "gmv", "roi", "uv_value",
+    "spend", "total_amount", "gmv", "roi", "uv_value", "uv_cost",
     "read_uv_content", "read_uv_funnel", "content_ctr",
     "pgy_exposure", "pgy_read",
     "body_cta_click", "footer_cta_click", "comment_cta_click", "component_click_total",
