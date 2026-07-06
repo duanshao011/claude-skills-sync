@@ -781,37 +781,20 @@
     }
     if (F.pubDateStart) out = out.filter(n => n.pub_date && String(n.pub_date).slice(0, 10) >= F.pubDateStart);
     if (F.pubDateEnd) out = out.filter(n => n.pub_date && String(n.pub_date).slice(0, 10) <= F.pubDateEnd);
-    if (F.nlPredicate) out = out.filter(F.nlPredicate);
-    if (F.nlTopN) {
-      const { field, n } = F.nlTopN;
-      out = out.slice().sort((a, b) => (b[field] || -Infinity) - (a[field] || -Infinity)).slice(0, n);
-    }
     return out;
   }
 
   function initQueryPanel() {
-    // 达人昵称候选：注入 <datalist> 供浏览器原生下拉提示
-    const creators = Array.from(new Set((DATA.notes || []).map(n => n.creator).filter(Boolean))).sort();
-    const dl = document.getElementById("qpCreatorDatalist");
-    if (dl) dl.innerHTML = creators.map(c => `<option value="${c.replace(/"/g, "&quot;")}"></option>`).join("");
-
     const qCreator = document.getElementById("qpCreator");
     const qNoteId = document.getElementById("qpNoteId");
     const qStart = document.getElementById("qpDateStart");
     const qEnd = document.getElementById("qpDateEnd");
-    const qNL = document.getElementById("qpNL");
-    const qStatus = document.getElementById("qpStatus");
-    const qHelp = document.getElementById("qpHelp");
-
-    document.getElementById("qpHelpBtn").addEventListener("click", () => {
-      qHelp.hidden = !qHelp.hidden;
-    });
 
     document.getElementById("qpQuery").addEventListener("click", applyQuery);
     document.getElementById("qpReset").addEventListener("click", resetQuery);
     document.getElementById("qpExport").addEventListener("click", exportCSV);
 
-    [qCreator, qNoteId, qStart, qEnd, qNL].forEach(el => {
+    [qCreator, qNoteId, qStart, qEnd].forEach(el => {
       el.addEventListener("keydown", e => {
         if (e.key === "Enter") { e.preventDefault(); applyQuery(); }
       });
@@ -822,39 +805,14 @@
       TABLE.filter.noteId = qNoteId.value.trim();
       TABLE.filter.pubDateStart = qStart.value;
       TABLE.filter.pubDateEnd = qEnd.value;
-
-      const nlText = qNL.value.trim();
-      TABLE.filter.nlText = nlText;
-      if (nlText) {
-        const parsed = nlParse(nlText);
-        TABLE.filter.nlPredicate = parsed.predicate;
-        TABLE.filter.nlTopN = parsed.topN;
-        if (!parsed.ok) {
-          qStatus.textContent = parsed.msg;
-          qStatus.className = "qp-status warn";
-          qStatus.hidden = false;
-        } else if (parsed.msg) {
-          qStatus.textContent = "⚠ " + parsed.msg;
-          qStatus.className = "qp-status warn";
-          qStatus.hidden = false;
-        } else {
-          qStatus.hidden = true;
-        }
-      } else {
-        TABLE.filter.nlPredicate = null;
-        TABLE.filter.nlTopN = null;
-        qStatus.hidden = true;
-      }
       TABLE.page = 1;
       renderTable();
     }
 
     function resetQuery() {
       qCreator.value = ""; qNoteId.value = "";
-      qStart.value = ""; qEnd.value = ""; qNL.value = "";
-      TABLE.filter = { creator: "", noteId: "", pubDateStart: "", pubDateEnd: "",
-                       nlPredicate: null, nlTopN: null, nlText: "" };
-      qStatus.hidden = true;
+      qStart.value = ""; qEnd.value = "";
+      TABLE.filter = { creator: "", noteId: "", pubDateStart: "", pubDateEnd: "" };
       TABLE.page = 1;
       renderTable();
     }
