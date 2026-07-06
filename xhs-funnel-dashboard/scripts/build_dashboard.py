@@ -72,7 +72,14 @@ def scan_data_dir(root):
         result["chili"] = max(candidates["chili"])[1]
     if candidates["lx"]:
         result["lx"] = max(candidates["lx"])[1]
-    result["star"] = [p for _, p in sorted(candidates["star"])]  # 旧版排前，新版排后（新版覆盖）
+    # 星河多张排序：文件名含"旧"排最前，含"新"排最后（新版口径优先，重叠日期以新版为准）
+    def _star_sort_key(item):
+        _, path = item
+        name = os.path.basename(path)
+        if "旧" in name: return (0, name)
+        if "新" in name: return (2, name)
+        return (1, name)
+    result["star"] = [p for _, p in sorted(candidates["star"], key=_star_sort_key)]
     return result
 
 
