@@ -794,9 +794,19 @@
     document.getElementById("qpReset").addEventListener("click", resetQuery);
     document.getElementById("qpExport").addEventListener("click", exportCSV);
 
+    // 输入即过滤：达人昵称/笔记ID 打字实时匹配（150ms debounce 避免抖动），日期改动立即触发
+    let debounceTimer = null;
+    function debouncedApply() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(applyQuery, 150);
+    }
+    [qCreator, qNoteId].forEach(el => el.addEventListener("input", debouncedApply));
+    [qStart, qEnd].forEach(el => el.addEventListener("change", applyQuery));
+
+    // Enter 键也可以手动触发（不用等 debounce）
     [qCreator, qNoteId, qStart, qEnd].forEach(el => {
       el.addEventListener("keydown", e => {
-        if (e.key === "Enter") { e.preventDefault(); applyQuery(); }
+        if (e.key === "Enter") { e.preventDefault(); clearTimeout(debounceTimer); applyQuery(); }
       });
     });
 
