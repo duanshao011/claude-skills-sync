@@ -51,6 +51,7 @@ SCORE_FIELDS = {
     "ti_visit_ratio": -1, "iti_visit_ratio": -1,
     "read_uv_cost": -1, "visit_uv_cost": -1, "component_cost": -1,
     "cart_cost": -1, "deal_cost": -1,
+    "read_uv_funnel": 1, "cart_uv": 1, "uv_cost": -1,
 }
 
 FIELD_LABELS = {
@@ -62,6 +63,7 @@ FIELD_LABELS = {
     "visit_rate": "进店率", "cart_rate": "进店加购率", "deal_rate": "进店转化率",
     "new_visit_ratio": "新客进店占比", "search_visit_ratio": "搜索进店占比",
     "roi": "ROI", "gmv": "商家GMV", "visit_uv": "进店UV", "deal_uv": "成交UV",
+    "cart_uv": "加购UV", "read_uv_funnel": "阅读UV(星河)", "uv_cost": "UV成本",
     "read_uv_cost": "阅读UV成本", "visit_uv_cost": "进店UV成本",
     "component_cost": "组件点击成本", "cart_cost": "加购成本", "deal_cost": "成交成本",
     "ti_users": "TI人群数", "iti_users": "I+TI人群数", "visit_users": "进店用户数",
