@@ -149,8 +149,8 @@ def build_master(pgy, star_agg, chili_agg, lx=None):
     master["deal_cost"] = safe_div(master["spend"], master["deal_uv"])
     master["cart_cost"] = safe_div(master["spend"], master["cart_uv"])
     master["uv_value"] = safe_div(master["gmv"], master["visit_uv"])
-    # UV成本 = 投放金额 / 商家GMV（营销费率/ACoS：每 1 元 GMV 需要多少投放）
-    master["uv_cost"] = safe_div(master["spend"], master["gmv"])
+    # UV成本 = 投放金额 / 星河阅读UV（拉动一个星河阅读用户的付费成本）
+    master["uv_cost"] = safe_div(master["spend"], master["read_uv_funnel"])
 
     if "body_cta_click" in master:
         master["component_click_total"] = (
