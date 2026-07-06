@@ -239,46 +239,67 @@ do_push() {
     check_git_repo "$target"
     check_remote "$target" > /dev/null
 
-    # 检查是否有变更（不暂存，避免 dry-run 产生副作用）
+    # 检查工作区未提交变更
     local changes
     changes=$(cd "$target" && git status --porcelain 2>/dev/null)
-    if [ -z "$changes" ]; then
-        success "工作区干净，无需推送。"
+
+    # 检查已commit但未push的提交（先fetch获取最新远端状态）
+    exec_git "$target" fetch origin "$branch" 2>/dev/null || true
+    local unpushed
+    unpushed=$(cd "$target" && git rev-list --count "origin/$branch..$branch" 2>/dev/null) || unpushed="0"
+
+    # 两者都没有才算真正无需推送
+    if [ -z "$changes" ] && [ "$unpushed" = "0" ]; then
+        success "工作区干净且无未推送提交，无需推送。"
         return 0
     fi
 
-    local count
-    count=$(echo "$changes" | wc -l | tr -d ' ')
-    echo "待推送变更 ($count 个文件):"
-    echo "$changes" | head -20 | sed 's/^/  /'
-    if [ "$count" -gt 20 ]; then
-        echo "  ... 还有 $((count - 20)) 个文件"
-    fi
-    echo ""
+    # ── 有工作区变更：显示 + 提交 ──
+    if [ -n "$changes" ]; then
+        local count
+        count=$(echo "$changes" | wc -l | tr -d ' ')
+        echo "待提交变更 ($count 个文件):"
+        echo "$changes" | head -20 | sed 's/^/  /'
+        if [ "$count" -gt 20 ]; then
+            echo "  ... 还有 $((count - 20)) 个文件"
+        fi
+        echo ""
 
-    if [ "$dry_run" = "true" ]; then
-        info "[dry-run] 以上变更不会被提交和推送。"
-        return 0
-    fi
+        if [ "$dry_run" = "true" ]; then
+            info "[dry-run] 以上变更不会被提交和推送。"
+            [ "$unpushed" -gt 0 ] 2>/dev/null && info "[dry-run] 另有 $unpushed 个已提交未推送的 commit。"
+            return 0
+        fi
 
-    # 暂存所有变更
-    exec_git "$target" add -A
+        # 暂存所有变更
+        exec_git "$target" add -A
 
-    # commit
-    local msg
-    if [ -n "$custom_message" ]; then
-        msg="$custom_message"
+        # commit
+        local msg
+        if [ -n "$custom_message" ]; then
+            msg="$custom_message"
+        else
+            local hostname
+            hostname=$(hostname 2>/dev/null || echo "unknown")
+            msg="sync: $hostname $(date '+%Y-%m-%d %H:%M:%S')"
+        fi
+
+        info "提交变更..."
+        exec_git "$target" commit -m "$msg"
+
+        if [ $GIT_EXIT -ne 0 ]; then
+            die "commit 失败: $GIT_STDERR"
+        fi
     else
-        local hostname
-        hostname=$(hostname 2>/dev/null || echo "unknown")
-        msg="sync: $hostname $(date '+%Y-%m-%d %H:%M:%S')"
-    fi
+        # ── 工作区干净但有未推送 commit ──
+        echo "工作区干净，有 $unpushed 个未推送的 commit:"
+        cd "$target" && git log --oneline "origin/$branch..$branch" | head -10 | sed 's/^/  /'
+        echo ""
 
-    info "提交变更..."
-    exec_git "$target" commit -m "$msg"
-
-    if [ $GIT_EXIT -ne 0 ]; then
-        die "commit 失败: $GIT_STDERR"
+        if [ "$dry_run" = "true" ]; then
+            info "[dry-run] 以上 commit 不会被推送。"
+            return 0
+        fi
     fi
 
     # push
@@ -287,8 +308,6 @@ do_push() {
 
     if [ $GIT_EXIT -eq 0 ]; then
         success "推送完成。"
-        echo ""
-        echo "  提交: $msg"
         return 0
     fi
 
