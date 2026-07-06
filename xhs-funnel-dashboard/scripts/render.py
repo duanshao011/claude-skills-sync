@@ -157,18 +157,18 @@ COLUMN_GROUPS = [
 ]
 
 
-# 按需求文档《图表二：全链路数据》严格设定的默认列
+# 全链路数据表的默认展示列（按博哥要求）
 DEFAULT_COLUMNS = [
-    # 基础信息（3）
+    # 基础信息
     "note_id", "creator", "pub_date",
-    # 蒲公英（10）——投放金额只出一次，此处代表
+    # 蒲公英（前端内容）
     "read_uv_content", "content_ctr", "avg_view_time",
     "body_cta_click", "comment_cta_click", "component_click_total",
-    "spend", "component_cost", "read_uv_cost",
-    # 星河（8）
-    "visit_uv", "cart_uv", "deal_uv", "gmv",
-    "uv_value", "visit_uv_cost", "chili_days", "roi",
-    # 灵犀（1）
+    # 淘宝星河（后端转化）—— 阅读UV/加购UV/成交UV/商家GMV/UV价值/UV成本
+    "read_uv_funnel", "cart_uv", "deal_uv", "gmv", "uv_value", "uv_cost",
+    # 薯条投放（成本统计）—— 累计金额/累计投放天数/ROI
+    "spend", "chili_days", "roi",
+    # 灵犀（人群资产）
     "ti_visit_ratio",
 ]
 
