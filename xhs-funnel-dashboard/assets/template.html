@@ -92,6 +92,52 @@
         </button>
       </div>
     </div>
+    <div class="query-panel">
+      <div class="qp-row">
+        <div class="qp-field">
+          <label class="qp-label">达人昵称</label>
+          <div class="combo qp-combo" id="qpCreatorCombo">
+            <input type="text" id="qpCreator" class="qp-input combo-input" placeholder="搜索或选择达人" autocomplete="off">
+            <ul class="combo-list qp-combo-list" id="qpCreatorList" hidden></ul>
+          </div>
+        </div>
+        <div class="qp-field">
+          <label class="qp-label">笔记ID</label>
+          <input type="text" id="qpNoteId" class="qp-input" placeholder="粘贴笔记ID（24位）">
+        </div>
+        <div class="qp-field qp-daterange">
+          <label class="qp-label">笔记发布日期</label>
+          <input type="date" id="qpDateStart" class="qp-input qp-date">
+          <span class="qp-dash">—</span>
+          <input type="date" id="qpDateEnd" class="qp-input qp-date">
+        </div>
+      </div>
+      <div class="qp-row">
+        <div class="qp-field qp-nl">
+          <label class="qp-label">自定义查询</label>
+          <input type="text" id="qpNL" class="qp-input" placeholder="如：GMV > 1万 且 近30天  ｜  ROI 前 10  ｜  达人 阿白swimming">
+          <button class="qp-hint-btn" id="qpHelpBtn" title="点看支持的查询句式">ⓘ 支持句式</button>
+        </div>
+        <div class="qp-buttons">
+          <button class="qp-btn qp-btn-primary" id="qpQuery">查询</button>
+          <button class="qp-btn qp-btn-plain" id="qpReset">重置</button>
+          <button class="qp-btn qp-btn-outline" id="qpExport">导出</button>
+        </div>
+      </div>
+      <div class="qp-status" id="qpStatus" hidden></div>
+      <div class="qp-help" id="qpHelp" hidden>
+        <div class="qp-help-title">支持的自然语言句式（本地识别，秒响应）</div>
+        <ul>
+          <li><b>比较</b>：<code>GMV &gt; 1万</code> · <code>ROI 大于 10</code> · <code>进店UV &gt;= 50</code></li>
+          <li><b>区间</b>：<code>GMV 在 1万 到 5万</code> · <code>ROI 在 5 到 20</code></li>
+          <li><b>时间</b>：<code>近30天</code> · <code>6月</code> · <code>2026-05</code></li>
+          <li><b>达人</b>：<code>阿白</code> · <code>达人 阿白swimming</code>（模糊匹配达人昵称）</li>
+          <li><b>排序取头</b>：<code>ROI 前 10</code> · <code>GMV 最高 20</code></li>
+          <li><b>组合</b>：用 <code>且</code> / <code>和</code> 连接，如 <code>GMV &gt; 1万 且 近30天</code></li>
+        </ul>
+        <div class="qp-help-fields">支持字段：GMV · ROI · 阅读UV · 进店UV · 加购UV · 成交UV · 投放金额（等同"累计金额"）· UV价值</div>
+      </div>
+    </div>
     <div class="table-wrap">
       <table class="funnel-table">
         <thead id="tableHead"></thead>
