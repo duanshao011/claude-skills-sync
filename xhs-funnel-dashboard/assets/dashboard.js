@@ -702,6 +702,16 @@
     keyword: "",
     page: 1,
     pageSize: 30,
+    // 查询面板筛选状态（图表三独立筛选，不参与联动）
+    filter: {
+      creator: "",       // 达人昵称（模糊包含匹配）
+      noteId: "",        // 笔记ID（精确匹配）
+      pubDateStart: "",  // YYYY-MM-DD
+      pubDateEnd: "",    // YYYY-MM-DD
+      nlPredicate: null, // 自然语言解析出的 fn(note)=>bool
+      nlTopN: null,      // { field, n } 排序取头
+      nlText: "",        // 原始文本（用于状态条显示）
+    },
   };
 
   function initTableCols() {
