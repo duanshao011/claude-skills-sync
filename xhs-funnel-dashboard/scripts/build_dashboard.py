@@ -159,10 +159,30 @@ def main():
     else:
         source_status["lx"]["hit"] = 0
 
+    # ===== 每张表的日期范围（用于状态卡展示） =====
+    def _dt_period(series):
+        s = pd.to_datetime(series, errors="coerce").dropna()
+        if not len(s):
+            return ""
+        lo, hi = s.min(), s.max()
+        return f"{lo.month}/{lo.day}–{hi.month}/{hi.day}"
+
+    if pgy is not None and "pub_date" in pgy:
+        source_status["pgy"]["period"] = _dt_period(pgy["pub_date"])
+    else:
+        source_status["pgy"]["period"] = ""
+    source_status["star"]["period"] = _period_str((smeta or {}).get("date_min"), (smeta or {}).get("date_max"))
+    source_status["chili"]["period"] = _period_str((cmeta or {}).get("launch_min"), (cmeta or {}).get("launch_max"))
+    if lx is not None and "pub_time" in lx:
+        source_status["lx"]["period"] = _dt_period(lx["pub_time"])
+    else:
+        source_status["lx"]["period"] = ""
+
     for k in ["pgy", "star", "chili", "lx"]:
         s = source_status[k]
         badge = "✓" if s["loaded"] else "✗"
-        print(f"  {badge} {s['name']} {s['rows']} 条{'' if s['loaded'] else '（' + s.get('reason', '') + '）'}")
+        p = f" · {s.get('period')}" if s.get("period") else ""
+        print(f"  {badge} {s['name']} {s['rows']} 条{p}{'' if s['loaded'] else '（' + s.get('reason', '') + '）'}")
 
     master, waterlines, summary, cost, trends_all, cost_all = compute(
         pgy, star_agg, chili_agg, lx,
