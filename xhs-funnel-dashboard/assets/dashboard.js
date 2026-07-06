@@ -765,6 +765,307 @@
     return null;
   }
 
+  // ===== 图表三 · 查询面板：NL 规则引擎 + 筛选 + CSV 导出 =====
+
+  // 字段别名 → note 上的实际 key
+  const NL_FIELD_MAP = {
+    "gmv": "gmv", "商家gmv": "gmv",
+    "roi": "roi",
+    "阅读uv": "read_uv_funnel",   // 星河阅读UV 更接近"投放视角"
+    "阅读播放uv": "read_uv_funnel", "阅读/播放uv": "read_uv_funnel",
+    "蒲公英阅读uv": "read_uv_content",
+    "进店uv": "visit_uv",
+    "加购uv": "cart_uv",
+    "成交uv": "deal_uv",
+    "投放金额": "spend", "累计金额": "spend", "薯条金额": "spend",
+    "uv价值": "uv_value", "进店uv价值": "uv_value",
+    "uv成本": "uv_cost", "阅读uv成本": "uv_cost",
+    "累计投放天数": "chili_days", "投放天数": "chili_days",
+  };
+
+  function nlNormalize(s) {
+    return String(s || "").trim()
+      .replace(/[，]/g, ",").replace(/[（(]/g, "(").replace(/[）)]/g, ")")
+      .replace(/([\d.]+)\s*万/g, (_, n) => (parseFloat(n) * 10000).toString())
+      .replace(/([\d.]+)\s*千/g, (_, n) => (parseFloat(n) * 1000).toString())
+      .replace(/([\d.]+)\s*百/g, (_, n) => (parseFloat(n) * 100).toString())
+      .toLowerCase();
+  }
+
+  function nlMapField(name) {
+    const k = name.replace(/\s/g, "").toLowerCase();
+    return NL_FIELD_MAP[k] || null;
+  }
+
+  function nlNormOp(op) {
+    const m = { "大于等于": ">=", "不小于": ">=", ">=": ">=",
+                "小于等于": "<=", "不大于": "<=", "<=": "<=",
+                "大于": ">", ">": ">",
+                "小于": "<", "<": "<",
+                "等于": "=", "=": "=", "==": "=" };
+    return m[op.toLowerCase()] || null;
+  }
+
+  function nlCmp(a, op, b) {
+    if (a == null || isNaN(a)) return false;
+    if (op === ">") return a > b;
+    if (op === ">=") return a >= b;
+    if (op === "<") return a < b;
+    if (op === "<=") return a <= b;
+    if (op === "=") return Math.abs(a - b) < 1e-6;
+    return false;
+  }
+
+  function nlDateToStr(d) {
+    // Date → YYYY-MM-DD
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+
+  // 解析单条条件；返回 {kind: 'pred'|'top', ...} 或 null
+  function nlParseOne(raw) {
+    if (!raw) return null;
+    const s = nlNormalize(raw);
+    let m;
+
+    // 1. 排序取头：ROI 前 10 / GMV 最高 20 / GMV top 5
+    m = s.match(/^(gmv|roi|阅读uv|进店uv|加购uv|成交uv|投放金额|累计金额|uv价值|uv成本|阅读播放uv|阅读\/播放uv)\s*(?:前|最高|top)\s*(\d+)$/);
+    if (m) {
+      const f = nlMapField(m[1]);
+      if (f) return { kind: "top", field: f, n: parseInt(m[2], 10) };
+    }
+
+    // 2. 区间：GMV 在 1万 到 5万 / GMV 在 10000 到 50000
+    m = s.match(/^(gmv|roi|阅读uv|进店uv|加购uv|成交uv|投放金额|累计金额|uv价值|uv成本|阅读播放uv|阅读\/播放uv)\s*在\s*([\d.]+)\s*(?:到|至|-|~)\s*([\d.]+)\s*(?:之间|间)?$/);
+    if (m) {
+      const f = nlMapField(m[1]);
+      const lo = parseFloat(m[2]), hi = parseFloat(m[3]);
+      if (f) return { kind: "pred", fn: (n) => { const v = n[f]; return v != null && v >= lo && v <= hi; } };
+    }
+
+    // 3. 比较：GMV > 1万
+    m = s.match(/^(gmv|roi|阅读uv|进店uv|加购uv|成交uv|投放金额|累计金额|uv价值|uv成本|阅读播放uv|阅读\/播放uv)\s*(>=|<=|>|<|=|大于等于|小于等于|不小于|不大于|大于|小于|等于)\s*([\d.]+)$/);
+    if (m) {
+      const f = nlMapField(m[1]);
+      const op = nlNormOp(m[2]);
+      const v = parseFloat(m[3]);
+      if (f && op) return { kind: "pred", fn: (n) => nlCmp(n[f], op, v) };
+    }
+
+    // 4. 近 N 天
+    m = s.match(/^近\s*(\d+)\s*天$/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      const now = new Date();
+      const cut = new Date(now.getTime() - n * 86400000);
+      const cutStr = nlDateToStr(cut);
+      return { kind: "pred", fn: (note) => note.pub_date && String(note.pub_date).slice(0, 10) >= cutStr };
+    }
+
+    // 5. YYYY-M / YYYY 年 M 月 / M 月
+    m = s.match(/^(?:(\d{4})[-\/年])?(\d{1,2})\s*月\s*(?:发布的?)?$/);
+    if (m) {
+      const year = m[1] ? parseInt(m[1], 10) : new Date().getFullYear();
+      const mm = String(parseInt(m[2], 10)).padStart(2, "0");
+      const prefix = year + "-" + mm;
+      return { kind: "pred", fn: (note) => note.pub_date && String(note.pub_date).slice(0, 7) === prefix };
+    }
+
+    // 6. YYYY-MM 或 YYYY-MM-DD 精确
+    m = s.match(/^(\d{4}-\d{1,2}(?:-\d{1,2})?)$/);
+    if (m) {
+      const p = m[1];
+      return { kind: "pred", fn: (note) => note.pub_date && String(note.pub_date).slice(0, p.length) === p };
+    }
+
+    // 7. 达人 xxx / 达人昵称 xxx / 单纯人名（模糊包含）
+    m = s.match(/^(?:达人|昵称|作者|博主)\s*[:：=]?\s*(.+)$/);
+    if (m) {
+      const kw = m[1].trim();
+      return { kind: "pred", fn: (note) => (note.creator || "").toLowerCase().includes(kw) };
+    }
+    // 兜底：整个字符串作为达人昵称模糊匹配（如果长度合理）
+    if (s.length >= 2 && s.length <= 20 && !/[<>=]/.test(s)) {
+      return { kind: "pred", fn: (note) => (note.creator || "").toLowerCase().includes(s) };
+    }
+
+    return null;
+  }
+
+  // 解析完整自然语言（支持 "且 / 和 / &" 组合）
+  function nlParse(text) {
+    if (!text || !text.trim()) return { predicate: null, topN: null, ok: true, msg: "" };
+    const parts = text.split(/\s*(?:且|和|、|&|\s+and\s+)\s*/i).filter(Boolean);
+    const preds = [];
+    let topN = null;
+    const failed = [];
+    for (const p of parts) {
+      const r = nlParseOne(p);
+      if (!r) { failed.push(p); continue; }
+      if (r.kind === "top") topN = { field: r.field, n: r.n };
+      else preds.push(r.fn);
+    }
+    if (!preds.length && !topN) {
+      return { predicate: null, topN: null, ok: false, msg: '未识别："' + text + '"。点击"支持句式"看示例' };
+    }
+    const predicate = preds.length ? (n) => preds.every(fn => fn(n)) : null;
+    const msg = failed.length ? "部分片段未识别：" + failed.join(" / ") : "";
+    return { predicate, topN, ok: true, msg };
+  }
+
+  // 应用查询面板所有筛选
+  function applyPanelFilter(notes) {
+    const F = TABLE.filter;
+    let out = notes;
+    if (F.creator) {
+      const k = F.creator.toLowerCase();
+      out = out.filter(n => (n.creator || "").toLowerCase().includes(k));
+    }
+    if (F.noteId) {
+      const k = F.noteId.trim().toLowerCase();
+      out = out.filter(n => String(n.note_id || "").toLowerCase().includes(k));
+    }
+    if (F.pubDateStart) out = out.filter(n => n.pub_date && String(n.pub_date).slice(0, 10) >= F.pubDateStart);
+    if (F.pubDateEnd) out = out.filter(n => n.pub_date && String(n.pub_date).slice(0, 10) <= F.pubDateEnd);
+    if (F.nlPredicate) out = out.filter(F.nlPredicate);
+    if (F.nlTopN) {
+      const { field, n } = F.nlTopN;
+      out = out.slice().sort((a, b) => (b[field] || -Infinity) - (a[field] || -Infinity)).slice(0, n);
+    }
+    return out;
+  }
+
+  function initQueryPanel() {
+    // 达人昵称候选（从 DATA.notes 提唯一列表）
+    const creators = Array.from(new Set((DATA.notes || []).map(n => n.creator).filter(Boolean))).sort();
+
+    // 达人昵称的下拉：复用现有 combo 组件
+    const creatorCandidates = creators.map(c => ({ note_id: c, creator: c }));
+    makeCombo({
+      inputId: "qpCreator", listId: "qpCreatorList", candidates: creatorCandidates,
+      filterKeys: ["creator"], moduleKey: "qpc",
+      placeholder: "搜索或选择达人",
+      onSelect: (id) => { TABLE.filter.creator = id || ""; applyQuery(); },
+      onClear: () => { TABLE.filter.creator = ""; applyQuery(); },
+    });
+
+    const qCreator = document.getElementById("qpCreator");
+    const qNoteId = document.getElementById("qpNoteId");
+    const qStart = document.getElementById("qpDateStart");
+    const qEnd = document.getElementById("qpDateEnd");
+    const qNL = document.getElementById("qpNL");
+    const qStatus = document.getElementById("qpStatus");
+    const qHelp = document.getElementById("qpHelp");
+
+    document.getElementById("qpHelpBtn").addEventListener("click", () => {
+      qHelp.hidden = !qHelp.hidden;
+    });
+
+    document.getElementById("qpQuery").addEventListener("click", applyQuery);
+    document.getElementById("qpReset").addEventListener("click", resetQuery);
+    document.getElementById("qpExport").addEventListener("click", exportCSV);
+
+    [qCreator, qNoteId, qStart, qEnd, qNL].forEach(el => {
+      el.addEventListener("keydown", e => {
+        if (e.key === "Enter") { e.preventDefault(); applyQuery(); }
+      });
+    });
+
+    function applyQuery() {
+      TABLE.filter.creator = qCreator.value.trim();
+      TABLE.filter.noteId = qNoteId.value.trim();
+      TABLE.filter.pubDateStart = qStart.value;
+      TABLE.filter.pubDateEnd = qEnd.value;
+
+      const nlText = qNL.value.trim();
+      TABLE.filter.nlText = nlText;
+      if (nlText) {
+        const parsed = nlParse(nlText);
+        TABLE.filter.nlPredicate = parsed.predicate;
+        TABLE.filter.nlTopN = parsed.topN;
+        if (!parsed.ok) {
+          qStatus.textContent = parsed.msg;
+          qStatus.className = "qp-status warn";
+          qStatus.hidden = false;
+        } else if (parsed.msg) {
+          qStatus.textContent = "⚠ " + parsed.msg;
+          qStatus.className = "qp-status warn";
+          qStatus.hidden = false;
+        } else {
+          qStatus.hidden = true;
+        }
+      } else {
+        TABLE.filter.nlPredicate = null;
+        TABLE.filter.nlTopN = null;
+        qStatus.hidden = true;
+      }
+      TABLE.page = 1;
+      renderTable();
+    }
+
+    function resetQuery() {
+      qCreator.value = ""; qNoteId.value = "";
+      qStart.value = ""; qEnd.value = ""; qNL.value = "";
+      TABLE.filter = { creator: "", noteId: "", pubDateStart: "", pubDateEnd: "",
+                       nlPredicate: null, nlTopN: null, nlText: "" };
+      qStatus.hidden = true;
+      TABLE.page = 1;
+      renderTable();
+    }
+  }
+
+  function csvEscape(v) {
+    if (v == null) return "";
+    let s = String(v);
+    if (typeof v === "number") {
+      // 保留数据精度：整数不加小数、小数保留 4 位
+      s = Number.isInteger(v) ? String(v) : v.toFixed(4).replace(/\.?0+$/, "");
+    }
+    if (/[",\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function exportCSV() {
+    const cols = TABLE.selected.map(k => TABLE.byKey[k]).filter(Boolean);
+    if (!cols.length) { alert("没有可导出的列"); return; }
+    // 复用筛选（不含分页和排序，导出全部筛选结果）
+    let notes = DATA.notes.slice();
+    notes = applyPanelFilter(notes);
+    if (TABLE.keyword) {
+      const terms = TABLE.keyword.toLowerCase().split(/\s+/).filter(Boolean);
+      notes = notes.filter(n => {
+        const hay = ((n.note_id || "") + " " + (n.creator || "")).toLowerCase();
+        return terms.every(t => hay.includes(t));
+      });
+    }
+    // 保持当前排序
+    if (TABLE.sortKey) {
+      const k = TABLE.sortKey, dir = TABLE.sortDir === "desc" ? -1 : 1;
+      notes.sort((a, b) => {
+        const va = a[k], vb = b[k];
+        const na = va == null || va === "" ? -Infinity : (typeof va === "number" ? va : String(va));
+        const nb = vb == null || vb === "" ? -Infinity : (typeof vb === "number" ? vb : String(vb));
+        if (typeof na === "number" && typeof nb === "number") return (na - nb) * dir;
+        return String(na).localeCompare(String(nb)) * dir;
+      });
+    }
+
+    const header = cols.map(c => csvEscape(c.label + (c.unit ? "(" + c.unit + ")" : ""))).join(",");
+    const rows = notes.map(n => cols.map(c => csvEscape(n[c.key])).join(","));
+    const csv = "﻿" + header + "\r\n" + rows.join("\r\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = (new Date()).toISOString().slice(0, 10);
+    a.href = url;
+    a.download = "全链路数据_" + stamp + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+
   const FROZEN_W = { note_id: 210, creator: 130, pub_date: 110 };
 
   function computeFrozen(cols) {
