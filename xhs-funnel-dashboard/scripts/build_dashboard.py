@@ -138,11 +138,42 @@ def main():
     ap.add_argument("--star", nargs="+", default=[])  # 支持多张星河，后传优先(新版覆盖旧版)
     ap.add_argument("--chili", default=DEF_CHILI)
     ap.add_argument("--lingxi", default=DEF_LX)
+    ap.add_argument("--scan-dir", default=None,
+                    help="扫描目录自动识别四张表（默认 " + DEFAULT_SCAN_DIR + "）")
+    ap.add_argument("--no-scan", action="store_true", help="禁用自动扫描（只用显式传的路径）")
     ap.add_argument("--start", default=None)
     ap.add_argument("--end", default=None)
-    ap.add_argument("--output-dir", default=DESK)
+    ap.add_argument("--output-dir", default=None)
     ap.add_argument("--prefix", default=None)
     args = ap.parse_args()
+
+    # 自动扫描：显式 --scan-dir 或默认目录（除非 --no-scan 或已传所有路径）
+    scan_dir = args.scan_dir
+    if not scan_dir and not args.no_scan:
+        # 只在博哥没显式传路径时才自动用默认扫描目录
+        if not (args.pugongying or args.star or args.chili or args.lingxi):
+            scan_dir = DEFAULT_SCAN_DIR
+    if scan_dir and os.path.isdir(scan_dir):
+        scanned = scan_data_dir(scan_dir)
+        print(f"自动扫描目录: {scan_dir}")
+        if scanned.get("pgy") and not args.pugongying:
+            args.pugongying = scanned["pgy"]
+            print(f"  蒲公英 → {os.path.basename(args.pugongying)}")
+        if scanned.get("star") and not args.star:
+            args.star = scanned["star"]
+            for p in args.star:
+                print(f"  星河 → {os.path.basename(p)}")
+        if scanned.get("chili") and not args.chili:
+            args.chili = scanned["chili"]
+            print(f"  薯条 → {os.path.basename(args.chili)}")
+        if scanned.get("lx") and not args.lingxi:
+            args.lingxi = scanned["lx"]
+            print(f"  灵犀 → {os.path.basename(args.lingxi)}")
+        # 输出目录也默认为扫描目录（除非博哥显式指定）
+        if args.output_dir is None:
+            args.output_dir = scan_dir
+    if args.output_dir is None:
+        args.output_dir = DESK
 
     print("读取四表 ...")
 
