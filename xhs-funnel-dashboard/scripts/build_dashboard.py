@@ -28,12 +28,52 @@ from metrics import compute
 from render import build_payload, render_html
 
 DESK = r"C:\Users\duansb\Desktop\小红书营销数据"
+DEFAULT_SCAN_DIR = r"C:\Users\duansb\Desktop\小红书营销数据\数据看板文件"
 # 约定：不传路径的表 = 不加载 = 前端标注"需上传XX表"。
 # 默认全空，只加载调用时明确传入的表（每次由博哥发路径决定哪几张表进来）。
 DEF_PGY = ""
 DEF_STAR = ""
 DEF_CHILI = ""
 DEF_LX = ""
+
+
+def scan_data_dir(root):
+    """扫描目录，按文件名关键字自动识别四张表。
+    返回 dict：{pgy, star(list), chili, lx}
+    - 蒲公英：文件名含"蒲公英"
+    - 星河：文件名含"星河"或"小红星"（可能多个，全部收集）
+    - 薯条：文件名含"薯条"
+    - 灵犀：文件名含"灵犀"
+    同类多份时按修改时间取最新（除星河可多张）。
+    """
+    if not os.path.isdir(root):
+        return {}
+    result = {"pgy": None, "star": [], "chili": None, "lx": None}
+    candidates = {"pgy": [], "star": [], "chili": [], "lx": []}
+    for name in os.listdir(root):
+        if not name.lower().endswith((".xlsx", ".xls", ".csv")):
+            continue
+        if name.startswith("~"):  # Excel 打开中的临时文件
+            continue
+        full = os.path.join(root, name)
+        mtime = os.path.getmtime(full)
+        if "蒲公英" in name:
+            candidates["pgy"].append((mtime, full))
+        elif "星河" in name or "小红星" in name:
+            candidates["star"].append((mtime, full))
+        elif "薯条" in name:
+            candidates["chili"].append((mtime, full))
+        elif "灵犀" in name:
+            candidates["lx"].append((mtime, full))
+    # 蒲公英/薯条/灵犀取最新一份；星河全部保留（旧版+新版）
+    if candidates["pgy"]:
+        result["pgy"] = max(candidates["pgy"])[1]
+    if candidates["chili"]:
+        result["chili"] = max(candidates["chili"])[1]
+    if candidates["lx"]:
+        result["lx"] = max(candidates["lx"])[1]
+    result["star"] = [p for _, p in sorted(candidates["star"])]  # 旧版排前，新版排后（新版覆盖）
+    return result
 
 
 def _md(yyyymmdd):
