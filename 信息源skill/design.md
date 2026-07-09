@@ -138,6 +138,7 @@ DELETE /api/topics/:id           — 删除主题（不影响博主）
 GET    /api/articles?blogger_id=&topic_id=  — 文章列表（支持按博主或主题筛选）
 PUT    /api/articles/:id/read               — 标记已读
 PUT    /api/articles/read-all?blogger_id=   — 全部已读
+POST   /api/articles/:id/summary            — 生成 AI 摘要
 ```
 
 ### 抓取
