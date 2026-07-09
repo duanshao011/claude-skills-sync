@@ -186,15 +186,6 @@ A few slugs were normalized:
 </body>
 ```
 
-## Anti-AI Taste Rules (required reading)
-
-Before generating any page, read `references/anti-ai-taste.md` for design quality rules extracted from taste-skill. Key obligations:
-- Declare a one-line "Design Read" before writing code
-- Run the Pre-Flight Checklist (Section 10 of that file) before delivering
-- Zero em-dashes, no AI-purple defaults, no beige+brass defaults, no 3-equal-card layouts
-
-These rules apply to ALL page generation from this skill, whether brand-matched or freeform.
-
 ## Quality bar (when generating new pages from this reference)
 
 - **Honor the brand's actual signature** — don't apply a generic template. Stripe's mesh, Linear's #010102 canvas, Notion's pastel tints, Apple's product tile rhythm, Spotify's pill 9999px + uppercase tracking are all non-negotiable identifiers.
