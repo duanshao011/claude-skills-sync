@@ -566,7 +566,7 @@ document.getElementById('chipWrap').addEventListener('click', function(e) {
   }
 });
 
-// Topic modal save
+// Topic modal save (handles create and edit)
 document.querySelector('#topicModal .modal-btn.primary').addEventListener('click', async () => {
   const modal = document.getElementById('topicModal');
   const topicId = modal.dataset.topicId;
@@ -574,7 +574,11 @@ document.querySelector('#topicModal .modal-btn.primary').addEventListener('click
   if (!name) return;
   const bloggerIds = [...document.querySelectorAll('#chipWrap .chip-remove')].map(b => Number(b.dataset.bloggerId));
 
-  await api.put(`/api/topics/${topicId}`, { name, blogger_ids: bloggerIds });
+  if (topicId) {
+    await api.put('/api/topics/' + topicId, { name, blogger_ids: bloggerIds });
+  } else {
+    await api.post('/api/topics', { name, icon: '📌', blogger_ids: bloggerIds });
+  }
   modal.classList.remove('show');
   await loadTopics();
   renderSidebar();
