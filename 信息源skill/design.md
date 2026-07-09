@@ -255,7 +255,7 @@ async function fetch(channelId) {
 2. 在 fetcher 注册表中添加映射
 3. 前端「添加博主」弹窗中新增渠道选项
 
-## 10. 项目目录结构
+## 11. 项目目录结构
 
 ```
 ~/.claude/skills/信息源skill/
@@ -283,7 +283,7 @@ async function fetch(channelId) {
         └── feeds.db            # SQLite 数据库文件
 ```
 
-## 11. Skill 集成
+## 12. Skill 集成
 
 skill 的职责是启动/停止应用服务：
 
