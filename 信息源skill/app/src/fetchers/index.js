@@ -10,34 +10,44 @@ export function getFetcher(channelType) {
 export async function fetchBlogger(blogger) {
   const fetcher = getFetcher(blogger.channel_type);
   if (!fetcher) {
-    throw new Error(`No fetcher for channel type: ${blogger.channel_type}`);
+    throw new Error('No fetcher for channel type: ' + blogger.channel_type);
   }
 
   const articles = await fetcher.fetch(blogger.channel_id);
 
   let inserted = 0;
-  const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO articles (blogger_id, title, url, summary, thumbnail, published_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-  const insertMany = db.transaction((items) => {
-    for (const a of items) {
-      const result = insertStmt.run(
-        blogger.id, a.title, a.url, a.summary, a.thumbnail, a.published_at
+  db.run('BEGIN');
+  try {
+    for (const a of articles) {
+      // Check duplicate
+      const existing = db.get(
+        'SELECT id FROM articles WHERE blogger_id = ? AND url = ?',
+        [blogger.id, a.url]
       );
-      if (result.changes > 0) inserted++;
+      if (!existing) {
+        db.run(
+          'INSERT INTO articles (blogger_id, title, url, summary, thumbnail, published_at) VALUES (?, ?, ?, ?, ?, ?)',
+          [blogger.id, a.title, a.url, a.summary, a.thumbnail, a.published_at]
+        );
+        inserted++;
+      }
     }
-  });
-  insertMany(articles);
+    db.run('COMMIT');
+  } catch (e) {
+    db.run('ROLLBACK');
+    throw e;
+  }
 
-  db.prepare(`UPDATE bloggers SET last_fetched_at = datetime('now','localtime') WHERE id = ?`).run(blogger.id);
+  db.run(
+    'UPDATE bloggers SET last_fetched_at = datetime(\'now\',\'localtime\') WHERE id = ?',
+    [blogger.id]
+  );
 
   return { blogger: blogger.name, fetched: articles.length, inserted };
 }
 
 export async function fetchAll() {
-  const bloggers = db.prepare('SELECT * FROM bloggers').all();
+  const bloggers = db.all('SELECT * FROM bloggers');
   const results = [];
 
   for (const blogger of bloggers) {
