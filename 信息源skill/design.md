@@ -271,9 +271,10 @@ async function fetch(channelId) {
     │   │   ├── topics.js
     │   │   ├── articles.js
     │   │   └── fetch.js
-    │   └── fetchers/
-    │       ├── index.js        # fetcher 注册表
-    │       └── youtube.js      # YouTube RSS fetcher
+    │   ├── fetchers/
+    │   │   ├── index.js        # fetcher 注册表
+    │   │   └── youtube.js      # YouTube RSS fetcher
+    │   └── summarizer.js       # AI 摘要（Claude API + 字幕获取）
     ├── public/                 # 前端静态文件
     │   ├── index.html
     │   ├── style.css
@@ -297,4 +298,4 @@ skill 的职责是启动/停止应用服务：
 - 不做云端部署
 - 不做推送通知
 - 不做全文内容抓取（第一期只抓标题、摘要、链接）
-- 不做 AI 摘要功能（右栏的「摘要」按钮第一期不实现，预留位置）
+- 不做自动批量生成摘要（按需点击生成，控制 API 成本）
