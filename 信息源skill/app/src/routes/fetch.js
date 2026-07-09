@@ -13,6 +13,9 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Validate a YouTube channel before adding
+router.post('/validate', async (req, res) => {
+
 router.post('/:id', async (req, res) => {
   const blogger = db.get('SELECT * FROM bloggers WHERE id = ?', [req.params.id]);
   if (!blogger) return res.status(404).json({ error: 'Blogger not found' });
