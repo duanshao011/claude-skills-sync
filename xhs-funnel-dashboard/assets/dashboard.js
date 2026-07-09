@@ -226,12 +226,12 @@
     const m = DATA.meta || {};
     const kpi = [
       { l: "总投入（薯条实付）", v: fmt.money(s.total_spend), u: "元", sub: "仅推广完成·实际支付，不含达人合作费", range: m.chili_period, rangeTip: "薯条投放周期" },
-      { l: "总 GMV",       v: fmt.money(s.total_gmv),   u: "元", range: m.star_period, rangeTip: "星河数据周期" },
-      { l: "整体 ROI",      v: s.overall_roi == null ? "—" : Number(s.overall_roi).toFixed(2), u: "", sub: "口径：GMV / 薯条实付" },
+      { l: '总 GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单如果有多条笔记共同贡献，该订单GMV会被重复计入每条笔记，因此加总后的GMV高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.total_gmv), u: "元", sub: "⚠ 多内容归因存在重复计算", range: m.star_period, rangeTip: "星河数据周期", approx: true },
+      { l: '整体 ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复计算，该ROI为近似参考值，实际ROI会偏低。">≈ 参考值</span>', v: s.overall_roi == null ? "—" : Number(s.overall_roi).toFixed(2), u: "", sub: "口径：GMV / 薯条实付（GMV含归因重复）", approx: true },
       { l: "笔记数",        v: fmt.int(s.note_count),    u: "篇", sub: "已投 " + fmt.int(s.invested_count) + " 篇" },
     ];
     document.getElementById("kpiRow").innerHTML = kpi.map(k =>
-      `<div class="kpi">
+      `<div class="kpi${k.approx ? " kpi-approx" : ""}">
         <div class="kpi-label">${k.l}${k.range ? `<span class="kpi-range" title="${k.rangeTip || ""}">${k.range}</span>` : ""}</div>
         <div class="kpi-val">${k.v}<span class="kpi-unit">${k.u}</span></div>
         ${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ""}
@@ -341,12 +341,12 @@
         { l: "总进店UV（全部）", v: fmt.int(totalVisit), u: "" },
         { l: "总加购UV（全部）", v: fmt.int(totalCart), u: "" },
         { l: "总成交UV（全部）", v: fmt.int(totalDeal), u: "" },
-        { l: "总GMV（全部）",  v: fmt.money(totalGmv), u: "元" },
+        { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(totalGmv), u: "元", approx: true },
         { l: "笔记数", v: fmt.int(DATA.notes.length), u: "篇" },
         { l: "", v: "📊 全部笔记汇总", u: "" },
       ];
       document.getElementById("trendKpis").innerHTML = kpis.map(k =>
-        `<div class="trend-kpi">
+        `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
           <div class="trend-kpi-label">${k.l}</div>
           <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span></div>
         </div>`
@@ -410,11 +410,11 @@
       { l: "总进店UV", v: fmt.int(visitUv), rate: visitRate != null ? visitRate.toFixed(2) + "%" : null, tip: "进店率 = 进店UV ÷ 阅读UV", u: "" },
       { l: "总加购UV", v: fmt.int(cartUv), rate: cartRate != null ? cartRate.toFixed(2) + "%" : null, tip: "进店加购率 = 加购UV ÷ 进店UV", u: "" },
       { l: "总成交UV", v: fmt.int(dealUv), rate: dealRate != null ? dealRate.toFixed(2) + "%" : null, tip: "进店转化率 = 成交UV ÷ 进店UV", u: "" },
-      { l: "总GMV",  v: fmt.money(gmv), rate: null, tip: "", u: "元" },
-      { l: "UV价值",  v: uvValue != null ? "¥" + uvValue.toFixed(2) : "—", rate: null, tip: "UV价值 = 总GMV ÷ 进店UV", u: "" },
+      { l: '总GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(gmv), rate: null, tip: "⚠ 多内容归因下含重复计算，非精确值", u: "元", approx: true },
+      { l: 'UV价值 <span class="gmv-approx" data-tip="UV价值 = GMV ÷ 进店UV，因GMV含多内容归因重复，该值为近似参考。">≈ 参考值</span>', v: uvValue != null ? "¥" + uvValue.toFixed(2) : "—", rate: null, tip: "UV价值 = 总GMV ÷ 进店UV（GMV含归因重复）", u: "", approx: true },
     ];
     document.getElementById("trendKpis").innerHTML = kpis.map(k =>
-      `<div class="trend-kpi"${k.tip ? ' title="' + k.tip + '"' : ""}>
+      `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
         <div class="trend-kpi-label">${k.l}</div>
         <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
       </div>`
@@ -509,7 +509,7 @@
       const daily = ca.daily || [];
       const kpiItems = [
         { l: "总消耗（全部）", v: fmt.money(s.spend), u: "元" },
-        { l: "总GMV（全部）",  v: fmt.money(s.gmv), u: "元" },
+        { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
         { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "" },
         { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "" },
         { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "" },
@@ -517,7 +517,7 @@
         { l: "", v: "📊 全部笔记汇总", u: "" },
       ];
       document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
-        `<div class="trend-kpi">
+        `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
           <div class="trend-kpi-label">${k.l}</div>
           <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span></div>
         </div>`
@@ -595,15 +595,15 @@
     // 7 指标卡
     const kpiItems = [
       { l: "累计消耗", v: fmt.money(s.spend), u: "元" },
-      { l: "累计GMV",  v: fmt.money(s.gmv), u: "元" },
-      { l: "ROI",     v: s.roi == null ? "—" : Number(s.roi).toFixed(2), u: "" },
+      { l: '累计GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
+      { l: 'ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复，该值为近似参考，实际ROI会偏低。">≈ 参考值</span>', v: s.roi == null ? "—" : Number(s.roi).toFixed(2), u: "", approx: true },
       { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "" },
       { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "" },
       { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "" },
       { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(2), u: "" },
     ];
     document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
-      `<div class="trend-kpi">
+      `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
         <div class="trend-kpi-label">${k.l}</div>
         <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span></div>
       </div>`

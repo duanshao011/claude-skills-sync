@@ -67,7 +67,7 @@ body{
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
 .kpi{
   background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
-  padding:20px 22px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;
+  padding:20px 22px;box-shadow:var(--shadow-sm);position:relative;overflow:visible;
 }
 .kpi::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:3px;background:var(--brand);border-radius:0 2px 2px 0;opacity:.7}
 .kpi-label{color:var(--muted);font-size:12px;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -79,6 +79,24 @@ body{
 .kpi-val{font-size:26px;font-weight:700;letter-spacing:-.5px;color:var(--text);font-variant-numeric:tabular-nums}
 .kpi-unit{font-size:12px;color:var(--muted);margin-left:4px;font-weight:500}
 .kpi-sub{margin-top:6px;color:var(--dim);font-size:12px}
+.kpi.kpi-approx{background:#FFFBEB;border-color:#FDE68A}
+.kpi.kpi-approx::before{background:#D97706}
+.kpi.kpi-approx .kpi-sub{color:#92400E}
+.gmv-approx{display:inline-block;font-size:10px;font-weight:600;color:#D97706;background:#FEF3C7;border:1px solid #FDE68A;border-radius:3px;padding:1px 6px;margin-left:6px;vertical-align:middle;line-height:16px;cursor:default;position:relative}
+.gmv-approx:hover::after{
+  content:attr(data-tip);
+  position:absolute;left:0;top:calc(100% + 8px);
+  z-index:999;white-space:normal;width:280px;
+  background:#78350F;color:#FEF3C7;font-size:12px;font-weight:500;line-height:1.6;
+  padding:10px 14px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);
+  pointer-events:none;animation:tipFadeIn .15s ease;
+}
+.gmv-approx:hover::before{
+  content:"";position:absolute;left:20px;top:100%;
+  border:6px solid transparent;border-bottom-color:#78350F;z-index:999;
+  pointer-events:none;animation:tipFadeIn .15s ease;
+}
+@keyframes tipFadeIn{from{opacity:0;translateY(4px)}to{opacity:1;translateY(0)}}
 .kpi.q .kpi-val{font-size:16px}
 .kpi.q .quad-mini{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:6px}
 .kpi.q .quad-mini span{color:var(--muted);font-size:12px;display:flex;justify-content:space-between}
@@ -187,6 +205,9 @@ body{
   background:var(--panel-hover);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:12px 14px;min-width:140px;
 }
+.trend-kpi.kpi-approx{background:#FFFBEB;border-color:#FDE68A}
+.trend-kpi.kpi-approx .trend-kpi-label{color:#92400E}
+.trend-kpi.kpi-approx .trend-kpi-val{color:#78350F}
 .trend-kpi-label{font-size:11px;color:var(--muted);letter-spacing:.5px;margin-bottom:4px}
 .trend-kpi-val{font-size:18px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
 .trend-kpi-val .u{font-size:11px;color:var(--dim);margin-left:2px;font-weight:400}
