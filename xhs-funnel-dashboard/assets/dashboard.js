@@ -1452,7 +1452,7 @@ tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#f
         },
       },
       legend: { show: false },
-      grid: { top: 28, left: 56, right: 20, bottom: 40 },
+      grid: { top: 36, left: 56, right: 20, bottom: 40 },
       xAxis: {
         type: "category", data: dates,
         axisLine: { lineStyle: { color: C.border } },
