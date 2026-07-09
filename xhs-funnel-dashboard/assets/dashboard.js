@@ -1303,6 +1303,7 @@ tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#f
     document.getElementById("dailyOverviewKpis").innerHTML = kpis.map(function(k){
       return '<div class="trend-kpi"><div class="trend-kpi-label">'+k.l+'</div><div class="trend-kpi-val">'+k.v+'<span class="u"> '+k.u+'</span></div></div>';
     }).join("");
+    document.getElementById("dailyTotalBadge").innerHTML = '<span>进店汇总</span><span class="dtb-num">' + fmt.int(totalVisit) + '</span>';
 
     // Build per-date stacked data
     var dates = trendsAll.map(function(r){ return fmtDate(r[0]); });
@@ -1382,12 +1383,6 @@ tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#f
 
     dailyOverviewChart.setOption({
       backgroundColor: "transparent",
-      title: {
-        text: "进店汇总  " + fmt.int(totalVisit),
-        left: 56,
-        top: 2,
-        textStyle: { color: "#FF2442", fontSize: 13, fontWeight: "bold" },
-      },
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
@@ -1452,7 +1447,7 @@ tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#f
         },
       },
       legend: { show: false },
-      grid: { top: 36, left: 56, right: 20, bottom: 40 },
+      grid: { top: 28, left: 56, right: 20, bottom: 40 },
       xAxis: {
         type: "category", data: dates,
         axisLine: { lineStyle: { color: C.border } },
