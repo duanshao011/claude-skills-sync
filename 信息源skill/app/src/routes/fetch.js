@@ -4,7 +4,6 @@ import { fetchAll, fetchBlogger, youtube } from '../fetchers/index.js';
 
 const router = Router();
 
-// Fetch all bloggers
 router.post('/', async (req, res) => {
   try {
     const results = await fetchAll();
@@ -14,9 +13,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Fetch single blogger
 router.post('/:id', async (req, res) => {
-  const blogger = db.prepare('SELECT * FROM bloggers WHERE id = ?').get(req.params.id);
+  const blogger = db.get('SELECT * FROM bloggers WHERE id = ?', [req.params.id]);
   if (!blogger) return res.status(404).json({ error: 'Blogger not found' });
 
   try {
@@ -27,20 +25,18 @@ router.post('/:id', async (req, res) => {
   }
 });
 
-// Get fetch status
 router.get('/status', (req, res) => {
-  const row = db.prepare(`
+  const row = db.get(`
     SELECT MAX(last_fetched_at) as last_fetch, COUNT(*) as blogger_count
     FROM bloggers
-  `).get();
+  `);
 
   res.json({
-    last_fetch: row.last_fetch || null,
-    blogger_count: row.blogger_count || 0,
+    last_fetch: row ? row.last_fetch : null,
+    blogger_count: row ? row.blogger_count : 0,
   });
 });
 
-// Validate a YouTube channel before adding
 router.post('/validate', async (req, res) => {
   const { channel_type, channel_input } = req.body;
   if (channel_type !== 'youtube') {
