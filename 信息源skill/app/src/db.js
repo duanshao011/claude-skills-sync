@@ -42,7 +42,7 @@ function all(sql, params = []) {
   if (params.length > 0) stmt.bind(params);
   const rows = [];
   while (stmt.step()) {
-    rows.push(Object.fromEntries(stmt.getAsObject()));
+    rows.push(stmt.getAsObject());
   }
   stmt.free();
   return rows;
