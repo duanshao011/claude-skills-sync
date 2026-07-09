@@ -1382,19 +1382,12 @@ tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#f
 
     dailyOverviewChart.setOption({
       backgroundColor: "transparent",
-      graphic: [
-        {
-          type: "text",
-          left: 56,
-          top: 5,
-          style: {
-            text: "进店汇总  " + fmt.int(totalVisit),
-            fill: "#FF2442",
-            font: "bold 13px system-ui, -apple-system, sans-serif",
-          },
-          z: 100,
-        },
-      ],
+      title: {
+        text: "进店汇总  " + fmt.int(totalVisit),
+        left: 56,
+        top: 2,
+        textStyle: { color: "#FF2442", fontSize: 13, fontWeight: "bold" },
+      },
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
