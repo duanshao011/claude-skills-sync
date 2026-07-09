@@ -230,7 +230,7 @@ Key 配置方式：应用根目录 `.env` 文件中写入 `ANTHROPIC_API_KEY=sk-
 - 抓取逻辑：遍历 bloggers 表 → 按 channel_type 分发到对应 fetcher → 解析结果写入 articles 表（通过唯一约束去重）
 - 应用启动时检查：如果距上次抓取超过 24 小时，立即补一次
 
-## 9. Fetcher 接口（渠道扩展）
+## 10. Fetcher 接口（渠道扩展）
 
 每个渠道实现一个 fetcher，统一接口：
 
