@@ -52,10 +52,10 @@ cron.schedule('0 6 * * *', async () => {
 
 // Startup check: if last fetch > 24h ago, catch up
 async function checkStartupFetch() {
-  const row = db.prepare(`SELECT MAX(last_fetched_at) as last_fetch FROM bloggers`).get();
-  if (!row.last_fetch) return;
+  const row = db.get('SELECT MAX(last_fetched_at) as last_fetch FROM bloggers');
+  if (!row || !row.last_fetch) return;
 
-  const lastFetch = new Date(row.last_fetch);
+  const lastFetch = new Date(row.last_fetch + 'Z');
   const hoursSince = (Date.now() - lastFetch.getTime()) / (1000 * 60 * 60);
   if (hoursSince > 24) {
     console.log(`[Startup] Last fetch ${Math.round(hoursSince)}h ago, catching up...`);
