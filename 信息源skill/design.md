@@ -58,6 +58,8 @@
 | rss-parser | RSS/Atom 解析 |
 | node-cron | 定时任务 |
 | open | 启动时自动打开浏览器 |
+| @anthropic-ai/sdk | Claude API 调用（AI 摘要） |
+| youtube-transcript | 获取 YouTube 视频字幕文本 |
 
 ## 4. 数据库设计
 
@@ -83,7 +85,8 @@
 | blogger_id | INTEGER FK | 关联 bloggers.id |
 | title | TEXT NOT NULL | 标题 |
 | url | TEXT NOT NULL | 原文链接 |
-| summary | TEXT | 摘要/描述 |
+| summary | TEXT | 摘要/描述（RSS 原始） |
+| ai_summary | TEXT | AI 生成的摘要 |
 | thumbnail | TEXT | 缩略图 URL |
 | published_at | TEXT | 发布时间 |
 | fetched_at | TEXT | 抓取时间 |
