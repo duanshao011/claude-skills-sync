@@ -15,6 +15,16 @@ router.get('/', (req, res) => {
   res.json(bloggers);
 });
 
+// Get topics for a blogger
+router.get('/:id/topics', (req, res) => {
+  const topics = db.prepare(`
+    SELECT t.* FROM topics t
+    JOIN blogger_topics bt ON bt.topic_id = t.id
+    WHERE bt.blogger_id = ?
+  `).all(req.params.id);
+  res.json({ topics });
+});
+
 // Get single blogger
 router.get('/:id', (req, res) => {
   const blogger = db.prepare(`
