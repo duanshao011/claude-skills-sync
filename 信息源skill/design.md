@@ -224,7 +224,7 @@ Key 配置方式：应用根目录 `.env` 文件中写入 `ANTHROPIC_API_KEY=sk-
 3. 系统自动解析出 channel_id，验证 RSS 可用
 4. 确认后保存，立即触发一次抓取
 
-## 8. 定时抓取机制
+## 9. 定时抓取机制
 
 - 使用 node-cron，每天 06:00 自动抓取所有关注博主
 - 抓取逻辑：遍历 bloggers 表 → 按 channel_type 分发到对应 fetcher → 解析结果写入 articles 表（通过唯一约束去重）
