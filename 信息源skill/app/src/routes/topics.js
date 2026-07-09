@@ -3,86 +3,83 @@ import db from '../db.js';
 
 const router = Router();
 
-// List all topics with blogger count and unread count
 router.get('/', (req, res) => {
-  const topics = db.prepare(`
+  const topics = db.all(`
     SELECT t.*,
-      COUNT(DISTINCT bt.blogger_id) as blogger_count,
-      COUNT(DISTINCT a.id) as unread_count
+      (SELECT COUNT(DISTINCT bt2.blogger_id) FROM blogger_topics bt2 WHERE bt2.topic_id = t.id) as blogger_count,
+      (SELECT COUNT(DISTINCT a.id) FROM blogger_topics bt3
+        JOIN articles a ON a.blogger_id = bt3.blogger_id AND a.is_read = 0
+        WHERE bt3.topic_id = t.id) as unread_count
     FROM topics t
-    LEFT JOIN blogger_topics bt ON bt.topic_id = t.id
-    LEFT JOIN articles a ON a.blogger_id = bt.blogger_id AND a.is_read = 0
-    GROUP BY t.id
     ORDER BY unread_count DESC, t.name ASC
-  `).all();
+  `);
   res.json(topics);
 });
 
-// Get single topic with its bloggers
 router.get('/:id', (req, res) => {
-  const topic = db.prepare('SELECT * FROM topics WHERE id = ?').get(req.params.id);
+  const topic = db.get('SELECT * FROM topics WHERE id = ?', [req.params.id]);
   if (!topic) return res.status(404).json({ error: 'Topic not found' });
 
-  const bloggers = db.prepare(`
+  const bloggers = db.all(`
     SELECT b.*, COUNT(a.id) as unread_count
     FROM bloggers b
     JOIN blogger_topics bt ON bt.blogger_id = b.id
     LEFT JOIN articles a ON a.blogger_id = b.id AND a.is_read = 0
     WHERE bt.topic_id = ?
     GROUP BY b.id
-  `).all(req.params.id);
+  `, [req.params.id]);
 
   res.json({ ...topic, bloggers });
 });
 
-// Create topic
 router.post('/', (req, res) => {
   const { name, icon } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
 
-  try {
-    const result = db.prepare('INSERT INTO topics (name, icon) VALUES (?, ?)').run(name, icon || '📌');
-    const topic = db.prepare('SELECT * FROM topics WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json(topic);
-  } catch (err) {
-    if (err.message.includes('UNIQUE')) {
-      return res.status(409).json({ error: 'Topic name already exists' });
+  const existing = db.get('SELECT * FROM topics WHERE name = ?', [name]);
+  if (existing) return res.status(409).json({ error: 'Topic name already exists' });
+
+  db.run('INSERT INTO topics (name, icon) VALUES (?, ?)', [name, icon || '📌']);
+  const topic = db.get('SELECT * FROM topics WHERE id = last_insert_rowid()');
+
+  // Add initial bloggers if provided
+  if (Array.isArray(req.body.blogger_ids) && req.body.blogger_ids.length > 0) {
+    for (const bid of req.body.blogger_ids) {
+      db.run('INSERT OR IGNORE INTO blogger_topics (blogger_id, topic_id) VALUES (?, ?)', [bid, topic.id]);
     }
-    res.status(500).json({ error: err.message });
   }
+
+  res.status(201).json(topic);
 });
 
-// Update topic
 router.put('/:id', (req, res) => {
   const { name, icon, blogger_ids } = req.body;
   const id = req.params.id;
 
-  const topic = db.prepare('SELECT * FROM topics WHERE id = ?').get(id);
+  const topic = db.get('SELECT * FROM topics WHERE id = ?', [id]);
   if (!topic) return res.status(404).json({ error: 'Topic not found' });
 
-  const updateTopic = db.transaction(() => {
-    if (name || icon) {
-      db.prepare('UPDATE topics SET name = COALESCE(?, name), icon = COALESCE(?, icon) WHERE id = ?')
-        .run(name || null, icon || null, id);
+  if (name || icon) {
+    db.run('UPDATE topics SET name = COALESCE(?, name), icon = COALESCE(?, icon) WHERE id = ?',
+      [name || null, icon || null, id]);
+  }
+  if (Array.isArray(blogger_ids)) {
+    db.run('DELETE FROM blogger_topics WHERE topic_id = ?', [id]);
+    for (const bid of blogger_ids) {
+      db.run('INSERT OR IGNORE INTO blogger_topics (blogger_id, topic_id) VALUES (?, ?)', [bid, id]);
     }
-    if (Array.isArray(blogger_ids)) {
-      db.prepare('DELETE FROM blogger_topics WHERE topic_id = ?').run(id);
-      const insert = db.prepare('INSERT OR IGNORE INTO blogger_topics (blogger_id, topic_id) VALUES (?, ?)');
-      for (const bid of blogger_ids) insert.run(bid, id);
-    }
-  });
-  updateTopic();
+  }
 
-  const updated = db.prepare('SELECT * FROM topics WHERE id = ?').get(id);
+  const updated = db.get('SELECT * FROM topics WHERE id = ?', [id]);
   res.json(updated);
 });
 
-// Delete topic
 router.delete('/:id', (req, res) => {
-  const topic = db.prepare('SELECT * FROM topics WHERE id = ?').get(req.params.id);
+  const topic = db.get('SELECT * FROM topics WHERE id = ?', [req.params.id]);
   if (!topic) return res.status(404).json({ error: 'Topic not found' });
 
-  db.prepare('DELETE FROM topics WHERE id = ?').run(req.params.id);
+  db.run('DELETE FROM blogger_topics WHERE topic_id = ?', [req.params.id]);
+  db.run('DELETE FROM topics WHERE id = ?', [req.params.id]);
   res.json({ deleted: true, name: topic.name });
 });
 
