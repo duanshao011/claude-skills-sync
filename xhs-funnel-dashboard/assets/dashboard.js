@@ -426,20 +426,7 @@
     ];
     trendChart.setOption({
       backgroundColor: "transparent",
-      graphic: [
-        {
-          type: "text",
-          left: 56,
-          top: 5,
-          style: {
-            text: "进店汇总  " + fmt.int(totalVisit),
-            fill: "#FF2442",
-            font: "bold 13px system-ui, -apple-system, sans-serif",
-          },
-          z: 100,
-        },
-      ],
-      tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
+tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
       legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
       grid: { top: 40, left: 60, right: 30, bottom: 40 },
       xAxis: {
