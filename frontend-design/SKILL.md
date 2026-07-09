@@ -41,3 +41,15 @@ Interpret creatively and make unexpected choices that feel genuinely designed fo
 **IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
 
 Remember: Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
+
+## Anti-AI Taste Rules (required reading)
+
+Before generating any page, read `references/anti-ai-taste.md` for design quality rules. Key obligations:
+- Declare a one-line "Design Read" before writing code
+- Run the Pre-Flight Checklist (Section 10 of that file) before delivering
+- Zero em-dashes, no AI-purple defaults, no beige+brass defaults, no 3-equal-card layouts
+- No 3+ consecutive zigzag sections, max 1 eyebrow per 3 sections
+- Page theme lock: ONE theme, no section flips
+- Color consistency lock: one accent used uniformly across all sections
+
+These rules apply to ALL page generation from this skill.
