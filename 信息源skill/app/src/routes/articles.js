@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { generateSummary, isAvailable } from '../summarizer.js';
 
 const router = Router();
 
@@ -71,6 +72,39 @@ router.put('/read-all', (req, res) => {
   ).run(blogger_id);
 
   res.json({ marked_read: result.changes });
+});
+
+// Generate AI summary for an article
+router.post('/:id/summary', async (req, res) => {
+  const article = db.prepare(`
+    SELECT a.*, b.channel_type
+    FROM articles a
+    JOIN bloggers b ON b.id = a.blogger_id
+    WHERE a.id = ?
+  `).get(req.params.id);
+
+  if (!article) return res.status(404).json({ error: 'Article not found' });
+
+  // Return cached summary
+  if (article.ai_summary) {
+    return res.json({ summary: article.ai_summary, cached: true });
+  }
+
+  if (!isAvailable()) {
+    return res.status(503).json({ error: 'API Key not configured' });
+  }
+
+  try {
+    const { summary, basedOnDescription } = await generateSummary(article);
+    const fullSummary = basedOnDescription
+      ? `⚠️ 基于描述生成，非完整内容\n\n${summary}`
+      : summary;
+
+    db.prepare('UPDATE articles SET ai_summary = ? WHERE id = ?').run(fullSummary, article.id);
+    res.json({ summary: fullSummary, cached: false });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;
