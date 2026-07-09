@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import initSqlJs from 'sql.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -9,11 +9,79 @@ const DB_PATH = path.join(DATA_DIR, 'feeds.db');
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-const db = new Database(DB_PATH);
+let db = null;
+let saveTimer = null;
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// Load or create database
+const SQL = await initSqlJs();
+if (fs.existsSync(DB_PATH)) {
+  const buffer = fs.readFileSync(DB_PATH);
+  db = new SQL.Database(buffer);
+} else {
+  db = new SQL.Database();
+}
 
+// Enable WAL-like behavior via manual save
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    fs.writeFileSync(DB_PATH, Buffer.from(db.export()));
+  }, 200);
+}
+
+// Run a SQL statement and return the db object (for chaining)
+function run(sql, params = []) {
+  db.run(sql, params);
+  scheduleSave();
+  return { changes: db.getRowsModified() };
+}
+
+// Query multiple rows
+function all(sql, params = []) {
+  const stmt = db.prepare(sql);
+  if (params.length > 0) stmt.bind(params);
+  const rows = [];
+  while (stmt.step()) {
+    rows.push(Object.fromEntries(stmt.getAsObject()));
+  }
+  stmt.free();
+  return rows;
+}
+
+// Query single row
+function get(sql, params = []) {
+  const rows = all(sql, params);
+  return rows.length > 0 ? rows[0] : null;
+}
+
+// Execute multiple statements
+function exec(sql) {
+  db.exec(sql);
+  scheduleSave();
+}
+
+// Wrap operations in a transaction
+function transaction(fn) {
+  return (...args) => {
+    db.exec('BEGIN');
+    try {
+      const result = fn(...args);
+      db.exec('COMMIT');
+      scheduleSave();
+      return result;
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw e;
+    }
+  };
+}
+
+// Save manually (call before important operations)
+function save() {
+  fs.writeFileSync(DB_PATH, Buffer.from(db.export()));
+}
+
+// Initialize schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS bloggers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,6 +124,7 @@ db.exec(`
     FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
   );
 `);
+scheduleSave();
 
 const PALETTE = [
   'linear-gradient(135deg,#ff6b6b,#ee5a24)',
@@ -74,4 +143,4 @@ export function randomColor(name) {
   return PALETTE[sum % PALETTE.length];
 }
 
-export default db;
+export default { run, all, get, exec, transaction, save };
