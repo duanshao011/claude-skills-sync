@@ -216,7 +216,7 @@ def _clean(v):
 
 
 def build_payload(master, waterlines, summary, daily, meta, cost=None,
-                  trends_all=None, cost_all=None):
+                  trends_all=None, cost_all=None, daily_notes=None):
     df = master.reset_index()
     notes = []
     for _, row in df.iterrows():
@@ -253,6 +253,7 @@ def build_payload(master, waterlines, summary, daily, meta, cost=None,
         "cost_all": cost_all or None,
         "column_groups": COLUMN_GROUPS,
         "default_columns": DEFAULT_COLUMNS,
+        "daily_notes": daily_notes or {},
     }
 
 

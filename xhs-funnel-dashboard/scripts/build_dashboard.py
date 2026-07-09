@@ -262,7 +262,7 @@ def main():
         p = f" · {s.get('period')}" if s.get("period") else ""
         print(f"  {badge} {s['name']} {s['rows']} 条{p}{'' if s['loaded'] else '（' + s.get('reason', '') + '）'}")
 
-    master, waterlines, summary, cost, trends_all, cost_all = compute(
+    master, waterlines, summary, cost, trends_all, cost_all, daily_notes = compute(
         pgy, star_agg, chili_agg, lx,
         chili_daily=chili_daily, star_daily=daily)
 
@@ -282,7 +282,8 @@ def main():
     }
 
     payload = build_payload(master, waterlines, summary, daily, meta, cost=cost,
-                            trends_all=trends_all, cost_all=cost_all)
+                            trends_all=trends_all, cost_all=cost_all,
+                            daily_notes=daily_notes)
     html = render_html(payload)
 
     # 默认固定文件名（覆盖同名），传 --prefix 才带前缀归档

@@ -13,18 +13,65 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Validate a YouTube channel before adding
+// Validate channel before adding (must be before /:id)
 router.post('/validate', async (req, res) => {
-
-router.post('/:id', async (req, res) => {
-  const blogger = db.get('SELECT * FROM bloggers WHERE id = ?', [req.params.id]);
-  if (!blogger) return res.status(404).json({ error: 'Blogger not found' });
+  const { channel_type, channel_input } = req.body;
+  if (channel_type !== 'youtube') {
+    return res.status(400).json({ error: 'Only youtube is supported currently' });
+  }
+  if (!channel_input) {
+    return res.status(400).json({ error: 'channel_input is required' });
+  }
 
   try {
-    const result = await fetchBlogger(blogger);
-    res.json(result);
+    const parsed = youtube.parseChannelUrl(channel_input);
+
+    // Handle parse errors (search URLs, video URLs, etc.)
+    if (parsed.type === 'error') {
+      return res.status(400).json({ error: parsed.reason });
+    }
+
+    let channelId = parsed.value;
+
+    if (parsed.type === 'handle') {
+      const resolved = await youtube.resolveHandle(parsed.value);
+      if (resolved) {
+        channelId = resolved;
+      } else {
+        return res.status(400).json({
+          error: '无法从 @' + parsed.value + ' 获取频道ID，请尝试在浏览器中打开该频道，复制频道主页的完整链接（youtube.com/channel/UC... 格式）',
+        });
+      }
+    }
+
+    if (parsed.type === 'unknown') {
+      return res.status(400).json({
+        error: parsed.reason || '无法识别输入格式，请粘贴完整的频道链接',
+      });
+    }
+
+    // Try RSS validation, but don't block on failure (temporary rate-limit)
+    let channelName = '';
+    let rssOk = true;
+    try {
+      const result = await youtube.validate(channelId);
+      channelName = result.channel_name;
+    } catch (err) {
+      rssOk = false;
+      channelName = parsed.type === 'handle' ? '@' + parsed.value : channelId;
+    }
+
+    res.json({
+      valid: true,
+      channel_id: channelId,
+      channel_name: channelName,
+      rss_available: rssOk,
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(400).json({
+      error: '频道验证失败，请检查URL或频道ID是否正确',
+      detail: err.message,
+    });
   }
 });
 
@@ -40,43 +87,15 @@ router.get('/status', (req, res) => {
   });
 });
 
-router.post('/validate', async (req, res) => {
-  const { channel_type, channel_input } = req.body;
-  if (channel_type !== 'youtube') {
-    return res.status(400).json({ error: 'Only youtube is supported currently' });
-  }
-  if (!channel_input) {
-    return res.status(400).json({ error: 'channel_input is required' });
-  }
+router.post('/:id', async (req, res) => {
+  const blogger = db.get('SELECT * FROM bloggers WHERE id = ?', [req.params.id]);
+  if (!blogger) return res.status(404).json({ error: 'Blogger not found' });
 
   try {
-    const parsed = youtube.parseChannelUrl(channel_input);
-    let channelId = parsed.value;
-
-    if (parsed.type === 'handle' || parsed.type === 'unknown') {
-      const resolved = await youtube.resolveHandle(
-        parsed.type === 'handle' ? parsed.value : parsed.value
-      );
-      if (resolved) {
-        channelId = resolved;
-      } else {
-        return res.status(400).json({
-          error: '无法解析该频道，请尝试直接输入频道ID（UC开头的字符串）',
-        });
-      }
-    }
-
-    const result = await youtube.validate(channelId);
-    res.json({
-      valid: true,
-      channel_id: channelId,
-      channel_name: result.channel_name,
-    });
+    const result = await fetchBlogger(blogger);
+    res.json(result);
   } catch (err) {
-    res.status(400).json({
-      error: '频道验证失败，请检查URL或频道ID是否正确',
-      detail: err.message,
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 

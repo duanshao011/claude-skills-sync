@@ -94,10 +94,13 @@ function renderSidebar() {
 function renderBloggerItem(b) {
   const abbr = b.name.charAt(0);
   const badge = b.unread_count > 0 ? `<div class="avatar-badge">${b.unread_count}</div>` : '';
+  const avatarHtml = b.avatar_url
+    ? `<img class="list-avatar" src="${esc(b.avatar_url)}" style="border-radius:50%;object-fit:cover;width:32px;height:32px;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="list-avatar" style="background:${b.avatar_color||'#ccc'};display:none;">${abbr}</div>`
+    : `<div class="list-avatar" style="background:${b.avatar_color||'#ccc'};">${abbr}</div>`;
   return `
     <div class="list-item" data-blogger-id="${b.id}" onclick="selectBlogger(${b.id})">
       <div class="avatar-wrap">
-        <div class="list-avatar" style="background:${b.avatar_color||'#ccc'};">${abbr}</div>
+        ${avatarHtml}
         ${badge}
       </div>
       <div class="list-info">
@@ -209,11 +212,12 @@ function renderArticleList(articles, source) {
     const active = a.id == state.selectedArticleId ? ' active' : '';
     const channelLabel = a.channel_type === 'youtube' ? 'YouTube' : (a.channel_type || '');
     const dotColor = a.channel_type === 'youtube' ? '#ff0000' : '#ff5252';
-    const snippet = (a.summary || '').slice(0, 100);
+    const snippet = (a.summary_cn || a.summary || '').slice(0, 100);
+    const title = a.title_cn || a.title;
     const pubTime = a.published_at ? timeAgo(a.published_at) : '';
     return `
       <div class="article-item ${cls}${active}" data-article-id="${a.id}" onclick="selectArticle(${a.id})">
-        <div class="article-title">${esc(a.title)}</div>
+        <div class="article-title">${esc(title)}</div>
         <div class="article-snippet">${esc(snippet)}</div>
         <div class="article-meta">
           <span class="source-dot" style="background:${dotColor};"></span>
@@ -299,7 +303,10 @@ function renderContent(article) {
     summaryBtn.onclick = null;
   }
 
-  let bodyHtml = `<h1>${esc(article.title)}</h1>`;
+  let bodyHtml = `<h1>${esc(article.title_cn || article.title)}</h1>`;
+  if (article.title_cn && article.title_cn !== article.title) {
+    bodyHtml += `<div style="font-size:12px;color:#999;margin-top:-12px;margin-bottom:12px;">${esc(article.title)}</div>`;
+  }
 
   // YouTube embed
   if (article.channel_type === 'youtube') {
@@ -309,8 +316,9 @@ function renderContent(article) {
     }
   }
 
-  if (article.summary) {
-    bodyHtml += `<div class="desc">${esc(article.summary)}</div>`;
+  const descText = article.summary_cn || article.summary;
+  if (descText) {
+    bodyHtml += `<div class="desc">${esc(descText)}</div>`;
   }
 
   document.getElementById('contentBody').innerHTML = bodyHtml;
@@ -717,7 +725,7 @@ function esc(str) {
 }
 
 function extractVideoId(url) {
-  const patterns = [/v=([\w-]{11})/, /youtu\.be\/([\w-]{11})/, /embed\/([\w-]{11})/];
+  const patterns = [/v=([\w-]{11})/, /youtu\.be\/([\w-]{11})/, /embed\/([\w-]{11})/, /shorts\/([\w-]{11})/];
   for (const p of patterns) { const m = url.match(p); if (m) return m[1]; }
   return null;
 }

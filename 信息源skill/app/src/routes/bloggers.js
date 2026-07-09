@@ -61,6 +61,16 @@ router.post('/', (req, res) => {
 
   const blogger = db.get('SELECT * FROM bloggers WHERE id = last_insert_rowid()');
   res.status(201).json(blogger);
+
+  // Fetch avatar async (don't block response)
+  if (channel_type === 'youtube') {
+    import('../fetchers/youtube.js').then(async ({ extractAvatar }) => {
+      const avatarUrl = await extractAvatar(channel_id);
+      if (avatarUrl) {
+        db.run('UPDATE bloggers SET avatar_url = ? WHERE id = ?', [avatarUrl, blogger.id]);
+      }
+    });
+  }
 });
 
 // Delete blogger

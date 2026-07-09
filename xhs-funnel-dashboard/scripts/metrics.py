@@ -351,6 +351,30 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
             "daily": daily_list,
         }
 
+    # ===== 每日笔记明细（日维度进店趋势图表用） =====
+    daily_notes = {}
+    if star_daily is not None and len(star_daily):
+        sd = star_daily.copy()
+        sd["date"] = pd.to_numeric(sd["date"], errors="coerce").astype("Int64")
+        # join creator from master
+        cm = master[["creator"]].reset_index()
+        sd = pd.merge(sd, cm, on="note_id", how="left")
+        for date_val, g in sd.groupby("date"):
+            if pd.isna(date_val):
+                continue
+            notes_list = []
+            for _, r in g.iterrows():
+                c = r.get("creator")
+                notes_list.append({
+                    "note_id": str(r["note_id"]),
+                    "creator": str(c) if pd.notna(c) and c else "",
+                    "visit_uv": _f(r.get("visit_uv")),
+                    "cart_uv": _f(r.get("cart_uv")),
+                    "deal_uv": _f(r.get("deal_uv")),
+                })
+            notes_list.sort(key=lambda x: -(x["visit_uv"] or 0))
+            daily_notes[int(date_val)] = notes_list
+
     total_spend = float(master["spend"].sum())
     total_gmv = float(master["gmv"].sum())
     summary = {
@@ -360,4 +384,4 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
         "overall_roi": (total_gmv / total_spend) if total_spend else None,
         "invested_count": int(master["is_invested"].sum()),
     }
-    return master, waterlines, summary, cost, trends_all, cost_all
+    return master, waterlines, summary, cost, trends_all, cost_all, daily_notes

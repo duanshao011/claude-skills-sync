@@ -27,11 +27,38 @@
 
   <section class="source-strip" id="sourceStrip"></section>
 
-  <!-- 图表一 · 单篇趋势分析 -->
-  <section class="module" id="modTrend">
+  <!-- 图表一 · 日维度进店趋势 -->
+  <section class="module" id="modDailyOverview">
     <div class="module-head">
       <div class="module-title">
         <span class="mod-idx">图表一</span>
+        <span class="mod-name">日维度进店趋势</span>
+        <span class="mod-sub">堆叠柱状图 · 悬停看笔记明细 · 点击柱子展开全部</span>
+      </div>
+    </div>
+    <div class="daily-body">
+      <div class="trend-kpis" id="dailyOverviewKpis"></div>
+      <div class="trend-chart" id="dailyOverviewChart"></div>
+      <div class="daily-detail-panel" id="dailyDetailPanel" hidden>
+        <div class="daily-detail-head">
+          <span class="daily-detail-title" id="dailyDetailTitle"></span>
+          <button class="daily-detail-close" id="dailyDetailClose">折叠 ↑</button>
+        </div>
+        <div class="daily-detail-table-wrap">
+          <table class="funnel-table" id="dailyDetailTable">
+            <thead id="dailyDetailHead"></thead>
+            <tbody id="dailyDetailBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 图表二 · 单篇趋势分析 -->
+  <section class="module" id="modTrend">
+    <div class="module-head">
+      <div class="module-title">
+        <span class="mod-idx">图表二</span>
         <span class="mod-name">单篇趋势分析</span>
         <span class="mod-sub">选一篇笔记看其逐日进店 / 加购 / 成交 UV 走势</span>
       </div>
@@ -53,7 +80,7 @@
   <section class="module" id="modCost">
     <div class="module-head">
       <div class="module-title">
-        <span class="mod-idx">图表二</span>
+        <span class="mod-idx">图表三</span>
         <span class="mod-name">单篇成本分析</span>
         <span class="mod-sub">笔记粒度的投放消耗与成本效率 · 近7天进店成本趋势判断</span>
       </div>
@@ -68,7 +95,7 @@
     <div class="cost-body">
       <div class="cost-kpis" id="costKpis"></div>
       <div class="cost-chart" id="costChart"></div>
-      <div class="cost-note">柱状图=每日实付（左轴 ¥） · ⚫灰虚线=累计进店成本（右轴 ¥/UV） · hover 看详情</div>
+      <div class="cost-note">柱状图=每日实付（左轴 ¥） · 🔴红虚线=累计进店成本（右轴 ¥/UV） · hover 看详情</div>
     </div>
   </section>
 
@@ -76,7 +103,7 @@
   <section class="module" id="modTable">
     <div class="module-head">
       <div class="module-title">
-        <span class="mod-idx">图表三</span>
+        <span class="mod-idx">图表四</span>
         <span class="mod-name">全链路数据</span>
         <span class="mod-sub">四表打通的笔记级明细 · 字段名悬停看口径 / 点击排序 / 右上角自定义列</span>
       </div>

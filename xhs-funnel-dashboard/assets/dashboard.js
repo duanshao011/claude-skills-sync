@@ -572,7 +572,7 @@
           { name: "累计进店成本（全部）", type: "line", yAxisIndex: 1,
             data: daily.map(r => r[3]),
             smooth: true, symbol: "none",
-            lineStyle: { color: "#9CA3AF", width: 2, type: "dashed" },
+            lineStyle: { color: "#FF2442", width: 2, type: "dashed" },
           },
         ],
       });
@@ -680,7 +680,7 @@
           { name: "累计进店成本", type: "line", yAxisIndex: 1,
             data: daily.map(r => r[6]),
             smooth: true, symbol: "none",
-            lineStyle: { color: "#9CA3AF", width: 2, type: "dashed" },
+            lineStyle: { color: "#FF2442", width: 2, type: "dashed" },
           },
         ],
       });
@@ -1284,10 +1284,267 @@
     });
   }
 
+  // ---------- 图表一 · 日维度进店趋势 ----------
+  const DAILY_RED_PALETTE = [
+    "#FF2442","#FF3B57","#FF526B","#FF6980",
+    "#FF8194","#FF98A8","#FFAFBD","#FFC6D1",
+    "#FFD1D8","#FFE0E5"
+  ];
+  const DAILY_REST_COLOR = "#D1D5DB";
+  let dailyOverviewChart = null;
+  let DAILY_SELECTED_DATE = null;
+
+  function colorForRank(rank) {
+    return DAILY_RED_PALETTE[rank - 1] || DAILY_REST_COLOR;
+  }
+
+  function renderDailyOverview() {
+    var dailyNotes = DATA.daily_notes || {};
+    var trendsAll = DATA.trends_all || [];
+    if (!trendsAll.length) {
+      document.getElementById("dailyOverviewChart").innerHTML =
+        '<div style="padding:80px;text-align:center;color:#9CA3AF">星河表未加载，无法展示日维度数据</div>';
+      return;
+    }
+
+    // KPI cards
+    var totalVisit = 0, totalCart = 0, totalDeal = 0, totalNotes = new Set();
+    trendsAll.forEach(function(r){ totalVisit += r[1]||0; totalCart += r[2]||0; totalDeal += r[3]||0; });
+    Object.keys(dailyNotes).forEach(function(d){ (dailyNotes[d]||[]).forEach(function(n){ totalNotes.add(n.note_id); }); });
+    var kpis = [
+      { l: "总进店UV", v: fmt.int(totalVisit), u: "" },
+      { l: "总加购UV", v: fmt.int(totalCart), u: "" },
+      { l: "总成交UV", v: fmt.int(totalDeal), u: "" },
+      { l: "有数据笔记", v: fmt.int(totalNotes.size), u: "篇" },
+      { l: "", v: "📊 日维度聚合", u: "" },
+    ];
+    document.getElementById("dailyOverviewKpis").innerHTML = kpis.map(function(k){
+      return '<div class="trend-kpi"><div class="trend-kpi-label">'+k.l+'</div><div class="trend-kpi-val">'+k.v+'<span class="u"> '+k.u+'</span></div></div>';
+    }).join("");
+
+    // Build per-date stacked data
+    var dates = trendsAll.map(function(r){ return fmtDate(r[0]); });
+    var dateInts = trendsAll.map(function(r){ return r[0]; });
+    var nDates = dateInts.length;
+
+    // 11 series: rank1..rank10 + rest
+    var rankSeries = [];
+    var rankNotes = []; // rankNotes[dateIdx][rank-1] = note object or null
+    for (var ri = 0; ri < 10; ri++) {
+      rankSeries.push(new Array(nDates).fill(null));
+      rankNotes.push(new Array(nDates).fill(null));
+    }
+    var restSeries = new Array(nDates).fill(null);
+
+    dateInts.forEach(function(dInt, di){
+      var notes = (dailyNotes[dInt] || []).slice();
+      notes.sort(function(a,b){ return (b.visit_uv||0) - (a.visit_uv||0); });
+      for (var i = 0; i < Math.min(notes.length, 10); i++) {
+        rankSeries[i][di] = notes[i].visit_uv;
+        rankNotes[i][di] = notes[i];
+      }
+      if (notes.length > 10) {
+        var restSum = 0;
+        for (var j = 10; j < notes.length; j++) restSum += notes[j].visit_uv || 0;
+        restSeries[di] = restSum > 0 ? restSum : null;
+      }
+    });
+
+    // Build ECharts series (bar only, no lines)
+    var barSeries = [];
+    for (var ri = 0; ri < 10; ri++) {
+      barSeries.push({
+        name: "Top" + (ri + 1),
+        type: "bar", stack: "daily", yAxisIndex: 0,
+        data: rankSeries[ri],
+        color: colorForRank(ri + 1),
+        barMaxWidth: 44,
+        emphasis: { focus: "series" },
+        itemStyle: { borderWidth: 0 },
+      });
+    }
+    barSeries.push({
+      name: "其余笔记", type: "bar", stack: "daily", yAxisIndex: 0,
+      data: restSeries, color: DAILY_REST_COLOR,
+      barMaxWidth: 44,
+      emphasis: { focus: "series" },
+      itemStyle: { borderWidth: 0 },
+    });
+
+    // Daily total visit_uv as invisible bar for top label
+    var dailyTotalData = trendsAll.map(function(r){ return r[1]; });
+    barSeries.push({
+      name: "日总计（标签）", type: "bar", stack: "daily", yAxisIndex: 0,
+      data: new Array(nDates).fill(null),
+      label: {
+        show: true,
+        position: "top",
+        fontSize: 11,
+        fontWeight: 700,
+        color: "#FF2442",
+        formatter: function(p) {
+          var idx = p.dataIndex;
+          return idx >= 0 && idx < nDates ? fmt.int(dailyTotalData[idx]) : "";
+        },
+      },
+      color: "transparent",
+      barMaxWidth: 44,
+      silent: true,
+      tooltip: { show: false },
+      itemStyle: { borderWidth: 0 },
+    });
+
+    var chartDom = document.getElementById("dailyOverviewChart");
+    if (!dailyOverviewChart) dailyOverviewChart = echarts.init(chartDom);
+    dailyOverviewChart.off("click");
+
+    dailyOverviewChart.setOption({
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        backgroundColor: "#fff",
+        borderColor: C.border,
+        textStyle: { color: C.text, fontSize: 12 },
+        extraCssText: "max-width:380px;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,.10);z-index:200",
+        formatter: function(params) {
+          var dateIdx = params[0].dataIndex;
+          var dInt = dateInts[dateIdx];
+          var notes = (dailyNotes[dInt] || []).slice();
+          notes.sort(function(a,b){ return (b.visit_uv||0) - (a.visit_uv||0); });
+          var dateLabel = fmtDate(dInt);
+
+          var dSummary = trendsAll[dateIdx];
+          var tv = dSummary ? fmt.int(dSummary[1]) : "—";
+          var tc = dSummary ? fmt.int(dSummary[2]) : "—";
+          var td = dSummary ? fmt.int(dSummary[3]) : "—";
+
+          var html = '<div style="font-weight:700;margin-bottom:6px;font-size:12px">📅 ' + dateLabel + '</div>';
+          html += '<table style="border-spacing:0 1px;font-size:11px;width:100%">';
+          // summary row
+          var T = 'text-align:right;font-weight:600;width:58px';
+          html += '<tr><td style="width:16px"></td><td style="color:#6B7280;padding-bottom:4px">总计</td>';
+          html += '<td style="' + T + ';color:#FF2442">' + tv + '</td>';
+          html += '<td style="' + T + ';color:#F97316">' + tc + '</td>';
+          html += '<td style="' + T + ';color:#EAB308">' + td + '</td></tr>';
+
+          if (!notes.length) { html += '</table>'; return html; }
+
+          var showCount = notes.length <= 8 ? notes.length : 5;
+          html += '<tr><td colspan="5" style="padding:2px 0"><div style="border-top:1px dashed #E5E7EB"></div></td></tr>';
+          for (var i = 0; i < showCount; i++) {
+            var n = notes[i];
+            var rank = i + 1;
+            var clr = rank <= 10 ? colorForRank(rank) : DAILY_REST_COLOR;
+            var vv = fmt.int(n.visit_uv), cv = fmt.int(n.cart_uv), dv = fmt.int(n.deal_uv);
+            html += '<tr>';
+            html += '<td style="width:16px"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + clr + ';vertical-align:middle"></span></td>';
+            html += '<td style="font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px" title="' + escapeHtml(n.creator || '') + '">' + escapeHtml(n.creator || '—') + '</td>';
+            html += '<td style="' + T + ';color:#FF2442">' + vv + '</td>';
+            html += '<td style="' + T + ';color:#F97316">' + cv + '</td>';
+            html += '<td style="' + T + ';color:#EAB308">' + dv + '</td>';
+            html += '</tr>';
+          }
+          if (notes.length > showCount) {
+            var restTotal = 0, restCart = 0, restDeal = 0;
+            for (var j = showCount; j < notes.length; j++) {
+              restTotal += notes[j].visit_uv || 0;
+              restCart += notes[j].cart_uv || 0;
+              restDeal += notes[j].deal_uv || 0;
+            }
+            html += '<tr><td style="width:16px"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + DAILY_REST_COLOR + ';vertical-align:middle"></span></td>';
+            html += '<td style="color:#9CA3AF;font-size:10px">等 ' + (notes.length - showCount) + ' 篇</td>';
+            html += '<td style="text-align:right;color:#9CA3AF;font-size:10px">' + fmt.int(restTotal) + '</td>';
+            html += '<td style="text-align:right;color:#9CA3AF;font-size:10px">' + fmt.int(restCart) + '</td>';
+            html += '<td style="text-align:right;color:#9CA3AF;font-size:10px">' + fmt.int(restDeal) + '</td></tr>';
+          }
+          html += '</table>';
+          html += '<div style="margin-top:4px;font-size:10px;color:#9CA3AF;text-align:center">💡 点击柱子展开全部笔记明细</div>';
+          return html;
+        },
+      },
+      legend: { show: false },
+      grid: { top: 28, left: 56, right: 20, bottom: 40 },
+      xAxis: {
+        type: "category", data: dates,
+        axisLine: { lineStyle: { color: C.border } },
+        axisLabel: { fontSize: 11, color: C.muted, rotate: dates.length > 40 ? 45 : 0 },
+      },
+      yAxis: {
+        type: "value", name: "UV", position: "left",
+        axisLine: { show: false }, axisTick: { show: false },
+        splitLine: { lineStyle: { color: C.grid } },
+        axisLabel: { color: C.muted, fontSize: 11 }, nameTextStyle: { color: C.dim },
+      },
+      series: barSeries,
+    });
+
+    dailyOverviewChart.on("click", function(params) {
+      if (params.componentType === "series" && params.seriesType === "bar") {
+        var di = params.dataIndex;
+        if (di != null && di >= 0 && di < dateInts.length) {
+          DAILY_SELECTED_DATE = dateInts[di];
+          expandDailyNotes(DAILY_SELECTED_DATE);
+        }
+      }
+    });
+
+    // Close panel if previously open
+    document.getElementById("dailyDetailPanel").hidden = true;
+  }
+
+  function expandDailyNotes(dateInt) {
+    var dailyNotes = DATA.daily_notes || {};
+    var notes = (dailyNotes[dateInt] || []).slice();
+    notes.sort(function(a,b){ return (b.visit_uv||0) - (a.visit_uv||0); });
+    var panel = document.getElementById("dailyDetailPanel");
+    var title = document.getElementById("dailyDetailTitle");
+    var thead = document.getElementById("dailyDetailHead");
+    var tbody = document.getElementById("dailyDetailBody");
+
+    title.textContent = fmtDate(dateInt) + " 笔记明细（共 " + notes.length + " 篇）";
+    thead.innerHTML = '<tr><th style="width:40px">#</th><th>达人</th><th>笔记ID</th><th>进店UV</th><th>加购UV</th><th>成交UV</th></tr>';
+
+    tbody.innerHTML = notes.map(function(n, i){
+      var rank = i + 1;
+      var clr = rank <= 10 ? colorForRank(rank) : DAILY_REST_COLOR;
+      return '<tr class="daily-detail-row-note" data-nid="' + escapeHtml(n.note_id) + '">' +
+        '<td><span class="daily-rank-badge" style="background:' + clr + ';color:#fff">' + rank + '</span></td>' +
+        '<td>' + escapeHtml(n.creator || "—") + '</td>' +
+        '<td class="mono-id">' + escapeHtml(n.note_id) + '</td>' +
+        '<td>' + fmt.int(n.visit_uv) + '</td>' +
+        '<td>' + fmt.int(n.cart_uv) + '</td>' +
+        '<td>' + fmt.int(n.deal_uv) + '</td></tr>';
+    }).join("");
+
+    // Click note row → link to chart 2 (single note trend)
+    tbody.querySelectorAll(".daily-detail-row-note").forEach(function(tr){
+      tr.addEventListener("click", function(){
+        var nid = tr.dataset.nid;
+        STATE.currentNote = nid;
+        // Force chart 2 (single note trend) to select the note
+        if (trendCombo && trendCombo.selectById) trendCombo.selectById(nid);
+        if (costCombo && costCombo.selectById) costCombo.selectById(nid);
+        if (tableCombo && tableCombo.selectById) tableCombo.selectById(nid);
+        // Scroll to chart 2
+        var el = document.getElementById("modTrend");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  document.getElementById("dailyDetailClose").addEventListener("click", function(){
+    document.getElementById("dailyDetailPanel").hidden = true;
+  });
+
   // ---------- 全局响应 ----------
   window.addEventListener("resize", () => {
     if (trendChart) trendChart.resize();
     if (costChart) costChart.resize();
+    if (dailyOverviewChart) dailyOverviewChart.resize();
   });
 
   // ===== boot =====
@@ -1300,6 +1557,7 @@
   renderTable();
   bindModal();
   initTableCombo();
+  renderDailyOverview();
   renderTrendModule();
   renderCostModule();
 })();

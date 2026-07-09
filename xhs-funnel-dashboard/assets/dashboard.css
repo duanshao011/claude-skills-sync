@@ -528,6 +528,54 @@ body{
 .grp-color-star{--gc:#10B981}
 .grp-color-lx{--gc:#F59E0B}
 
+/* ---------- 图表一 · 日维度进店趋势 ---------- */
+.daily-body{padding:20px 24px 24px}
+.daily-detail-panel{
+  margin-top:16px;border:1px solid var(--brand-soft);border-radius:var(--radius-sm);
+  background:var(--panel);overflow:hidden;animation:dailyPanelIn .25s ease;
+}
+@keyframes dailyPanelIn{from{opacity:0;max-height:0}to{opacity:1;max-height:500px}}
+.daily-detail-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;background:var(--brand-soft);border-bottom:1px solid #FDE68A;
+}
+.daily-detail-title{font-size:13px;font-weight:700;color:var(--text)}
+.daily-detail-close{
+  background:none;border:1px solid var(--border);border-radius:4px;
+  font-size:12px;color:var(--muted);cursor:pointer;padding:4px 12px;
+  font-family:inherit;transition:all .15s;
+}
+.daily-detail-close:hover{border-color:var(--brand);color:var(--brand)}
+.daily-detail-table-wrap{max-height:360px;overflow-y:auto}
+.daily-detail-table-wrap .funnel-table{font-size:12px}
+.daily-detail-table-wrap th{position:sticky;top:0;z-index:2;background:#FEF3C7;white-space:nowrap}
+.daily-detail-table-wrap .funnel-table thead tr:not(.group-row) th{position:sticky;top:0;background:#FEF3C7}
+.daily-detail-table-wrap td{white-space:nowrap}
+.daily-detail-row-note{cursor:pointer;transition:background .12s}
+.daily-detail-row-note:hover{background:#FFF1F3}
+.daily-detail-row-note td:first-child{padding-left:18px}
+.daily-rank-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:3px;font-size:10px;font-weight:700;margin-right:6px;
+  vertical-align:middle;flex:none;
+}
+
+/* 图表一 tooltip 内明细样式 */
+.daily-tip-section{margin-top:10px;padding-top:8px;border-top:1px dashed var(--dim-2)}
+.daily-tip-section-title{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.daily-tip-note-row{
+  display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.8;
+  white-space:nowrap;
+}
+.daily-tip-color{
+  width:10px;height:10px;border-radius:2px;flex:none;margin-right:2px;
+}
+.daily-tip-creator{font-weight:600;color:var(--text);min-width:80px;max-width:100px;overflow:hidden;text-overflow:ellipsis}
+.daily-tip-noteid{font-family:"SF Mono",Consolas,monospace;font-size:11px;color:var(--dim);margin-right:6px}
+.daily-tip-metrics{color:var(--muted);font-size:11px}
+.daily-tip-metrics b{color:var(--text);font-weight:600}
+.daily-tip-rest{font-size:11px;color:var(--dim);font-style:italic;margin-top:4px;text-align:center}
+
 @media (max-width:1280px){
   .kpi-row{grid-template-columns:repeat(3,1fr)}
   .kpi:nth-child(4),.kpi:nth-child(5){grid-column:span 1}

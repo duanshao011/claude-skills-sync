@@ -48,8 +48,9 @@ export async function generateSummary(article) {
   }
 
   const response = await client.messages.create({
-    model: 'claude-haiku-4-5',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 1024,
+    thinking: { type: 'disabled' },
     messages: [{
       role: 'user',
       content: `请用中文为以下视频内容生成结构化摘要：
@@ -66,7 +67,8 @@ ${inputText}
     }],
   });
 
-  const summaryText = response.content[0].text;
+  const textBlock = response.content.find(b => b.type === 'text');
+  const summaryText = textBlock ? textBlock.text : '';
 
   return {
     summary: summaryText,
@@ -79,6 +81,7 @@ function extractVideoId(url) {
     /v=([\w-]{11})/,
     /youtu\.be\/([\w-]{11})/,
     /embed\/([\w-]{11})/,
+    /shorts\/([\w-]{11})/,
   ];
   for (const p of patterns) {
     const m = url.match(p);
