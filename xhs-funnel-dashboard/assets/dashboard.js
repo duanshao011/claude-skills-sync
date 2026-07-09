@@ -1,6 +1,5 @@
-/* 小红书全链路投放看板 · 前端渲染
-   图表一 · 单篇趋势分析 | 图表二 · 单篇成本分析 | 图表三 · 全链路数据
-*/
+﻿/* 灏忕孩涔﹀叏閾捐矾鎶曟斁鐪嬫澘 路 鍓嶇娓叉煋
+   鍥捐〃涓€ 路 鍗曠瘒瓒嬪娍鍒嗘瀽 | 鍥捐〃浜?路 鍗曠瘒鎴愭湰鍒嗘瀽 | 鍥捐〃涓?路 鍏ㄩ摼璺暟鎹?*/
 (function () {
   "use strict";
   const DATA = JSON.parse(document.getElementById("dashPayload").textContent);
@@ -9,18 +8,17 @@
     grid: "#F3F4F6", panel: "#FFFFFF", brand: "#FF2442",
   };
 
-  // ===== 联动 state：每个图表各自的联动开关，默认全开，独立控制 =====
+  // ===== 鑱斿姩 state锛氭瘡涓浘琛ㄥ悇鑷殑鑱斿姩寮€鍏筹紝榛樿鍏ㄥ紑锛岀嫭绔嬫帶鍒?=====
   const STATE = { links: { trend: true, cost: true, table: true }, currentNote: null };
 
-  /** 安全联动的核心：从 sourceModule 把选中笔记推送给所有参与联动的模块 */
+  /** 瀹夊叏鑱斿姩鐨勬牳蹇冿細浠?sourceModule 鎶婇€変腑绗旇鎺ㄩ€佺粰鎵€鏈夊弬涓庤仈鍔ㄧ殑妯″潡 */
   function onNoteChange(sourceModule, noteId) {
     console.log('[onNoteChange] source=' + sourceModule + ' noteId=' + noteId + ' links=' + JSON.stringify(STATE.links));
     STATE.currentNote = noteId;
-    // 源模块必须勾选联动才往外推
-    if (!STATE.links[sourceModule]) { console.log('[onNoteChange] 源模块未勾选联动，跳过'); return; }
+    // 婧愭ā鍧楀繀椤诲嬀閫夎仈鍔ㄦ墠寰€澶栨帹
+    if (!STATE.links[sourceModule]) { console.log('[onNoteChange] 婧愭ā鍧楁湭鍕鹃€夎仈鍔紝璺宠繃'); return; }
 
-    // 解析模块名 → 对应的 combo 引用（延迟求值，处理 boot 时序）
-    function _comboFor(mod) {
+    // 瑙ｆ瀽妯″潡鍚?鈫?瀵瑰簲鐨?combo 寮曠敤锛堝欢杩熸眰鍊硷紝澶勭悊 boot 鏃跺簭锛?    function _comboFor(mod) {
       if (mod === "trend") return trendCombo;
       if (mod === "cost") return costCombo;
       if (mod === "table") return tableCombo;
@@ -35,7 +33,7 @@
         if (extra) extra();
         return;
       }
-      // combo 还未初始化 → 延迟 300ms 重试一次（重新取值而非用闭包捕获的旧引用）
+      // combo 杩樻湭鍒濆鍖?鈫?寤惰繜 300ms 閲嶈瘯涓€娆★紙閲嶆柊鍙栧€艰€岄潪鐢ㄩ棴鍖呮崟鑾风殑鏃у紩鐢級
       var retryMod = mod, retryExtra = extra;
       setTimeout(function () {
         var c2 = _comboFor(retryMod);
@@ -53,17 +51,17 @@
     });
   }
 
-  // ---------- 格式化 ----------
+  // ---------- 鏍煎紡鍖?----------
   const fmt = {
-    int(v) { return v == null ? "—" : Number(v).toLocaleString("zh-CN", { maximumFractionDigits: 0 }); },
-    // 数字类：严格2位小数（用于 ROI/兑换比等非金额比值）
-    num(v, d = 2) { return v == null ? "—" : Number(v).toLocaleString("zh-CN", { minimumFractionDigits: d, maximumFractionDigits: d }); },
-    // 率类：*100 后严格2位小数带 %
-    ratio(v, d = 2) { return v == null ? "—" : (Number(v) * 100).toFixed(d) + "%"; },
-    // 金额类：严格2位小数（元）
-    money(v) { return v == null ? "—" : Number(v).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+    int(v) { return v == null ? "鈥? : Number(v).toLocaleString("zh-CN", { maximumFractionDigits: 0 }); },
+    // 鏁板瓧绫伙細涓ユ牸2浣嶅皬鏁帮紙鐢ㄤ簬 ROI/鍏戞崲姣旂瓑闈為噾棰濇瘮鍊硷級
+    num(v, d = 2) { return v == null ? "鈥? : Number(v).toLocaleString("zh-CN", { minimumFractionDigits: d, maximumFractionDigits: d }); },
+    // 鐜囩被锛?100 鍚庝弗鏍?浣嶅皬鏁板甫 %
+    ratio(v, d = 2) { return v == null ? "鈥? : (Number(v) * 100).toFixed(d) + "%"; },
+    // 閲戦绫伙細涓ユ牸2浣嶅皬鏁帮紙鍏冿級
+    money(v) { return v == null ? "鈥? : Number(v).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
     val(v, col) {
-      if (v == null || (typeof v === "number" && !isFinite(v))) return "—";
+      if (v == null || (typeof v === "number" && !isFinite(v))) return "鈥?;
       if (col.type === "int") return fmt.int(v);
       if (col.type === "ratio") return fmt.ratio(v);
       if (col.type === "num") return fmt.num(v);
@@ -75,19 +73,18 @@
     },
   };
 
-  // ===== 通用 Combobox =====
+  // ===== 閫氱敤 Combobox =====
   function makeCombo(cfg) {
     /* cfg: { inputId, listId, candidates, onSelect, placeholder, filterKeys, moduleKey }
-       moduleKey: "trend" | "cost" — 用于联动推送 */
+       moduleKey: "trend" | "cost" 鈥?鐢ㄤ簬鑱斿姩鎺ㄩ€?*/
     const self = { currentId: null, keyword: "", hi: 0, selectById: null, clear: null };
     const inp = document.getElementById(cfg.inputId);
     const list = document.getElementById(cfg.listId);
 
-    // × 清除按钮：插到 input 后面，绝对定位
-    const clearBtn = document.createElement("span");
+    // 脳 娓呴櫎鎸夐挳锛氭彃鍒?input 鍚庨潰锛岀粷瀵瑰畾浣?    const clearBtn = document.createElement("span");
     clearBtn.className = "combo-clear";
-    clearBtn.innerHTML = "×";
-    clearBtn.title = "一键清除";
+    clearBtn.innerHTML = "脳";
+    clearBtn.title = "涓€閿竻闄?;
     clearBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       self.clear();
@@ -118,7 +115,7 @@
     }
 
     function fmtPubDate(d) {
-      if (!d) return "—";
+      if (!d) return "鈥?;
       var s = String(d);
       if (s.length >= 10) s = s.slice(0, 10); // "2026-06-17"
       var parts = s.split("-");
@@ -129,12 +126,12 @@
     function renderList(keepScroll) {
       const items = getFiltered();
       if (!items.length) {
-        list.innerHTML = '<li class="combo-empty">无匹配笔记</li>';
+        list.innerHTML = '<li class="combo-empty">鏃犲尮閰嶇瑪璁?/li>';
         return;
       }
       list.innerHTML = items.map((n, i) =>
         `<li class="combo-item ${i === self.hi ? "hi" : ""}" data-id="${n.note_id}">
-          <span class="combo-line"><span class="pub-date">${fmtPubDate(n.pub_date)}</span><span class="sep">|</span><span class="id">${n.note_id}</span><span class="sep">|</span><span class="creator">${escapeHtml(n.creator || "—")}</span></span>
+          <span class="combo-line"><span class="pub-date">${fmtPubDate(n.pub_date)}</span><span class="sep">|</span><span class="id">${n.note_id}</span><span class="sep">|</span><span class="creator">${escapeHtml(n.creator || "鈥?)}</span></span>
         </li>`).join("");
       list.querySelectorAll(".combo-item").forEach(li => {
         li.addEventListener("click", () => { select(li.dataset.id); });
@@ -150,7 +147,7 @@
       const isOutside = !n;
       if (!n) n = DATA.notes.find(x => x.note_id === self.currentId);
       if (n) {
-        inp.value = `${fmtPubDate(n.pub_date)} | ${n.note_id} | ${n.creator || "—"}`;
+        inp.value = `${fmtPubDate(n.pub_date)} | ${n.note_id} | ${n.creator || "鈥?}`;
         inp.classList.add("has-value");
         if (isOutside) inp.classList.add("linked-outside");
         else inp.classList.remove("linked-outside");
@@ -178,8 +175,7 @@
 
     inp.addEventListener("focus", () => {
       self.hi = 0; renderList(); list.hidden = false;
-      // 选中全文方便复制或直接输入覆盖，不清空
-      inp.select();
+      // 閫変腑鍏ㄦ枃鏂逛究澶嶅埗鎴栫洿鎺ヨ緭鍏ヨ鐩栵紝涓嶆竻绌?      inp.select();
     });
     inp.addEventListener("input", () => {
       self.keyword = inp.value.trim().toLowerCase();
@@ -200,35 +196,34 @@
       }
     });
 
-    // 无候选人时禁用
-    if (!cfg.candidates || !cfg.candidates.length) {
-      inp.placeholder = cfg.emptyPlaceholder || "（无数据）";
+    // 鏃犲€欓€変汉鏃剁鐢?    if (!cfg.candidates || !cfg.candidates.length) {
+      inp.placeholder = cfg.emptyPlaceholder || "锛堟棤鏁版嵁锛?;
       inp.disabled = true;
     }
     return self;
   }
 
-  // ===== 顶部 meta =====
+  // ===== 椤堕儴 meta =====
   function renderMeta() {
     const m = DATA.meta;
-    document.getElementById("metaPeriod").textContent = "数据周期：" + (m.period || "—");
+    document.getElementById("metaPeriod").textContent = "鏁版嵁鍛ㄦ湡锛? + (m.period || "鈥?);
     document.getElementById("metaFlow").textContent =
-      "口径：" + (m.flow_type || "全部流量") + " / 归因 " + (m.attr_period || 30) + " 天";
-    document.getElementById("metaGen").textContent = "生成于 " + m.generated;
+      "鍙ｅ緞锛? + (m.flow_type || "鍏ㄩ儴娴侀噺") + " / 褰掑洜 " + (m.attr_period || 30) + " 澶?;
+    document.getElementById("metaGen").textContent = "鐢熸垚浜?" + m.generated;
     document.getElementById("footAlign").textContent = m.align_ok
-      ? "窗口对齐 ✓ 已对齐"
-      : (m.align_msg ? "⚠ " + m.align_msg : "—");
+      ? "绐楀彛瀵归綈 鉁?宸插榻?
+      : (m.align_msg ? "鈿?" + m.align_msg : "鈥?);
   }
 
-  // ===== KPI 顶部 =====
+  // ===== KPI 椤堕儴 =====
   function renderKpis() {
     const s = DATA.summary;
     const m = DATA.meta || {};
     const kpi = [
-      { l: "总投入（薯条实付）", v: fmt.money(s.total_spend), u: "元", sub: "仅推广完成·实际支付，不含达人合作费", range: m.chili_period, rangeTip: "薯条投放周期" },
-      { l: '总 GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单如果有多条笔记共同贡献，该订单GMV会被重复计入每条笔记，因此加总后的GMV高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.total_gmv), u: "元", sub: "⚠ 多内容归因存在重复计算", range: m.star_period, rangeTip: "星河数据周期", approx: true },
-      { l: '整体 ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复计算，该ROI为近似参考值，实际ROI会偏低。">≈ 参考值</span>', v: s.overall_roi == null ? "—" : Number(s.overall_roi).toFixed(2), u: "", sub: "口径：GMV / 薯条实付（GMV含归因重复）", approx: true },
-      { l: "笔记数",        v: fmt.int(s.note_count),    u: "篇", sub: "已投 " + fmt.int(s.invested_count) + " 篇" },
+      { l: "鎬绘姇鍏ワ紙钖潯瀹炰粯锛?, v: fmt.money(s.total_spend), u: "鍏?, sub: "浠呮帹骞垮畬鎴惵峰疄闄呮敮浠橈紝涓嶅惈杈句汉鍚堜綔璐?, range: m.chili_period, rangeTip: "钖潯鎶曟斁鍛ㄦ湡" },
+      { l: '鎬?GMV <span class="gmv-approx" data-tip="鏄熸渤鎸夊唴瀹圭淮搴︾粺璁MV锛屽悓涓€绗旇鍗曞鏋滄湁澶氭潯绗旇鍏卞悓璐＄尞锛岃璁㈠崟GMV浼氳閲嶅璁″叆姣忔潯绗旇锛屽洜姝ゅ姞鎬诲悗鐨凣MV楂樹簬瀹為檯鎴愪氦棰濄€?>鈮?鍙傝€冨€?/span>', v: fmt.money(s.total_gmv), u: "鍏?, sub: "鈿?澶氬唴瀹瑰綊鍥犲瓨鍦ㄩ噸澶嶈绠?, range: m.star_period, rangeTip: "鏄熸渤鏁版嵁鍛ㄦ湡", approx: true },
+      { l: '鏁翠綋 ROI <span class="gmv-approx" data-tip="ROI = GMV / 钖潯瀹炰粯锛屽洜鍒嗗瓙GMV鍚鍐呭褰掑洜閲嶅璁＄畻锛岃ROI涓鸿繎浼煎弬鑰冨€硷紝瀹為檯ROI浼氬亸浣庛€?>鈮?鍙傝€冨€?/span>', v: s.overall_roi == null ? "鈥? : Number(s.overall_roi).toFixed(2), u: "", sub: "鍙ｅ緞锛欸MV / 钖潯瀹炰粯锛圙MV鍚綊鍥犻噸澶嶏級", approx: true },
+      { l: "绗旇鏁?,        v: fmt.int(s.note_count),    u: "绡?, sub: "宸叉姇 " + fmt.int(s.invested_count) + " 绡? },
     ];
     document.getElementById("kpiRow").innerHTML = kpi.map(k =>
       `<div class="kpi${k.approx ? " kpi-approx" : ""}">
@@ -239,23 +234,23 @@
     ).join("");
   }
 
-  // ===== 数据源状态条 =====
+  // ===== 鏁版嵁婧愮姸鎬佹潯 =====
   function renderSources() {
     const src = DATA.meta.sources || {};
     const cards = ["pgy", "star", "chili", "lx"].map(k => {
       const s = src[k] || { name: k, loaded: false, rows: 0 };
       const ok = s.loaded;
       const path = (s.path || "").split(/[\\/]/).pop() || "";
-      let countTxt = ok ? fmt.int(s.rows) + " 条" : "未上传";
+      let countTxt = ok ? fmt.int(s.rows) + " 鏉? : "鏈笂浼?;
       if (ok && k === "lx" && s.hit != null) {
-        countTxt = fmt.int(s.rows) + " 条 · 命中本期 " + fmt.int(s.hit) + " 条";
+        countTxt = fmt.int(s.rows) + " 鏉?路 鍛戒腑鏈湡 " + fmt.int(s.hit) + " 鏉?;
       }
-      const period = ok && s.period ? `<span class="src-period">📅 ${s.period}</span>` : "";
+      const period = ok && s.period ? `<span class="src-period">馃搮 ${s.period}</span>` : "";
       return `<div class="src-card">
-        <div class="src-badge ${ok ? "ok" : "miss"}">${ok ? "✓" : "—"}</div>
+        <div class="src-badge ${ok ? "ok" : "miss"}">${ok ? "鉁? : "鈥?}</div>
         <div class="src-info">
           <div class="src-name">${s.name} <span class="src-count ${ok ? "" : "miss"}">${countTxt}</span></div>
-          <div class="src-desc">${ok ? path : (s.reason || "缺失该表，相关字段列将标注")}</div>
+          <div class="src-desc">${ok ? path : (s.reason || "缂哄け璇ヨ〃锛岀浉鍏冲瓧娈靛垪灏嗘爣娉?)}</div>
           ${period}
         </div>
       </div>`;
@@ -263,24 +258,23 @@
     document.getElementById("sourceStrip").innerHTML = cards;
   }
 
-  // ===== 图表一 · 单篇趋势分析 =====
+  // ===== 鍥捐〃涓€ 路 鍗曠瘒瓒嬪娍鍒嗘瀽 =====
   let trendChart = null, trendCombo = null;
 
   function fmtDate(d) {
-    if (d == null) return "—";
+    if (d == null) return "鈥?;
     const s = String(d);
     return s.length === 8 ? s.slice(4, 6) + "/" + s.slice(6, 8) : s;
   }
 
-  // 进店UV日均值虚线（type=average，UV类按整数显示）
-  function buildAvgMarkLine(color) {
+  // 杩涘簵UV鏃ュ潎鍊艰櫄绾匡紙type=average锛孶V绫绘寜鏁存暟鏄剧ず锛?  function buildAvgMarkLine(color) {
     return {
       symbol: "none",
       silent: true,
       precision: 0,
       lineStyle: { color: color, type: "dashed", width: 1.5, opacity: 0.75 },
       label: {
-        formatter: function(p){ return "日均 " + Math.round(p.value); },
+        formatter: function(p){ return "鏃ュ潎 " + Math.round(p.value); },
         position: "insideEndTop",
         fontSize: 11,
         fontWeight: 600,
@@ -289,7 +283,7 @@
         padding: [2, 4],
         borderRadius: 3,
       },
-      data: [{ type: "average", name: "进店UV日均" }],
+      data: [{ type: "average", name: "杩涘簵UV鏃ュ潎" }],
     };
   }
 
@@ -303,47 +297,46 @@
     trendCombo = makeCombo({
       inputId: "trendSearch", listId: "trendList", candidates,
       filterKeys: ["note_id", "creator"], moduleKey: "trend",
-      emptyPlaceholder: "（无趋势明细数据）",
+      emptyPlaceholder: "锛堟棤瓒嬪娍鏄庣粏鏁版嵁锛?,
       onSelect: function (noteId) { renderTrend(noteId); },
       onClear: function () { renderTrend(null); },
     });
 
-    // 默认：无选中 → 展示全部笔记汇总趋势
-    if (trendsAll.length || candidates.length) {
+    // 榛樿锛氭棤閫変腑 鈫?灞曠ず鍏ㄩ儴绗旇姹囨€昏秼鍔?    if (trendsAll.length || candidates.length) {
       renderTrend(null);
     } else {
       document.getElementById("trendChart").innerHTML =
-        '<div style="padding:80px;text-align:center;color:#9CA3AF">星河表未加载或无按日明细，无法绘制趋势</div>';
+        '<div style="padding:80px;text-align:center;color:#9CA3AF">鏄熸渤琛ㄦ湭鍔犺浇鎴栨棤鎸夋棩鏄庣粏锛屾棤娉曠粯鍒惰秼鍔?/div>';
     }
   }
 
-  /** renderTrend(null) = 全部笔记汇总；renderTrend(noteId) = 单篇 */
+  /** renderTrend(null) = 鍏ㄩ儴绗旇姹囨€伙紱renderTrend(noteId) = 鍗曠瘒 */
   function renderTrend(noteId) {
     if (trendCombo) trendCombo.currentId = noteId || null;
     const trendsAll = DATA.trends_all || [];
 
     if (!noteId) {
-      // ===== 全部笔记汇总模式 =====
+      // ===== 鍏ㄩ儴绗旇姹囨€绘ā寮?=====
       const rows = trendsAll;
       if (!rows.length) {
         document.getElementById("trendChart").innerHTML =
-          '<div style="padding:80px;text-align:center;color:#9CA3AF">暂无汇总趋势数据</div>';
+          '<div style="padding:80px;text-align:center;color:#9CA3AF">鏆傛棤姹囨€昏秼鍔挎暟鎹?/div>';
         return;
       }
       const period = rows.length
         ? fmtDate(rows[0][0]) + " ~ " + fmtDate(rows[rows.length - 1][0])
-        : "—";
+        : "鈥?;
       const totalVisit = rows.reduce((s, r) => s + (r[1] || 0), 0);
       const totalCart = rows.reduce((s, r) => s + (r[2] || 0), 0);
       const totalDeal = rows.reduce((s, r) => s + (r[3] || 0), 0);
       const totalGmv = rows.reduce((s, r) => s + (r[4] || 0), 0);
       const kpis = [
-        { l: "总进店UV（全部）", v: fmt.int(totalVisit), u: "" },
-        { l: "总加购UV（全部）", v: fmt.int(totalCart), u: "" },
-        { l: "总成交UV（全部）", v: fmt.int(totalDeal), u: "" },
-        { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(totalGmv), u: "元", approx: true },
-        { l: "笔记数", v: fmt.int(DATA.notes.length), u: "篇" },
-        { l: "", v: "📊 全部笔记汇总", u: "" },
+        { l: "鎬昏繘搴桿V锛堝叏閮級", v: fmt.int(totalVisit), u: "" },
+        { l: "鎬诲姞璐璘V锛堝叏閮級", v: fmt.int(totalCart), u: "" },
+        { l: "鎬绘垚浜V锛堝叏閮級", v: fmt.int(totalDeal), u: "" },
+        { l: '鎬籊MV锛堝叏閮級<span class="gmv-approx" data-tip="鏄熸渤鎸夊唴瀹圭淮搴︾粺璁MV锛屽悓涓€绗旇鍗曡澶氭潯绗旇鍏卞悓璐＄尞鏃朵細閲嶅璁″叆锛屽姞鎬诲悗楂樹簬瀹為檯鎴愪氦棰濄€?>鈮?鍙傝€冨€?/span>', v: fmt.money(totalGmv), u: "鍏?, approx: true },
+        { l: "绗旇鏁?, v: fmt.int(DATA.notes.length), u: "绡? },
+        { l: "", v: "馃搳 鍏ㄩ儴绗旇姹囨€?, u: "" },
       ];
       document.getElementById("trendKpis").innerHTML = kpis.map(k =>
         `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
@@ -355,9 +348,9 @@
       if (!trendChart) trendChart = echarts.init(document.getElementById("trendChart"));
       const dates = rows.map(r => fmtDate(r[0]));
       const series = [
-        { name: "进店UV（全部）", data: rows.map(r => r[1]), col: "#FF2442", avg: true },
-        { name: "加购UV（全部）", data: rows.map(r => r[2]), col: "#F97316" },
-        { name: "成交UV（全部）", data: rows.map(r => r[3]), col: "#EAB308" },
+        { name: "杩涘簵UV锛堝叏閮級", data: rows.map(r => r[1]), col: "#FF2442", avg: true },
+        { name: "鍔犺喘UV锛堝叏閮級", data: rows.map(r => r[2]), col: "#F97316" },
+        { name: "鎴愪氦UV锛堝叏閮級", data: rows.map(r => r[3]), col: "#EAB308" },
       ];
       trendChart.setOption({
         backgroundColor: "transparent",
@@ -386,15 +379,15 @@
       return;
     }
 
-    // ===== 单篇笔记模式 =====
+    // ===== 鍗曠瘒绗旇妯″紡 =====
     const rows = (DATA.trends || {})[noteId] || [];
     const note = DATA.notes.find(n => n.note_id === noteId) || {};
 
     const period = rows.length
       ? fmtDate(rows[0][0]) + " ~ " + fmtDate(rows[rows.length - 1][0])
-      : "—";
+      : "鈥?;
 
-    // 计算复合指标
+    // 璁＄畻澶嶅悎鎸囨爣
     const readUv = note.read_uv_content || note.read_uv_funnel || 0;
     const visitUv = note.visit_uv || 0;
     const cartUv = note.cart_uv || 0;
@@ -406,12 +399,12 @@
     const uvValue = visitUv > 0 ? (gmv / visitUv) : null;
 
     const kpis = [
-      { l: "总阅读UV", v: fmt.int(readUv), rate: null, tip: "", u: "" },
-      { l: "总进店UV", v: fmt.int(visitUv), rate: visitRate != null ? visitRate.toFixed(2) + "%" : null, tip: "进店率 = 进店UV ÷ 阅读UV", u: "" },
-      { l: "总加购UV", v: fmt.int(cartUv), rate: cartRate != null ? cartRate.toFixed(2) + "%" : null, tip: "进店加购率 = 加购UV ÷ 进店UV", u: "" },
-      { l: "总成交UV", v: fmt.int(dealUv), rate: dealRate != null ? dealRate.toFixed(2) + "%" : null, tip: "进店转化率 = 成交UV ÷ 进店UV", u: "" },
-      { l: '总GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(gmv), rate: null, tip: "⚠ 多内容归因下含重复计算，非精确值", u: "元", approx: true },
-      { l: 'UV价值 <span class="gmv-approx" data-tip="UV价值 = GMV ÷ 进店UV，因GMV含多内容归因重复，该值为近似参考。">≈ 参考值</span>', v: uvValue != null ? "¥" + uvValue.toFixed(2) : "—", rate: null, tip: "UV价值 = 总GMV ÷ 进店UV（GMV含归因重复）", u: "", approx: true },
+      { l: "鎬婚槄璇籙V", v: fmt.int(readUv), rate: null, tip: "", u: "" },
+      { l: "鎬昏繘搴桿V", v: fmt.int(visitUv), rate: visitRate != null ? visitRate.toFixed(2) + "%" : null, tip: "杩涘簵鐜?= 杩涘簵UV 梅 闃呰UV", u: "" },
+      { l: "鎬诲姞璐璘V", v: fmt.int(cartUv), rate: cartRate != null ? cartRate.toFixed(2) + "%" : null, tip: "杩涘簵鍔犺喘鐜?= 鍔犺喘UV 梅 杩涘簵UV", u: "" },
+      { l: "鎬绘垚浜V", v: fmt.int(dealUv), rate: dealRate != null ? dealRate.toFixed(2) + "%" : null, tip: "杩涘簵杞寲鐜?= 鎴愪氦UV 梅 杩涘簵UV", u: "" },
+      { l: '鎬籊MV <span class="gmv-approx" data-tip="鏄熸渤鎸夊唴瀹圭淮搴︾粺璁MV锛屽悓涓€绗旇鍗曡澶氭潯绗旇鍏卞悓璐＄尞鏃朵細閲嶅璁″叆锛屾暟鍊奸珮浜庡疄闄呮垚浜ら銆?>鈮?鍙傝€冨€?/span>', v: fmt.money(gmv), rate: null, tip: "鈿?澶氬唴瀹瑰綊鍥犱笅鍚噸澶嶈绠楋紝闈炵簿纭€?, u: "鍏?, approx: true },
+      { l: 'UV浠峰€?<span class="gmv-approx" data-tip="UV浠峰€?= GMV 梅 杩涘簵UV锛屽洜GMV鍚鍐呭褰掑洜閲嶅锛岃鍊间负杩戜技鍙傝€冦€?>鈮?鍙傝€冨€?/span>', v: uvValue != null ? "楼" + uvValue.toFixed(2) : "鈥?, rate: null, tip: "UV浠峰€?= 鎬籊MV 梅 杩涘簵UV锛圙MV鍚綊鍥犻噸澶嶏級", u: "", approx: true },
     ];
     document.getElementById("trendKpis").innerHTML = kpis.map(k =>
       `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
@@ -420,19 +413,32 @@
       </div>`
     ).join("");
 
-    // 笔记发布日期（x 轴红字标注，与图表二一致）
+    // 绗旇鍙戝竷鏃ユ湡锛坸 杞寸孩瀛楁爣娉紝涓庡浘琛ㄤ簩涓€鑷达級
     const pubDateRaw = note.pub_date ? note.pub_date : null;
     const pubDateStr = pubDateRaw ? fmtDate(pubDateRaw.replace(/-/g, "")) : null;
 
     if (!trendChart) trendChart = echarts.init(document.getElementById("trendChart"));
     const dates = rows.map(r => fmtDate(r[0]));
     const series = [
-      { name: "进店UV", data: rows.map(r => r[1]), col: "#FF2442", avg: true },
-      { name: "加购UV", data: rows.map(r => r[2]), col: "#F97316" },
-      { name: "成交UV", data: rows.map(r => r[3]), col: "#EAB308" },
+      { name: "杩涘簵UV", data: rows.map(r => r[1]), col: "#FF2442", avg: true },
+      { name: "鍔犺喘UV", data: rows.map(r => r[2]), col: "#F97316" },
+      { name: "鎴愪氦UV", data: rows.map(r => r[3]), col: "#EAB308" },
     ];
     trendChart.setOption({
       backgroundColor: "transparent",
+      graphic: [
+        {
+          type: "text",
+          left: 56,
+          top: 5,
+          style: {
+            text: "进店汇总  " + fmt.int(totalVisit),
+            fill: "#FF2442",
+            font: "bold 13px system-ui, -apple-system, sans-serif",
+          },
+          z: 100,
+        },
+      ],
       tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
       legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
       grid: { top: 40, left: 60, right: 30, bottom: 40 },
@@ -463,7 +469,7 @@
     });
   }
 
-  // ===== 图表二 · 单篇成本分析 =====
+  // ===== 鍥捐〃浜?路 鍗曠瘒鎴愭湰鍒嗘瀽 =====
   let costChart = null, costCombo = null;
 
   function renderCostModule() {
@@ -476,45 +482,44 @@
     costCombo = makeCombo({
       inputId: "costSearch", listId: "costList", candidates,
       filterKeys: ["note_id", "creator"], moduleKey: "cost",
-      emptyPlaceholder: "（无已投放笔记）",
+      emptyPlaceholder: "锛堟棤宸叉姇鏀剧瑪璁帮級",
       onSelect: function (noteId) { renderCost(noteId); },
       onClear: function () { renderCost(null); },
     });
 
-    // 默认：无选中 → 展示全部笔记汇总消耗
-    if (costAll || candidates.length) {
+    // 榛樿锛氭棤閫変腑 鈫?灞曠ず鍏ㄩ儴绗旇姹囨€绘秷鑰?    if (costAll || candidates.length) {
       renderCost(null);
     } else {
       document.getElementById("costChart").innerHTML =
-        '<div style="padding:80px;text-align:center;color:#9CA3AF">薯条表未加载或无消耗数据，无法展示成本分析</div>';
+        '<div style="padding:80px;text-align:center;color:#9CA3AF">钖潯琛ㄦ湭鍔犺浇鎴栨棤娑堣€楁暟鎹紝鏃犳硶灞曠ず鎴愭湰鍒嗘瀽</div>';
     }
   }
 
-  /** renderCost(null) = 全部笔记汇总；renderCost(noteId) = 单篇 */
+  /** renderCost(null) = 鍏ㄩ儴绗旇姹囨€伙紱renderCost(noteId) = 鍗曠瘒 */
   function renderCost(noteId) {
     console.log('[renderCost] called with noteId:', JSON.stringify(noteId), 'type:', typeof noteId);
     if (costCombo) costCombo.currentId = noteId || null;
     const costData = DATA.cost || {};
 
     if (!noteId) {
-      console.log('[renderCost] → 汇总模式（!noteId）');
-      // ===== 全部笔记汇总模式 =====
+      console.log('[renderCost] 鈫?姹囨€绘ā寮忥紙!noteId锛?);
+      // ===== 鍏ㄩ儴绗旇姹囨€绘ā寮?=====
       const ca = DATA.cost_all;
       if (!ca || !ca.daily || !ca.daily.length) {
         document.getElementById("costChart").innerHTML =
-          '<div style="padding:80px;text-align:center;color:#9CA3AF">暂无消耗汇总数据</div>';
+          '<div style="padding:80px;text-align:center;color:#9CA3AF">鏆傛棤娑堣€楁眹鎬绘暟鎹?/div>';
         return;
       }
       const s = ca.summary || {};
       const daily = ca.daily || [];
       const kpiItems = [
-        { l: "总消耗（全部）", v: fmt.money(s.spend), u: "元" },
-        { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
-        { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "" },
-        { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "" },
-        { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "" },
-        { l: "笔记数", v: fmt.int(s.note_count), u: "篇" },
-        { l: "", v: "📊 全部笔记汇总", u: "" },
+        { l: "鎬绘秷鑰楋紙鍏ㄩ儴锛?, v: fmt.money(s.spend), u: "鍏? },
+        { l: '鎬籊MV锛堝叏閮級<span class="gmv-approx" data-tip="鏄熸渤鎸夊唴瀹圭淮搴︾粺璁MV锛屽悓涓€绗旇鍗曡澶氭潯绗旇鍏卞悓璐＄尞鏃朵細閲嶅璁″叆锛屽姞鎬诲悗楂樹簬瀹為檯鎴愪氦棰濄€?>鈮?鍙傝€冨€?/span>', v: fmt.money(s.gmv), u: "鍏?, approx: true },
+        { l: "鎬昏繘搴桿V锛堝叏閮級", v: fmt.int(s.visit_uv), u: "" },
+        { l: "鎬诲姞璐璘V锛堝叏閮級", v: fmt.int(s.cart_uv), u: "" },
+        { l: "鎬绘垚浜V锛堝叏閮級", v: fmt.int(s.deal_uv), u: "" },
+        { l: "绗旇鏁?, v: fmt.int(s.note_count), u: "绡? },
+        { l: "", v: "馃搳 鍏ㄩ儴绗旇姹囨€?, u: "" },
       ];
       document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
         `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
@@ -534,12 +539,12 @@
           formatter: function (params) {
             const di = params[0].dataIndex;
             const row = daily[di];
-            const sp = row[1] != null ? "¥" + Number(row[1]).toFixed(2) : "—";
+            const sp = row[1] != null ? "楼" + Number(row[1]).toFixed(2) : "鈥?;
             const tdL2 = "color:#6B7280;text-align:right;padding-right:10px;white-space:nowrap";
             const tdR2 = "font-weight:600;text-align:right";
             return `<div style="font-weight:700;margin-bottom:4px">${fmtDate(row[0])}</div>
               <table style="border-spacing:0 2px;font-size:13px;line-height:1.6">
-              <tr><td style="${tdL2}">当日总消耗</td><td style="${tdR2}">${sp}</td></tr>
+              <tr><td style="${tdL2}">褰撴棩鎬绘秷鑰?/td><td style="${tdR2}">${sp}</td></tr>
               </table>`;
           },
         },
@@ -550,26 +555,26 @@
           axisLabel: { fontSize: 11, fontWeight: 600, rotate: dates.length > 40 ? 45 : 0 },
         },
         yAxis: [
-          { type: "value", name: "元", position: "left",
+          { type: "value", name: "鍏?, position: "left",
             axisLine: { show: false }, axisTick: { show: false },
             splitLine: { lineStyle: { color: C.grid } },
             axisLabel: { color: "#FF2442", fontSize: 11, fontWeight: 600, formatter: function(v){ return v>=1000 ? (v/1000).toFixed(1)+"k" : Math.round(v); } }, nameTextStyle: { color: "#FF2442", fontWeight: 600 },
           },
-          { type: "value", name: "元/UV", position: "right",
+          { type: "value", name: "鍏?UV", position: "right",
             axisLine: { show: false }, axisTick: { show: false },
             splitLine: { show: false },
-            axisLabel: { color: "#F97316", fontSize: 11, fontWeight: 600, formatter: function(v){ return "¥"+v.toFixed(1); } },
+            axisLabel: { color: "#F97316", fontSize: 11, fontWeight: 600, formatter: function(v){ return "楼"+v.toFixed(1); } },
             nameTextStyle: { color: "#F97316", fontWeight: 600 },
           },
         ],
         series: [
-          { name: "当日总实付", type: "bar", yAxisIndex: 0, data: spendVals,
+          { name: "褰撴棩鎬诲疄浠?, type: "bar", yAxisIndex: 0, data: spendVals,
             itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: "#FF4D6A" }, { offset: 1, color: "#FF2442" }
             ]) },
             barMaxWidth: 30,
           },
-          { name: "累计进店成本（全部）", type: "line", yAxisIndex: 1,
+          { name: "绱杩涘簵鎴愭湰锛堝叏閮級", type: "line", yAxisIndex: 1,
             data: daily.map(r => r[3]),
             smooth: true, symbol: "none",
             lineStyle: { color: "#FF2442", width: 2, type: "dashed" },
@@ -579,28 +584,26 @@
       return;
     }
 
-    // ===== 单篇笔记模式 =====
+    // ===== 鍗曠瘒绗旇妯″紡 =====
     const entry = costData[noteId];
     if (!entry) {
       if (costChart) { try { costChart.dispose(); } catch (ignore) {} costChart = null; }
       document.getElementById("costChart").innerHTML =
-        '<div style="padding:80px;text-align:center;color:#9CA3AF">该笔记无成本数据</div>';
-      // 清空指标卡，避免残留汇总数据
-      document.getElementById("costKpis").innerHTML = "";
+        '<div style="padding:80px;text-align:center;color:#9CA3AF">璇ョ瑪璁版棤鎴愭湰鏁版嵁</div>';
+      // 娓呯┖鎸囨爣鍗★紝閬垮厤娈嬬暀姹囨€绘暟鎹?      document.getElementById("costKpis").innerHTML = "";
       return;
     }
     const s = entry.summary || {};
     const daily = entry.daily || [];
 
-    // 7 指标卡
-    const kpiItems = [
-      { l: "累计消耗", v: fmt.money(s.spend), u: "元" },
-      { l: '累计GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
-      { l: 'ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复，该值为近似参考，实际ROI会偏低。">≈ 参考值</span>', v: s.roi == null ? "—" : Number(s.roi).toFixed(2), u: "", approx: true },
-      { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "" },
-      { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "" },
-      { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "" },
-      { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(2), u: "" },
+    // 7 鎸囨爣鍗?    const kpiItems = [
+      { l: "绱娑堣€?, v: fmt.money(s.spend), u: "鍏? },
+      { l: '绱GMV <span class="gmv-approx" data-tip="鏄熸渤鎸夊唴瀹圭淮搴︾粺璁MV锛屽悓涓€绗旇鍗曡澶氭潯绗旇鍏卞悓璐＄尞鏃朵細閲嶅璁″叆锛屾暟鍊奸珮浜庡疄闄呮垚浜ら銆?>鈮?鍙傝€冨€?/span>', v: fmt.money(s.gmv), u: "鍏?, approx: true },
+      { l: 'ROI <span class="gmv-approx" data-tip="ROI = GMV / 钖潯瀹炰粯锛屽洜鍒嗗瓙GMV鍚鍐呭褰掑洜閲嶅锛岃鍊间负杩戜技鍙傝€冿紝瀹為檯ROI浼氬亸浣庛€?>鈮?鍙傝€冨€?/span>', v: s.roi == null ? "鈥? : Number(s.roi).toFixed(2), u: "", approx: true },
+      { l: "杩涘簵UV鎴愭湰", v: s.visit_uv_cost == null ? "鈥? : "楼" + Number(s.visit_uv_cost).toFixed(2), u: "" },
+      { l: "鍔犺喘鎴愭湰",  v: s.cart_cost == null ? "鈥? : "楼" + Number(s.cart_cost).toFixed(2), u: "" },
+      { l: "鎴愪氦鎴愭湰",  v: s.deal_cost == null ? "鈥? : "楼" + Number(s.deal_cost).toFixed(2), u: "" },
+      { l: "鍘嗗彶鏈€楂樺崟鏃?, v: s.max_daily == null ? "鈥? : "楼" + Number(s.max_daily).toFixed(2), u: "" },
     ];
     document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
       `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
@@ -609,13 +612,11 @@
       </div>`
     ).join("");
 
-    // 笔记发布日期（用于 x 轴标注，对齐 fmtDate 格式 MM/DD）
-    const noteInfo = DATA.notes.find(n => n.note_id === noteId);
+    // 绗旇鍙戝竷鏃ユ湡锛堢敤浜?x 杞存爣娉紝瀵归綈 fmtDate 鏍煎紡 MM/DD锛?    const noteInfo = DATA.notes.find(n => n.note_id === noteId);
     const pubDateRaw = noteInfo && noteInfo.pub_date ? noteInfo.pub_date : null;
     const pubDateStr = pubDateRaw ? fmtDate(pubDateRaw.replace(/-/g, "")) : null;
 
-    // ECharts 柱状图（加固：try-catch + 自动恢复）
-    try {
+    // ECharts 鏌辩姸鍥撅紙鍔犲浐锛歵ry-catch + 鑷姩鎭㈠锛?    try {
       if (!costChart) costChart = echarts.init(document.getElementById("costChart"));
       const dates = daily.map(r => fmtDate(r[0]));
       const spendVals = daily.map(r => r[1]);
@@ -627,21 +628,21 @@
           formatter: function (params) {
             const di = params[0].dataIndex;
             const row = daily[di];
-            const sp = row[1] != null ? "¥" + Number(row[1]).toFixed(2) : "—";
-            let vc = "—";
+            const sp = row[1] != null ? "楼" + Number(row[1]).toFixed(2) : "鈥?;
+            let vc = "鈥?;
             const visit = row[2], spend = row[1];
-            if (spend && spend > 0 && visit && visit > 0) vc = "¥" + (spend / visit).toFixed(2);
+            if (spend && spend > 0 && visit && visit > 0) vc = "楼" + (spend / visit).toFixed(2);
             const dStr = fmtDate(row[0]);
             const isPub = pubDateStr && dStr === pubDateStr;
-            const cumCost = row[6] != null ? "¥" + Number(row[6]).toFixed(2) : "—";
+            const cumCost = row[6] != null ? "楼" + Number(row[6]).toFixed(2) : "鈥?;
             const tdL = "color:#6B7280;text-align:right;padding-right:10px;white-space:nowrap";
             const tdR = "font-weight:600;text-align:right;font-variant-numeric:tabular-nums";
-            const pubTag = isPub ? ' <span style="color:#FF2442;font-size:11px">笔记发布日期</span>' : "";
+            const pubTag = isPub ? ' <span style="color:#FF2442;font-size:11px">绗旇鍙戝竷鏃ユ湡</span>' : "";
             return `<div style="font-weight:700;margin-bottom:6px">${dStr}${pubTag}</div>
               <table style="border-spacing:0 2px;font-size:13px;line-height:1.6">
-              <tr><td style="${tdL}">当日消耗</td><td style="${tdR}">${sp}</td></tr>
-              <tr><td style="${tdL}">当日进店成本</td><td style="${tdR}">${vc}</td></tr>
-              <tr><td style="${tdL}">累计进店成本</td><td style="${tdR}">${cumCost}</td></tr>
+              <tr><td style="${tdL}">褰撴棩娑堣€?/td><td style="${tdR}">${sp}</td></tr>
+              <tr><td style="${tdL}">褰撴棩杩涘簵鎴愭湰</td><td style="${tdR}">${vc}</td></tr>
+              <tr><td style="${tdL}">绱杩涘簵鎴愭湰</td><td style="${tdR}">${cumCost}</td></tr>
               </table>`;
           },
         },
@@ -658,26 +659,26 @@
           },
         },
         yAxis: [
-          { type: "value", name: "元", position: "left",
+          { type: "value", name: "鍏?, position: "left",
             axisLine: { show: false }, axisTick: { show: false },
             splitLine: { lineStyle: { color: C.grid } },
             axisLabel: { color: "#FF2442", fontSize: 11, fontWeight: 600, formatter: function(v){ return v>=1000 ? (v/1000).toFixed(1)+"k" : v.toFixed(2); } }, nameTextStyle: { color: "#FF2442", fontWeight: 600 },
           },
-          { type: "value", name: "元/UV", position: "right",
+          { type: "value", name: "鍏?UV", position: "right",
             axisLine: { show: false }, axisTick: { show: false },
             splitLine: { show: false },
-            axisLabel: { color: "#F97316", fontSize: 11, fontWeight: 600, formatter: function(v){ return "¥"+v.toFixed(2); } },
+            axisLabel: { color: "#F97316", fontSize: 11, fontWeight: 600, formatter: function(v){ return "楼"+v.toFixed(2); } },
             nameTextStyle: { color: "#F97316", fontWeight: 600 },
           },
         ],
         series: [
-          { name: "当日实付", type: "bar", yAxisIndex: 0, data: spendVals,
+          { name: "褰撴棩瀹炰粯", type: "bar", yAxisIndex: 0, data: spendVals,
             itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
               { offset: 0, color: "#FF4D6A" }, { offset: 1, color: "#FF2442" }
             ]) },
             barMaxWidth: 30,
           },
-          { name: "累计进店成本", type: "line", yAxisIndex: 1,
+          { name: "绱杩涘簵鎴愭湰", type: "line", yAxisIndex: 1,
             data: daily.map(r => r[6]),
             smooth: true, symbol: "none",
             lineStyle: { color: "#FF2442", width: 2, type: "dashed" },
@@ -688,11 +689,11 @@
       console.error("costChart render error:", e);
       if (costChart) { try { costChart.dispose(); } catch (ignore) {} costChart = null; }
       document.getElementById("costChart").innerHTML =
-        '<div style="padding:80px;text-align:center;color:#DC2626">图表渲染失败：' + (e.message || e) + '<br><small>请刷新页面后重试</small></div>';
+        '<div style="padding:80px;text-align:center;color:#DC2626">鍥捐〃娓叉煋澶辫触锛? + (e.message || e) + '<br><small>璇峰埛鏂伴〉闈㈠悗閲嶈瘯</small></div>';
     }
   }
 
-  // ===== 图表三 · 全链路表格 =====
+  // ===== 鍥捐〃涓?路 鍏ㄩ摼璺〃鏍?=====
   const TABLE = {
     allCols: [],
     byKey: {},
@@ -704,10 +705,10 @@
     keyword: "",
     page: 1,
     pageSize: 30,
-    // 查询面板筛选状态（图表三独立筛选，不参与联动）
+    // 鏌ヨ闈㈡澘绛涢€夌姸鎬侊紙鍥捐〃涓夌嫭绔嬬瓫閫夛紝涓嶅弬涓庤仈鍔級
     filter: {
-      creator: "",       // 达人昵称（模糊包含匹配）
-      noteId: "",        // 笔记ID（模糊包含匹配）
+      creator: "",       // 杈句汉鏄电О锛堟ā绯婂寘鍚尮閰嶏級
+      noteId: "",        // 绗旇ID锛堟ā绯婂寘鍚尮閰嶏級
       pubDateStart: "",  // YYYY-MM-DD
       pubDateEnd: "",    // YYYY-MM-DD
     },
@@ -718,8 +719,8 @@
       for (const c of g.columns) {
         c.group = g.key;
         c.groupLabel = g.label;
-        // 派生字段标记：source=="系统计算" → derived
-        c.derived = (c.source === "系统计算");
+        // 娲剧敓瀛楁鏍囪锛歴ource=="绯荤粺璁＄畻" 鈫?derived
+        c.derived = (c.source === "绯荤粺璁＄畻");
         TABLE.allCols.push(c);
         TABLE.byKey[c.key] = c;
       }
@@ -751,24 +752,23 @@
     if (col.key === "note_id" || col.key === "creator") return null;
     const src = DATA.meta.sources || {};
     const loaded = {
-      "蒲公英": !!(src.pgy && src.pgy.loaded),
-      "星河": !!(src.star && src.star.loaded),
-      "薯条": !!(src.chili && src.chili.loaded),
-      "灵犀": !!(src.lx && src.lx.loaded),
+      "钂插叕鑻?: !!(src.pgy && src.pgy.loaded),
+      "鏄熸渤": !!(src.star && src.star.loaded),
+      "钖潯": !!(src.chili && src.chili.loaded),
+      "鐏电妧": !!(src.lx && src.lx.loaded),
     };
     const deps = [];
     const need = col.source || "";
-    for (const t of ["蒲公英", "星河", "薯条", "灵犀"]) if (need.includes(t)) deps.push(t);
+    for (const t of ["钂插叕鑻?, "鏄熸渤", "钖潯", "鐏电妧"]) if (need.includes(t)) deps.push(t);
     if (Array.isArray(col.needs)) for (const t of col.needs) if (!deps.includes(t)) deps.push(t);
-    for (const t of deps) if (!loaded[t]) return "需上传" + t;
+    for (const t of deps) if (!loaded[t]) return "闇€涓婁紶" + t;
     return null;
   }
 
-  // ===== 图表三 · 查询面板：字段筛选 + CSV 导出 =====
+  // ===== 鍥捐〃涓?路 鏌ヨ闈㈡澘锛氬瓧娈电瓫閫?+ CSV 瀵煎嚭 =====
 
 
-  // 应用查询面板所有筛选
-  function applyPanelFilter(notes) {
+  // 搴旂敤鏌ヨ闈㈡澘鎵€鏈夌瓫閫?  function applyPanelFilter(notes) {
     const F = TABLE.filter;
     let out = notes;
     if (F.creator) {
@@ -794,7 +794,7 @@
     document.getElementById("qpReset").addEventListener("click", resetQuery);
     document.getElementById("qpExport").addEventListener("click", exportCSV);
 
-    // 输入即过滤：达人昵称/笔记ID 打字实时匹配（150ms debounce 避免抖动），日期改动立即触发
+    // 杈撳叆鍗宠繃婊わ細杈句汉鏄电О/绗旇ID 鎵撳瓧瀹炴椂鍖归厤锛?50ms debounce 閬垮厤鎶栧姩锛夛紝鏃ユ湡鏀瑰姩绔嬪嵆瑙﹀彂
     let debounceTimer = null;
     function debouncedApply() {
       clearTimeout(debounceTimer);
@@ -803,8 +803,7 @@
     [qCreator, qNoteId].forEach(el => el.addEventListener("input", debouncedApply));
     [qStart, qEnd].forEach(el => el.addEventListener("change", applyQuery));
 
-    // Enter 键也可以手动触发（不用等 debounce）
-    [qCreator, qNoteId, qStart, qEnd].forEach(el => {
+    // Enter 閿篃鍙互鎵嬪姩瑙﹀彂锛堜笉鐢ㄧ瓑 debounce锛?    [qCreator, qNoteId, qStart, qEnd].forEach(el => {
       el.addEventListener("keydown", e => {
         if (e.key === "Enter") { e.preventDefault(); clearTimeout(debounceTimer); applyQuery(); }
       });
@@ -832,8 +831,7 @@
     if (v == null) return "";
     let s = String(v);
     if (typeof v === "number") {
-      // 保留数据精度：整数不加小数、小数保留 4 位
-      s = Number.isInteger(v) ? String(v) : v.toFixed(4).replace(/\.?0+$/, "");
+      // 淇濈暀鏁版嵁绮惧害锛氭暣鏁颁笉鍔犲皬鏁般€佸皬鏁颁繚鐣?4 浣?      s = Number.isInteger(v) ? String(v) : v.toFixed(4).replace(/\.?0+$/, "");
     }
     if (/[",\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
     return s;
@@ -841,8 +839,8 @@
 
   function exportCSV() {
     const cols = TABLE.selected.map(k => TABLE.byKey[k]).filter(Boolean);
-    if (!cols.length) { alert("没有可导出的列"); return; }
-    // 复用筛选（不含分页和排序，导出全部筛选结果）
+    if (!cols.length) { alert("娌℃湁鍙鍑虹殑鍒?); return; }
+    // 澶嶇敤绛涢€夛紙涓嶅惈鍒嗛〉鍜屾帓搴忥紝瀵煎嚭鍏ㄩ儴绛涢€夌粨鏋滐級
     let notes = DATA.notes.slice();
     notes = applyPanelFilter(notes);
     if (TABLE.keyword) {
@@ -852,7 +850,7 @@
         return terms.every(t => hay.includes(t));
       });
     }
-    // 保持当前排序
+    // 淇濇寔褰撳墠鎺掑簭
     if (TABLE.sortKey) {
       const k = TABLE.sortKey, dir = TABLE.sortDir === "desc" ? -1 : 1;
       notes.sort((a, b) => {
@@ -866,14 +864,14 @@
 
     const header = cols.map(c => csvEscape(c.label + (c.unit ? "(" + c.unit + ")" : ""))).join(",");
     const rows = notes.map(n => cols.map(c => csvEscape(n[c.key])).join(","));
-    const csv = "﻿" + header + "\r\n" + rows.join("\r\n");
+    const csv = "锘? + header + "\r\n" + rows.join("\r\n");
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     const stamp = (new Date()).toISOString().slice(0, 10);
     a.href = url;
-    a.download = "全链路数据_" + stamp + ".csv";
+    a.download = "鍏ㄩ摼璺暟鎹甠" + stamp + ".csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -915,7 +913,7 @@
 
     const fieldRow = "<tr>" + cols.map(c => {
       const active = TABLE.sortKey === c.key;
-      const arrow = !active ? "↕" : (TABLE.sortDir === "desc" ? "↓" : "↑");
+      const arrow = !active ? "鈫? : (TABLE.sortDir === "desc" ? "鈫? : "鈫?);
       const missing = isColMissing(c);
       const grp = "grp-" + c.group;
       const fz = FZ.map[c.key];
@@ -938,8 +936,7 @@
     });
 
     let notes = DATA.notes.slice();
-    // 查询面板筛选（达人昵称/笔记ID/发布日期/自然语言）
-    notes = applyPanelFilter(notes);
+    // 鏌ヨ闈㈡澘绛涢€夛紙杈句汉鏄电О/绗旇ID/鍙戝竷鏃ユ湡/鑷劧璇█锛?    notes = applyPanelFilter(notes);
     if (TABLE.keyword) {
       const terms = TABLE.keyword.toLowerCase().split(/\s+/).filter(Boolean);
       notes = notes.filter(n => {
@@ -968,18 +965,18 @@
     tbody.innerHTML = pageRows.map(n => "<tr>" + cols.map(c => cellHtml(n, c, FZ)).join("") + "</tr>").join("");
 
     document.getElementById("tableFoot").innerHTML =
-      `<span>共 <b>${total}</b> 篇 · 显示 ${total === 0 ? 0 : start + 1}-${Math.min(start + TABLE.pageSize, total)} · ${cols.length} 列</span>
+      `<span>鍏?<b>${total}</b> 绡?路 鏄剧ず ${total === 0 ? 0 : start + 1}-${Math.min(start + TABLE.pageSize, total)} 路 ${cols.length} 鍒?/span>
        <span class="pager">
-         <button class="pg-btn" data-pg="first" ${TABLE.page === 1 ? "disabled" : ""}>«</button>
-         <button class="pg-btn" data-pg="prev" ${TABLE.page === 1 ? "disabled" : ""}>‹</button>
+         <button class="pg-btn" data-pg="first" ${TABLE.page === 1 ? "disabled" : ""}>芦</button>
+         <button class="pg-btn" data-pg="prev" ${TABLE.page === 1 ? "disabled" : ""}>鈥?/button>
          <span class="pg-cur">${TABLE.page} / ${pageCount}</span>
-         <button class="pg-btn" data-pg="next" ${TABLE.page >= pageCount ? "disabled" : ""}>›</button>
-         <button class="pg-btn" data-pg="last" ${TABLE.page >= pageCount ? "disabled" : ""}>»</button>
+         <button class="pg-btn" data-pg="next" ${TABLE.page >= pageCount ? "disabled" : ""}>鈥?/button>
+         <button class="pg-btn" data-pg="last" ${TABLE.page >= pageCount ? "disabled" : ""}>禄</button>
          <select class="pg-size" id="pgSize">
-           <option value="20" ${TABLE.pageSize === 20 ? "selected" : ""}>20 行/页</option>
-           <option value="30" ${TABLE.pageSize === 30 ? "selected" : ""}>30 行/页</option>
-           <option value="50" ${TABLE.pageSize === 50 ? "selected" : ""}>50 行/页</option>
-           <option value="100" ${TABLE.pageSize === 100 ? "selected" : ""}>100 行/页</option>
+           <option value="20" ${TABLE.pageSize === 20 ? "selected" : ""}>20 琛?椤?/option>
+           <option value="30" ${TABLE.pageSize === 30 ? "selected" : ""}>30 琛?椤?/option>
+           <option value="50" ${TABLE.pageSize === 50 ? "selected" : ""}>50 琛?椤?/option>
+           <option value="100" ${TABLE.pageSize === 100 ? "selected" : ""}>100 琛?椤?/option>
          </select>
        </span>`;
     document.querySelectorAll("#tableFoot .pg-btn").forEach(b => {
@@ -1024,14 +1021,14 @@
     const fzStyle = fz ? ` style="left:${fz.left}px;min-width:${fz.width}px;max-width:${fz.width}px"` : "";
 
     const tableMiss = isColMissing(c);
-    if (tableMiss) return `<td class="col-missing${fzCls}"${fzStyle} title="${tableMiss}">—</td>`;
+    if (tableMiss) return `<td class="col-missing${fzCls}"${fzStyle} title="${tableMiss}">鈥?/td>`;
 
     const src = c.source || "";
-    const rm = (tip) => `<td class="row-missing${fzCls}"${fzStyle} title="${tip}">—</td>`;
-    if (src === "蒲公英" && !n.in_pgy) return rm("该笔记不在蒲公英合作报备名单");
-    if (src === "星河" && !n.in_star) return rm("该笔记无星河转化数据");
-    if (src === "薯条" && !n.in_chili) return rm("该笔记未投薯条");
-    if (src === "灵犀" && !n.in_lx) return rm("该笔记不在灵犀种草贡献榜单");
+    const rm = (tip) => `<td class="row-missing${fzCls}"${fzStyle} title="${tip}">鈥?/td>`;
+    if (src === "钂插叕鑻? && !n.in_pgy) return rm("璇ョ瑪璁颁笉鍦ㄨ挷鍏嫳鍚堜綔鎶ュ鍚嶅崟");
+    if (src === "鏄熸渤" && !n.in_star) return rm("璇ョ瑪璁版棤鏄熸渤杞寲鏁版嵁");
+    if (src === "钖潯" && !n.in_chili) return rm("璇ョ瑪璁版湭鎶曡柉鏉?);
+    if (src === "鐏电妧" && !n.in_lx) return rm("璇ョ瑪璁颁笉鍦ㄧ伒鐘€绉嶈崏璐＄尞姒滃崟");
 
     let v = n[c.key];
     const tier = (n.tiers || {})[c.key];
@@ -1054,7 +1051,7 @@
   }
 
   function highlight(text, kw) {
-    const t = String(text == null || text === "" ? "—" : text);
+    const t = String(text == null || text === "" ? "鈥? : text);
     if (!kw) return escapeHtml(t);
     const terms = kw.split(/\s+/).filter(Boolean).map(s => s.toLowerCase());
     if (!terms.length) return escapeHtml(t);
@@ -1084,7 +1081,7 @@
     return out;
   }
 
-  // ---------- 悬停 tip ----------
+  // ---------- 鎮仠 tip ----------
   const tipEl = () => document.getElementById("tipCard");
   let tipTimer = null;
   function showTip(e, col) {
@@ -1094,9 +1091,9 @@
     tipTimer = setTimeout(() => {
       const t = tipEl();
       document.getElementById("tipTitle").textContent = col.label;
-      document.getElementById("tipSub").textContent = "分组：" + (col.groupLabel || "") + " · 来源：" + (col.source || "—") + (col.unit ? " · 单位：" + col.unit : "") + (col.derived ? " · 派生字段" : "");
-      document.getElementById("tipFormula").textContent = col.formula || "—";
-      document.getElementById("tipMeaning").textContent = col.meaning || "—";
+      document.getElementById("tipSub").textContent = "鍒嗙粍锛? + (col.groupLabel || "") + " 路 鏉ユ簮锛? + (col.source || "鈥?) + (col.unit ? " 路 鍗曚綅锛? + col.unit : "") + (col.derived ? " 路 娲剧敓瀛楁" : "");
+      document.getElementById("tipFormula").textContent = col.formula || "鈥?;
+      document.getElementById("tipMeaning").textContent = col.meaning || "鈥?;
       t.hidden = false;
       const rect = target.getBoundingClientRect();
       const tw = 320;
@@ -1112,7 +1109,7 @@
     tipEl().hidden = true;
   }
 
-  // ---------- 自定义列弹窗 ----------
+  // ---------- 鑷畾涔夊垪寮圭獥 ----------
   const MODAL = { draft: [], keyword: "" };
   function openModal() {
     MODAL.draft = TABLE.selected.slice();
@@ -1161,11 +1158,11 @@
       const derCls = c.derived ? " col-derived" : "";
       const showSep = i === TABLE.fixed.length && MODAL.draft.length > TABLE.fixed.length;
       const sepHtml = i === TABLE.fixed.length && MODAL.draft.length > TABLE.fixed.length
-        ? '<div class="sep">— 以上为固定列 —</div>' : "";
+        ? '<div class="sep">鈥?浠ヤ笂涓哄浐瀹氬垪 鈥?/div>' : "";
       return `${sepHtml}<div class="col-item ${locked ? "locked" : ""}${derCls}" data-key="${k}" draggable="${!locked}">
-        ${locked ? '<span class="lock">🔒</span>' : '<span class="drag-handle">⋮⋮</span>'}
+        ${locked ? '<span class="lock">馃敀</span>' : '<span class="drag-handle">鈰嫯</span>'}
         <span>${c.label}</span>
-        ${locked ? "" : `<span class="remove-x" data-remove="${k}">×</span>`}
+        ${locked ? "" : `<span class="remove-x" data-remove="${k}">脳</span>`}
       </div>`;
     }).join("");
     document.getElementById("selCount").textContent = MODAL.draft.length;
@@ -1232,7 +1229,7 @@
     });
   }
 
-  // ---------- 表格搜索（combo + 关键词过滤） ----------
+  // ---------- 琛ㄦ牸鎼滅储锛坈ombo + 鍏抽敭璇嶈繃婊わ級 ----------
   let tableCombo = null;
 
   function initTableCombo() {
@@ -1241,15 +1238,14 @@
       candidates: DATA.notes,
       filterKeys: ["note_id", "creator"],
       moduleKey: "table",
-      emptyPlaceholder: "（无数据）",
+      emptyPlaceholder: "锛堟棤鏁版嵁锛?,
       onSelect: function (noteId) {
         TABLE.keyword = noteId;
         TABLE.page = 1;
         renderTable();
       },
     });
-    // 额外监听：用户打字但不选下拉项时，实时关键词过滤表格
-    const el = document.getElementById("tableSearch");
+    // 棰濆鐩戝惉锛氱敤鎴锋墦瀛椾絾涓嶉€変笅鎷夐」鏃讹紝瀹炴椂鍏抽敭璇嶈繃婊よ〃鏍?    const el = document.getElementById("tableSearch");
     let t = null;
     el.addEventListener("input", function () {
       clearTimeout(t);
@@ -1262,14 +1258,13 @@
     });
   }
 
-  // ---------- 联动复选框绑定（默认勾选，开箱即用） ----------
+  // ---------- 鑱斿姩澶嶉€夋缁戝畾锛堥粯璁ゅ嬀閫夛紝寮€绠卞嵆鐢級 ----------
   function bindLinks() {
     var cb1 = document.getElementById("chkLink1");
     var cb2 = document.getElementById("chkLink2");
     var cb3 = document.getElementById("chkLink3");
 
-    // 初始化：DOM 勾选状态 = STATE 默认值
-    cb1.checked = STATE.links.trend;
+    // 鍒濆鍖栵細DOM 鍕鹃€夌姸鎬?= STATE 榛樿鍊?    cb1.checked = STATE.links.trend;
     cb2.checked = STATE.links.cost;
     cb3.checked = STATE.links.table;
 
@@ -1284,7 +1279,7 @@
     });
   }
 
-  // ---------- 图表一 · 日维度进店趋势 ----------
+  // ---------- 鍥捐〃涓€ 路 鏃ョ淮搴﹁繘搴楄秼鍔?----------
   const DAILY_RED_PALETTE = [
     "#FF2442","#FF3B57","#FF526B","#FF6980",
     "#FF8194","#FF98A8","#FFAFBD","#FFC6D1",
@@ -1303,7 +1298,7 @@
     var trendsAll = DATA.trends_all || [];
     if (!trendsAll.length) {
       document.getElementById("dailyOverviewChart").innerHTML =
-        '<div style="padding:80px;text-align:center;color:#9CA3AF">星河表未加载，无法展示日维度数据</div>';
+        '<div style="padding:80px;text-align:center;color:#9CA3AF">鏄熸渤琛ㄦ湭鍔犺浇锛屾棤娉曞睍绀烘棩缁村害鏁版嵁</div>';
       return;
     }
 
@@ -1312,11 +1307,11 @@
     trendsAll.forEach(function(r){ totalVisit += r[1]||0; totalCart += r[2]||0; totalDeal += r[3]||0; });
     Object.keys(dailyNotes).forEach(function(d){ (dailyNotes[d]||[]).forEach(function(n){ totalNotes.add(n.note_id); }); });
     var kpis = [
-      { l: "总进店UV", v: fmt.int(totalVisit), u: "" },
-      { l: "总加购UV", v: fmt.int(totalCart), u: "" },
-      { l: "总成交UV", v: fmt.int(totalDeal), u: "" },
-      { l: "有数据笔记", v: fmt.int(totalNotes.size), u: "篇" },
-      { l: "", v: "📊 日维度聚合", u: "" },
+      { l: "鎬昏繘搴桿V", v: fmt.int(totalVisit), u: "" },
+      { l: "鎬诲姞璐璘V", v: fmt.int(totalCart), u: "" },
+      { l: "鎬绘垚浜V", v: fmt.int(totalDeal), u: "" },
+      { l: "鏈夋暟鎹瑪璁?, v: fmt.int(totalNotes.size), u: "绡? },
+      { l: "", v: "馃搳 鏃ョ淮搴﹁仛鍚?, u: "" },
     ];
     document.getElementById("dailyOverviewKpis").innerHTML = kpis.map(function(k){
       return '<div class="trend-kpi"><div class="trend-kpi-label">'+k.l+'</div><div class="trend-kpi-val">'+k.v+'<span class="u"> '+k.u+'</span></div></div>';
@@ -1364,7 +1359,7 @@
       });
     }
     barSeries.push({
-      name: "其余笔记", type: "bar", stack: "daily", yAxisIndex: 0,
+      name: "鍏朵綑绗旇", type: "bar", stack: "daily", yAxisIndex: 0,
       data: restSeries, color: DAILY_REST_COLOR,
       barMaxWidth: 44,
       emphasis: { focus: "series" },
@@ -1374,7 +1369,7 @@
     // Daily total visit_uv as invisible bar for top label
     var dailyTotalData = trendsAll.map(function(r){ return r[1]; });
     barSeries.push({
-      name: "日总计（标签）", type: "bar", stack: "daily", yAxisIndex: 0,
+      name: "鏃ユ€昏锛堟爣绛撅級", type: "bar", stack: "daily", yAxisIndex: 0,
       data: new Array(nDates).fill(null),
       label: {
         show: true,
@@ -1400,6 +1395,19 @@
 
     dailyOverviewChart.setOption({
       backgroundColor: "transparent",
+      graphic: [
+        {
+          type: "text",
+          left: 56,
+          top: 5,
+          style: {
+            text: "进店汇总  " + fmt.int(totalVisit),
+            fill: "#FF2442",
+            font: "bold 13px system-ui, -apple-system, sans-serif",
+          },
+          z: 100,
+        },
+      ],
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
@@ -1415,15 +1423,15 @@
           var dateLabel = fmtDate(dInt);
 
           var dSummary = trendsAll[dateIdx];
-          var tv = dSummary ? fmt.int(dSummary[1]) : "—";
-          var tc = dSummary ? fmt.int(dSummary[2]) : "—";
-          var td = dSummary ? fmt.int(dSummary[3]) : "—";
+          var tv = dSummary ? fmt.int(dSummary[1]) : "鈥?;
+          var tc = dSummary ? fmt.int(dSummary[2]) : "鈥?;
+          var td = dSummary ? fmt.int(dSummary[3]) : "鈥?;
 
-          var html = '<div style="font-weight:700;margin-bottom:6px;font-size:12px">📅 ' + dateLabel + '</div>';
+          var html = '<div style="font-weight:700;margin-bottom:6px;font-size:12px">馃搮 ' + dateLabel + '</div>';
           html += '<table style="border-spacing:0 1px;font-size:11px;width:100%">';
           // summary row
           var T = 'text-align:right;font-weight:600;width:58px';
-          html += '<tr><td style="width:16px"></td><td style="color:#6B7280;padding-bottom:4px">总计</td>';
+          html += '<tr><td style="width:16px"></td><td style="color:#6B7280;padding-bottom:4px">鎬昏</td>';
           html += '<td style="' + T + ';color:#FF2442">' + tv + '</td>';
           html += '<td style="' + T + ';color:#F97316">' + tc + '</td>';
           html += '<td style="' + T + ';color:#EAB308">' + td + '</td></tr>';
@@ -1439,7 +1447,7 @@
             var vv = fmt.int(n.visit_uv), cv = fmt.int(n.cart_uv), dv = fmt.int(n.deal_uv);
             html += '<tr>';
             html += '<td style="width:16px"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + clr + ';vertical-align:middle"></span></td>';
-            html += '<td style="font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px" title="' + escapeHtml(n.creator || '') + '">' + escapeHtml(n.creator || '—') + '</td>';
+            html += '<td style="font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px" title="' + escapeHtml(n.creator || '') + '">' + escapeHtml(n.creator || '鈥?) + '</td>';
             html += '<td style="' + T + ';color:#FF2442">' + vv + '</td>';
             html += '<td style="' + T + ';color:#F97316">' + cv + '</td>';
             html += '<td style="' + T + ';color:#EAB308">' + dv + '</td>';
@@ -1453,13 +1461,13 @@
               restDeal += notes[j].deal_uv || 0;
             }
             html += '<tr><td style="width:16px"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + DAILY_REST_COLOR + ';vertical-align:middle"></span></td>';
-            html += '<td style="color:#9CA3AF;font-size:10px">等 ' + (notes.length - showCount) + ' 篇</td>';
+            html += '<td style="color:#9CA3AF;font-size:10px">绛?' + (notes.length - showCount) + ' 绡?/td>';
             html += '<td style="text-align:right;color:#9CA3AF;font-size:10px">' + fmt.int(restTotal) + '</td>';
             html += '<td style="text-align:right;color:#9CA3AF;font-size:10px">' + fmt.int(restCart) + '</td>';
             html += '<td style="text-align:right;color:#9CA3AF;font-size:10px">' + fmt.int(restDeal) + '</td></tr>';
           }
           html += '</table>';
-          html += '<div style="margin-top:4px;font-size:10px;color:#9CA3AF;text-align:center">💡 点击柱子展开全部笔记明细</div>';
+          html += '<div style="margin-top:4px;font-size:10px;color:#9CA3AF;text-align:center">馃挕 鐐瑰嚮鏌卞瓙灞曞紑鍏ㄩ儴绗旇鏄庣粏</div>';
           return html;
         },
       },
@@ -1502,22 +1510,22 @@
     var thead = document.getElementById("dailyDetailHead");
     var tbody = document.getElementById("dailyDetailBody");
 
-    title.textContent = fmtDate(dateInt) + " 笔记明细（共 " + notes.length + " 篇）";
-    thead.innerHTML = '<tr><th style="width:40px">#</th><th>达人</th><th>笔记ID</th><th>进店UV</th><th>加购UV</th><th>成交UV</th></tr>';
+    title.textContent = fmtDate(dateInt) + " 绗旇鏄庣粏锛堝叡 " + notes.length + " 绡囷級";
+    thead.innerHTML = '<tr><th style="width:40px">#</th><th>杈句汉</th><th>绗旇ID</th><th>杩涘簵UV</th><th>鍔犺喘UV</th><th>鎴愪氦UV</th></tr>';
 
     tbody.innerHTML = notes.map(function(n, i){
       var rank = i + 1;
       var clr = rank <= 10 ? colorForRank(rank) : DAILY_REST_COLOR;
       return '<tr class="daily-detail-row-note" data-nid="' + escapeHtml(n.note_id) + '">' +
         '<td><span class="daily-rank-badge" style="background:' + clr + ';color:#fff">' + rank + '</span></td>' +
-        '<td>' + escapeHtml(n.creator || "—") + '</td>' +
+        '<td>' + escapeHtml(n.creator || "鈥?) + '</td>' +
         '<td class="mono-id">' + escapeHtml(n.note_id) + '</td>' +
         '<td>' + fmt.int(n.visit_uv) + '</td>' +
         '<td>' + fmt.int(n.cart_uv) + '</td>' +
         '<td>' + fmt.int(n.deal_uv) + '</td></tr>';
     }).join("");
 
-    // Click note row → link to chart 2 (single note trend)
+    // Click note row 鈫?link to chart 2 (single note trend)
     tbody.querySelectorAll(".daily-detail-row-note").forEach(function(tr){
       tr.addEventListener("click", function(){
         var nid = tr.dataset.nid;
@@ -1540,7 +1548,7 @@
     document.getElementById("dailyDetailPanel").hidden = true;
   });
 
-  // ---------- 全局响应 ----------
+  // ---------- 鍏ㄥ眬鍝嶅簲 ----------
   window.addEventListener("resize", () => {
     if (trendChart) trendChart.resize();
     if (costChart) costChart.resize();
