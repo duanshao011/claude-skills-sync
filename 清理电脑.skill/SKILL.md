@@ -71,6 +71,13 @@ python3 scripts/build_report.py /tmp/storage_analysis.json ~/Desktop/storage-rep
 
 **排障：网页上没有删除/移废纸篓按钮** = 要么开的是静态报告（改用 `server.py`），要么 🟢 项漏了 `trash_paths`（补上重启服务）。
 
+**🔴 Step 3 执行纪律（防重复打开）**：
+- `server.py` 和 `build_report.py` **二选一，永远不要同时跑两个**。默认只跑 `server.py`。
+- `server.py` 内部已经调了 `webbrowser.open()`，**不要在外面再手动 `open`**。
+- 如果 `server.py` 启动没输出，**只重试一次**，还是不行就降级到静态 `build_report.py`。禁止连续重试 3 次以上——每次重试如果服务实际已经起来了，就会多弹一个浏览器标签页。
+- 静态模式下，跑完 `build_report.py` 后用 `open` 打开生成的那一个 HTML 文件。不要同时再去起 `server.py`。
+- 最终结果：每次触发清理电脑，用户最多看到 **1 个浏览器标签页**。
+
 报告阅读流（固定顺序）：磁盘总览卡片（容量 + 进度条 + 三色容量 pills + 系统信息，纯数据）→ 占用排行 Top5 → 执行建议 → 🟢🟡🔴 三级可折叠卡片（命令一键复制）→ 长期优化建议。即"现状 → 诊断 → 处方 → 操作 → 预防"。
 
 注意 `summary.overview` 要写成一句话洞察（直接说最大占用是什么、能释放多少），不要重复总/已用/可用数字——那些已在卡片大数字里显示。overview 渲染在"执行建议"小节开头作引子（普通文字），紧接着是 `summary.priority` 优先级清单。
