@@ -477,6 +477,7 @@ main() {
     local dry_run="false"
     local custom_message=""
     local remote_url=""
+    local branch_set="false"
 
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -524,6 +525,15 @@ main() {
     # 验证目录存在（setup 除外）
     if [ "$subcommand" != "setup" ] && [ ! -d "$target" ]; then
         die "目录不存在: $target"
+    fi
+
+    # 未显式指定 --branch 时，跟随目标仓库当前分支（避免写死 main）
+    if [ "$branch_set" != "true" ] && [ -d "$target/.git" ]; then
+        local current_branch
+        current_branch=$(cd "$target" && git rev-parse --abbrev-ref HEAD 2>/dev/null)
+        if [ -n "$current_branch" ] && [ "$current_branch" != "HEAD" ]; then
+            branch="$current_branch"
+        fi
     fi
 
     case "$subcommand" in
