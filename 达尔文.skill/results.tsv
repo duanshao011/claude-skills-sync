@@ -1,1 +1,2 @@
 timestamp	commit	skill	old_score	new_score	status	dimension	note	eval_mode
+2026-07-15T15:45	92a313f	商业参谋	67.0	73.0	keep	dim3+dim4	补充失败模式fallback表+三处CHECKPOINT+快速筛查分层	full_test
