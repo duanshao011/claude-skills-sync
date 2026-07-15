@@ -27,8 +27,8 @@ from loaders import load_pugongying, load_star, load_chili, load_lingxi
 from metrics import compute
 from render import build_payload, render_html
 
-DESK = r"C:\Users\duansb\Desktop\小红书营销数据"
-DEFAULT_SCAN_DIR = r"C:\Users\duansb\Desktop\小红书营销数据\数据看板文件"
+DESK = r"D:\C盘迁移归档\桌面工作文件\小红书营销数据"
+DEFAULT_SCAN_DIR = r"D:\C盘迁移归档\桌面工作文件\小红书营销数据\数据看板文件"
 # 约定：不传路径的表 = 不加载 = 前端标注"需上传XX表"。
 # 默认全空，只加载调用时明确传入的表（每次由博哥发路径决定哪几张表进来）。
 DEF_PGY = ""
@@ -65,11 +65,11 @@ def scan_data_dir(root):
             candidates["chili"].append((mtime, full))
         elif "灵犀" in name:
             candidates["lx"].append((mtime, full))
-    # 蒲公英/薯条/灵犀取最新一份；星河全部保留（旧版+新版）
+    # 蒲公英/薯条/星河全部保留（多月份合并）；灵犀取最新一份
     if candidates["pgy"]:
-        result["pgy"] = max(candidates["pgy"])[1]
+        result["pgy"] = [p for _, p in sorted(candidates["pgy"])]
     if candidates["chili"]:
-        result["chili"] = max(candidates["chili"])[1]
+        result["chili"] = [p for _, p in sorted(candidates["chili"])]
     if candidates["lx"]:
         result["lx"] = max(candidates["lx"])[1]
     # 星河多张排序：文件名含"旧"排最前，含"新"排最后（新版口径优先，重叠日期以新版为准）
@@ -141,9 +141,9 @@ def _try(fn, path, label):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pugongying", default=DEF_PGY)
-    ap.add_argument("--star", nargs="+", default=[])  # 支持多张星河，后传优先(新版覆盖旧版)
-    ap.add_argument("--chili", default=DEF_CHILI)
+    ap.add_argument("--pugongying", nargs="+", default=[])
+    ap.add_argument("--star", nargs="+", default=[])
+    ap.add_argument("--chili", nargs="+", default=[])
     ap.add_argument("--lingxi", default=DEF_LX)
     ap.add_argument("--scan-dir", default=None,
                     help="扫描目录自动识别四张表（默认 " + DEFAULT_SCAN_DIR + "）")
@@ -165,14 +165,16 @@ def main():
         print(f"自动扫描目录: {scan_dir}")
         if scanned.get("pgy") and not args.pugongying:
             args.pugongying = scanned["pgy"]
-            print(f"  蒲公英 → {os.path.basename(args.pugongying)}")
+            for p in args.pugongying:
+                print(f"  蒲公英 → {os.path.basename(p)}")
         if scanned.get("star") and not args.star:
             args.star = scanned["star"]
             for p in args.star:
                 print(f"  星河 → {os.path.basename(p)}")
         if scanned.get("chili") and not args.chili:
             args.chili = scanned["chili"]
-            print(f"  薯条 → {os.path.basename(args.chili)}")
+            for p in args.chili:
+                print(f"  薯条 → {os.path.basename(p)}")
         if scanned.get("lx") and not args.lingxi:
             args.lingxi = scanned["lx"]
             print(f"  灵犀 → {os.path.basename(args.lingxi)}")
@@ -186,9 +188,31 @@ def main():
 
     source_status = {}
 
-    def _pgy(path):
-        return load_pugongying(path, start=args.start, end=args.end)
-    pgy, source_status["pgy"] = _try(_pgy, args.pugongying, "蒲公英")
+    pgy_paths = [p for p in (args.pugongying or []) if p and os.path.exists(p)]
+    if pgy_paths:
+        try:
+            import pandas as pd
+            parts = []
+            for p in pgy_paths:
+                df = load_pugongying(p, start=args.start, end=args.end)
+                if df is not None and len(df):
+                    if df.index.name == "note_id":
+                        df = df.reset_index()
+                    parts.append(df)
+            if parts:
+                pgy = pd.concat(parts, ignore_index=True)
+                if "note_id" in pgy.columns:
+                    pgy = pgy.drop_duplicates(subset=["note_id"], keep="last")
+                    pgy = pgy.set_index("note_id")
+            else:
+                pgy = None
+            source_status["pgy"] = {"loaded": pgy is not None, "path": " · ".join(pgy_paths)}
+        except Exception as e:
+            pgy = None
+            source_status["pgy"] = {"loaded": False, "path": " · ".join(pgy_paths), "reason": f"加载失败：{e}"}
+    else:
+        pgy = None
+        source_status["pgy"] = {"loaded": False, "path": "", "reason": "文件未提供或不存在"}
     source_status["pgy"]["name"] = "蒲公英"
     source_status["pgy"]["rows"] = int(len(pgy)) if pgy is not None else 0
 
@@ -214,14 +238,52 @@ def main():
             "reason": "文件未提供或不存在", "name": "淘宝星河",
         }
 
-    chili_result, source_status["chili"] = _try(load_chili, args.chili, "薯条")
-    source_status["chili"]["name"] = "薯条"
-    if chili_result is not None:
-        chili_agg, chili_daily, cmeta = chili_result
-        source_status["chili"]["rows"] = int(len(chili_agg))
+    chili_paths = [p for p in (args.chili or []) if p and os.path.exists(p)]
+    if chili_paths:
+        try:
+            import pandas as pd
+            agg_parts, daily_parts = [], []
+            cmeta = {}
+            for p in chili_paths:
+                res = load_chili(p)
+                if res is not None:
+                    a, d, m = res
+                    if a is not None and len(a):
+                        if a.index.name == "note_id":
+                            a = a.reset_index()
+                        agg_parts.append(a)
+                    if d is not None and len(d):
+                        daily_parts.append(d)
+                    for k, v in m.items():
+                        if k.endswith("_min") and v:
+                            cmeta[k] = min(cmeta[k], v) if k in cmeta and cmeta[k] else v
+                        elif k.endswith("_max") and v:
+                            cmeta[k] = max(cmeta[k], v) if k in cmeta and cmeta[k] else v
+                        elif v and k not in cmeta:
+                            cmeta[k] = v
+            if agg_parts:
+                chili_agg = pd.concat(agg_parts, ignore_index=True)
+                num_cols = [c for c in chili_agg.select_dtypes(include=["number"]).columns if c != "note_id"]
+                if "note_id" in chili_agg.columns and num_cols:
+                    chili_agg["note_id"] = chili_agg["note_id"].astype(str)
+                    chili_agg = chili_agg.groupby("note_id", as_index=False)[num_cols].sum()
+                    chili_agg = chili_agg.set_index("note_id")
+                elif "note_id" in chili_agg.columns:
+                    chili_agg = chili_agg.drop_duplicates(subset=["note_id"], keep="last").set_index("note_id")
+            else:
+                chili_agg = None
+            chili_daily = pd.concat(daily_parts, ignore_index=True).drop_duplicates() if daily_parts else None
+            source_status["chili"] = {"loaded": chili_agg is not None, "path": " · ".join(chili_paths)}
+        except Exception as e:
+            chili_agg, chili_daily, cmeta = None, None, {}
+            source_status["chili"] = {"loaded": False, "path": " · ".join(chili_paths), "reason": f"加载失败：{e}"}
     else:
         chili_agg, chili_daily, cmeta = None, None, {}
-        source_status["chili"]["rows"] = 0
+        source_status["chili"] = {"loaded": False, "path": "", "reason": "文件未提供或不存在"}
+    source_status["chili"]["name"] = "薯条"
+    if chili_agg is not None and "note_id" in chili_agg.columns:
+        chili_agg["note_id"] = chili_agg["note_id"].astype(str)
+    source_status["chili"]["rows"] = int(len(chili_agg)) if chili_agg is not None else 0
 
     lx, source_status["lx"] = _try(load_lingxi, args.lingxi, "灵犀")
     source_status["lx"]["name"] = "灵犀"

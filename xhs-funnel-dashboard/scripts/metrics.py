@@ -74,6 +74,10 @@ FIELD_LABELS = {
 
 def build_master(pgy, star_agg, chili_agg, lx=None):
     """四表左连接到主表；缺表时对应字段为 NaN。"""
+    if star_agg is not None:
+        star_agg.index = star_agg.index.astype(str)
+    if chili_agg is not None:
+        chili_agg.index = chili_agg.index.astype(str)
     idx_star = set(star_agg.index) if star_agg is not None else set()
     idx_chili = set(chili_agg.index) if chili_agg is not None else set()
     subject = sorted(idx_star | idx_chili)

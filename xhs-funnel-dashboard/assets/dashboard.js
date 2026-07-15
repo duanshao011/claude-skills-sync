@@ -1421,6 +1421,12 @@
 
           var html = '<div style="font-weight:700;margin-bottom:6px;font-size:12px">📅 ' + dateLabel + '</div>';
           html += '<table style="border-spacing:0 1px;font-size:11px;width:100%">';
+          // header row
+          var TH = 'text-align:right;font-size:10px;color:#9CA3AF;font-weight:400;width:58px;padding-bottom:2px';
+          html += '<tr><td style="width:16px"></td><td></td>';
+          html += '<td style="' + TH + '">进店</td>';
+          html += '<td style="' + TH + '">加购</td>';
+          html += '<td style="' + TH + '">成交</td></tr>';
           // summary row
           var T = 'text-align:right;font-weight:600;width:58px';
           html += '<tr><td style="width:16px"></td><td style="color:#6B7280;padding-bottom:4px">总计</td>';
