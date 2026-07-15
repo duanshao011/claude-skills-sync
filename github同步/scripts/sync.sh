@@ -490,6 +490,7 @@ main() {
                 ;;
             --branch)
                 branch="$2"
+                branch_set="true"
                 shift 2
                 ;;
             --dry-run)
