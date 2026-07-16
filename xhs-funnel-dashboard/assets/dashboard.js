@@ -185,6 +185,12 @@
       self.keyword = inp.value.trim().toLowerCase();
       self.hi = 0; renderList(); list.hidden = false;
       _updateClear();
+      // If user deleted text and had a note selected, reset to all-notes
+      if (!inp.value.trim() && self.currentId) {
+        self.currentId = null;
+        inp.classList.remove("has-value", "linked-outside");
+        if (cfg.onClear) cfg.onClear();
+      }
     });
     inp.addEventListener("keydown", e => {
       const items = getFiltered();
@@ -520,9 +526,9 @@
       const kpiItems = [
         { l: "总消耗（全部）", v: fmt.money(s.spend), u: "元" },
         { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
-        { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "", rate: avgVisitCost2 != null ? "均 ¥" + avgVisitCost2.toFixed(2) + "/UV" : null },
-        { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "", rate: avgCartCost2 != null ? "均 ¥" + avgCartCost2.toFixed(2) + "/UV" : null },
-        { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "", rate: avgDealCost2 != null ? "均 ¥" + avgDealCost2.toFixed(2) + "/UV" : null },
+        { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "", rate: avgVisitCost2 != null ? "均 ¥" + avgVisitCost2.toFixed(2) : null },
+        { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "", rate: avgCartCost2 != null ? "均 ¥" + avgCartCost2.toFixed(2) : null },
+        { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "", rate: avgDealCost2 != null ? "均 ¥" + avgDealCost2.toFixed(2) : null },
         { l: "笔记数", v: fmt.int(s.note_count), u: "篇" },
       ];
       document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
