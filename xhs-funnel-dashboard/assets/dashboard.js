@@ -600,14 +600,30 @@
     var avgCartCost = caSummary.cart_uv > 0 ? caSummary.spend / caSummary.cart_uv : null;
     var avgDealCost = caSummary.deal_uv > 0 ? caSummary.spend / caSummary.deal_uv : null;
 
-    // 7 指标卡 + 平均成本小字
+    // Arrow helper: returns {arrow, color} for cost comparison (lower=better)
+    function costArrow(noteVal, avgVal) {
+      if (noteVal == null || avgVal == null) return null;
+      var diff = noteVal - avgVal;
+      if (Math.abs(diff) < 0.005) return { a: "→", c: "#9CA3AF" };
+      if (diff < 0) return { a: "↓", c: "#10B981" }; // below avg = good
+      return { a: "↑", c: "#EF4444" }; // above avg = bad
+    }
+
+    // Restore title bar to single-note mode
+    var modSub2 = document.querySelector("#modCost .mod-sub");
+    if (modSub2) modSub2.textContent = "笔记粒度的投放消耗与成本效率 · 对比全量均值";
+
+    var visitArrow = costArrow(s.visit_uv_cost, avgVisitCost);
+    var cartArrow  = costArrow(s.cart_cost, avgCartCost);
+    var dealArrow  = costArrow(s.deal_cost, avgDealCost);
+
     const kpiItems = [
       { l: "累计消耗", v: fmt.money(s.spend), u: "元", rate: null },
       { l: '累计GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true, rate: null },
       { l: 'ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复，该值为近似参考，实际ROI会偏低。">≈ 参考值</span>', v: s.roi == null ? "—" : Number(s.roi).toFixed(2), u: "", approx: true, rate: null },
-      { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "", rate: avgVisitCost != null ? "均值 ¥" + avgVisitCost.toFixed(2) : null },
-      { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "", rate: avgCartCost != null ? "均值 ¥" + avgCartCost.toFixed(2) : null },
-      { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "", rate: avgDealCost != null ? "均值 ¥" + avgDealCost.toFixed(2) : null },
+      { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "", rate: visitArrow ? '<span style="color:' + visitArrow.c + '">' + visitArrow.a + ' ¥' + avgVisitCost.toFixed(2) + '</span>' : null },
+      { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "", rate: cartArrow ? '<span style="color:' + cartArrow.c + '">' + cartArrow.a + ' ¥' + avgCartCost.toFixed(2) + '</span>' : null },
+      { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "", rate: dealArrow ? '<span style="color:' + dealArrow.c + '">' + dealArrow.a + ' ¥' + avgDealCost.toFixed(2) + '</span>' : null },
       { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(2), u: "", rate: null },
     ];
     document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
