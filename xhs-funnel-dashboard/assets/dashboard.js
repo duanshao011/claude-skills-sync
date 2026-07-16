@@ -330,6 +330,8 @@
           '<div style="padding:80px;text-align:center;color:#9CA3AF">暂无汇总趋势数据</div>';
         return;
       }
+      var trendModSub = document.querySelector("#modTrend .mod-sub");
+      if (trendModSub) trendModSub.textContent = "全部笔记逐日汇总 · 进店 / 加购 / 成交 UV 趋势";
       const period = rows.length
         ? fmtDate(rows[0][0]) + " ~ " + fmtDate(rows[rows.length - 1][0])
         : "—";
