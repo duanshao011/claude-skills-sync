@@ -1626,6 +1626,7 @@
   renderTable();
   bindModal();
   initTableCombo();
+  initDailyToggles();
   renderDailyOverview();
   renderTrendModule();
   renderCostModule();
