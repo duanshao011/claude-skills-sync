@@ -510,15 +510,19 @@
       }
       const s = ca.summary || {};
       const daily = ca.daily || [];
+      // Average cost per UV type
+      var avgVisitCost2 = s.visit_uv > 0 ? s.spend / s.visit_uv : null;
+      var avgCartCost2 = s.cart_uv > 0 ? s.spend / s.cart_uv : null;
+      var avgDealCost2 = s.deal_uv > 0 ? s.spend / s.deal_uv : null;
       // Update title bar to indicate all-notes mode
       var modSub = document.querySelector("#modCost .mod-sub");
       if (modSub) modSub.textContent = "全部笔记汇总 · 消耗趋势";
       const kpiItems = [
         { l: "总消耗（全部）", v: fmt.money(s.spend), u: "元" },
         { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
-        { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "" },
-        { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "" },
-        { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "" },
+        { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "", rate: avgVisitCost2 != null ? "均 ¥" + avgVisitCost2.toFixed(2) + "/UV" : null },
+        { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "", rate: avgCartCost2 != null ? "均 ¥" + avgCartCost2.toFixed(2) + "/UV" : null },
+        { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "", rate: avgDealCost2 != null ? "均 ¥" + avgDealCost2.toFixed(2) + "/UV" : null },
         { l: "笔记数", v: fmt.int(s.note_count), u: "篇" },
       ];
       document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
