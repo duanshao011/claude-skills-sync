@@ -628,6 +628,7 @@
     var avgVisitCost = caSummary.visit_uv > 0 ? caSummary.spend / caSummary.visit_uv : null;
     var avgCartCost = caSummary.cart_uv > 0 ? caSummary.spend / caSummary.cart_uv : null;
     var avgDealCost = caSummary.deal_uv > 0 ? caSummary.spend / caSummary.deal_uv : null;
+    var overallRoi = DATA.summary ? DATA.summary.overall_roi : null;
 
     // Cost comparison helper: {valColor, hasMean, meanHtml}
     function costCompare(noteVal, avgVal) {
