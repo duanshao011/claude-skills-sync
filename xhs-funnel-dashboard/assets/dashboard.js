@@ -1327,7 +1327,14 @@
       return;
     }
 
-    // KPI cards
+    // Read active metrics from toggles
+    var activeMetrics = [];
+    document.querySelectorAll(".metric-toggle.active").forEach(function(btn){
+      activeMetrics.push(btn.dataset.metric);
+    });
+    if (!activeMetrics.length) activeMetrics = ["visit"]; // at least one
+
+    // KPI cards — show all three totals regardless of toggle
     var totalVisit = 0, totalCart = 0, totalDeal = 0, totalNotes = new Set();
     trendsAll.forEach(function(r){ totalVisit += r[1]||0; totalCart += r[2]||0; totalDeal += r[3]||0; });
     Object.keys(dailyNotes).forEach(function(d){ (dailyNotes[d]||[]).forEach(function(n){ totalNotes.add(n.note_id); }); });
@@ -1347,76 +1354,91 @@
     var dateInts = trendsAll.map(function(r){ return r[0]; });
     var nDates = dateInts.length;
 
-    // 11 series: rank1..rank10 + rest
-    var rankSeries = [];
-    var rankNotes = []; // rankNotes[dateIdx][rank-1] = note object or null
-    for (var ri = 0; ri < 10; ri++) {
-      rankSeries.push(new Array(nDates).fill(null));
-      rankNotes.push(new Array(nDates).fill(null));
-    }
-    var restSeries = new Array(nDates).fill(null);
-
-    dateInts.forEach(function(dInt, di){
-      var notes = (dailyNotes[dInt] || []).slice();
-      notes.sort(function(a,b){ return (b.visit_uv||0) - (a.visit_uv||0); });
-      for (var i = 0; i < Math.min(notes.length, 10); i++) {
-        rankSeries[i][di] = notes[i].visit_uv;
-        rankNotes[i][di] = notes[i];
-      }
-      if (notes.length > 10) {
-        var restSum = 0;
-        for (var j = 10; j < notes.length; j++) restSum += notes[j].visit_uv || 0;
-        restSeries[di] = restSum > 0 ? restSum : null;
-      }
-    });
-
-    // Build ECharts series (bar only, no lines)
+    // Build series dynamically for each active metric
     var barSeries = [];
-    for (var ri = 0; ri < 10; ri++) {
+    activeMetrics.forEach(function(metric){
+      var mm = METRIC_META[metric];
+      var metricKey = mm.key;
+      var pal = mm.palette;
+      var stackName = metric + "_stack";
+
+      // Build rank data for this metric
+      var rankSeries = [];
+      for (var ri = 0; ri < 10; ri++) {
+        rankSeries.push(new Array(nDates).fill(null));
+      }
+      var restSeries = new Array(nDates).fill(null);
+
+      dateInts.forEach(function(dInt, di){
+        var notes = (dailyNotes[dInt] || []).slice();
+        notes.sort(function(a,b){ return (b[metricKey]||0) - (a[metricKey]||0); });
+        for (var i = 0; i < Math.min(notes.length, 10); i++) {
+          rankSeries[i][di] = notes[i][metricKey];
+        }
+        if (notes.length > 10) {
+          var restSum = 0;
+          for (var j = 10; j < notes.length; j++) restSum += notes[j][metricKey] || 0;
+          restSeries[di] = restSum > 0 ? restSum : null;
+        }
+      });
+
+      // Top10 stacked bars
+      for (var ri2 = 0; ri2 < 10; ri2++) {
+        barSeries.push({
+          name: metric + "_Top" + (ri2 + 1),
+          type: "bar", stack: stackName, yAxisIndex: 0,
+          data: rankSeries[ri2],
+          color: pal[ri2],
+          barMaxWidth: activeMetrics.length > 1 ? 24 : 44,
+          emphasis: { focus: "series" },
+          itemStyle: { borderWidth: 0 },
+        });
+      }
+      // Rest bar
       barSeries.push({
-        name: "Top" + (ri + 1),
-        type: "bar", stack: "daily", yAxisIndex: 0,
-        data: rankSeries[ri],
-        color: colorForRank(ri + 1),
-        barMaxWidth: 44,
+        name: metric + "_rest",
+        type: "bar", stack: stackName, yAxisIndex: 0,
+        data: restSeries, color: DAILY_REST_COLOR,
+        barMaxWidth: activeMetrics.length > 1 ? 24 : 44,
         emphasis: { focus: "series" },
         itemStyle: { borderWidth: 0 },
       });
-    }
-    barSeries.push({
-      name: "其余笔记", type: "bar", stack: "daily", yAxisIndex: 0,
-      data: restSeries, color: DAILY_REST_COLOR,
-      barMaxWidth: 44,
-      emphasis: { focus: "series" },
-      itemStyle: { borderWidth: 0 },
-    });
 
-    // Daily total visit_uv as invisible bar for top label
-    var dailyTotalData = trendsAll.map(function(r){ return r[1]; });
-    barSeries.push({
-      name: "日总计（标签）", type: "bar", stack: "daily", yAxisIndex: 0,
-      data: new Array(nDates).fill(null),
-      label: {
-        show: true,
-        position: "top",
-        fontSize: 11,
-        fontWeight: 700,
-        color: "#FF2442",
-        formatter: function(p) {
-          var idx = p.dataIndex;
-          return idx >= 0 && idx < nDates ? fmt.int(dailyTotalData[idx]) : "";
+      // Daily total label (invisible bar on top of this stack)
+      var dailyTotalData = trendsAll.map(function(r){
+        var idx = {visit:1, cart:2, deal:3}[metric] || 1;
+        return r[idx];
+      });
+      barSeries.push({
+        name: metric + "_label",
+        type: "bar", stack: stackName, yAxisIndex: 0,
+        data: new Array(nDates).fill(null),
+        label: {
+          show: true,
+          position: "top",
+          fontSize: 10,
+          fontWeight: 700,
+          color: pal[0],
+          formatter: function(p) {
+            var idx = p.dataIndex;
+            return idx >= 0 && idx < nDates ? fmt.int(dailyTotalData[idx]) : "";
+          },
         },
-      },
-      color: "transparent",
-      barMaxWidth: 44,
-      silent: true,
-      tooltip: { show: false },
-      itemStyle: { borderWidth: 0 },
+        color: "transparent",
+        barMaxWidth: activeMetrics.length > 1 ? 24 : 44,
+        silent: true,
+        tooltip: { show: false },
+        itemStyle: { borderWidth: 0 },
+      });
     });
 
     var chartDom = document.getElementById("dailyOverviewChart");
     if (!dailyOverviewChart) dailyOverviewChart = echarts.init(chartDom);
     dailyOverviewChart.off("click");
+
+    var zoomOpt = activeMetrics.length > 1
+      ? [{ type: "slider", bottom: 4, height: 20, start: 0, end: nDates > 40 ? 30 : 100 }]
+      : (nDates > 40 ? [{ type: "slider", bottom: 4, height: 20, start: 0, end: 30 }] : []);
 
     dailyOverviewChart.setOption({
       backgroundColor: "transparent",
@@ -1426,8 +1448,9 @@
         backgroundColor: "#fff",
         borderColor: C.border,
         textStyle: { color: C.text, fontSize: 12 },
-        extraCssText: "max-width:380px;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,.10);z-index:200",
+        extraCssText: "max-width:420px;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,.10);z-index:200",
         formatter: function(params) {
+          if (!params || !params.length) return "";
           var dateIdx = params[0].dataIndex;
           var dInt = dateInts[dateIdx];
           var notes = (dailyNotes[dInt] || []).slice();
@@ -1441,13 +1464,11 @@
 
           var html = '<div style="font-weight:700;margin-bottom:6px;font-size:12px">📅 ' + dateLabel + '</div>';
           html += '<table style="border-spacing:0 1px;font-size:11px;width:100%">';
-          // header row
           var TH = 'text-align:right;font-size:10px;color:#9CA3AF;font-weight:400;width:58px;padding-bottom:2px';
           html += '<tr><td style="width:16px"></td><td></td>';
           html += '<td style="' + TH + '">进店</td>';
           html += '<td style="' + TH + '">加购</td>';
           html += '<td style="' + TH + '">成交</td></tr>';
-          // summary row
           var T = 'text-align:right;font-weight:600;width:58px';
           html += '<tr><td style="width:16px"></td><td style="color:#6B7280;padding-bottom:4px">总计</td>';
           html += '<td style="' + T + ';color:#FF2442">' + tv + '</td>';
@@ -1461,7 +1482,7 @@
           for (var i = 0; i < showCount; i++) {
             var n = notes[i];
             var rank = i + 1;
-            var clr = rank <= 10 ? colorForRank(rank) : DAILY_REST_COLOR;
+            var clr = rank <= 10 ? DAILY_RED_PALETTE[rank - 1] : DAILY_REST_COLOR;
             var vv = fmt.int(n.visit_uv), cv = fmt.int(n.cart_uv), dv = fmt.int(n.deal_uv);
             html += '<tr>';
             html += '<td style="width:16px"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + clr + ';vertical-align:middle"></span></td>';
@@ -1490,7 +1511,8 @@
         },
       },
       legend: { show: false },
-      grid: { top: 28, left: 56, right: 20, bottom: 40 },
+      grid: { top: 28, left: 56, right: 20, bottom: zoomOpt.length ? 50 : 40 },
+      dataZoom: zoomOpt,
       xAxis: {
         type: "category", data: dates,
         axisLine: { lineStyle: { color: C.border } },
