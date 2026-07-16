@@ -307,6 +307,13 @@
     };
   }
 
+  function buildSliderZoom(dateCount, height) {
+    return [{
+      type: "slider", bottom: 4, height: height,
+      start: 0, end: dateCount > 40 ? 30 : 100,
+    }];
+  }
+
   function renderTrendModule() {
     const trends = DATA.trends || {};
     const trendsAll = DATA.trends_all || [];
@@ -378,7 +385,8 @@
         backgroundColor: "transparent",
         tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
         legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
-        grid: { top: 40, left: 60, right: 30, bottom: 40 },
+        grid: { top: 40, left: 60, right: 30, bottom: 68 },
+        dataZoom: buildSliderZoom(dates.length, 20),
         xAxis: {
           type: "category", data: dates,
           axisLine: { lineStyle: { color: C.border } },
@@ -452,7 +460,8 @@
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
       legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
-      grid: { top: 40, left: 60, right: 30, bottom: 40 },
+      grid: { top: 40, left: 60, right: 30, bottom: 68 },
+      dataZoom: buildSliderZoom(dates.length, 20),
       xAxis: {
         type: "category", data: dates,
         axisLine: { lineStyle: { color: C.border } },
@@ -571,7 +580,8 @@
               </table>`;
           },
         },
-        grid: { top: 20, left: 60, right: 70, bottom: 40 },
+        grid: { top: 20, left: 60, right: 70, bottom: 68 },
+        dataZoom: buildSliderZoom(dates.length, 20),
         xAxis: {
           type: "category", data: dates,
           axisLine: { lineStyle: { color: C.border } },
@@ -712,7 +722,8 @@
               </table>`;
           },
         },
-        grid: { top: 20, left: 60, right: 70, bottom: 40 },
+        grid: { top: 20, left: 60, right: 70, bottom: 68 },
+        dataZoom: buildSliderZoom(dates.length, 20),
         xAxis: {
           type: "category", data: dates,
           axisLine: { lineStyle: { color: C.border } },
@@ -1509,8 +1520,8 @@
     dailyOverviewChart.off("click");
 
     var zoomOpt = activeMetrics.length > 1
-      ? [{ type: "slider", bottom: 4, height: 20, start: 0, end: nDates > 40 ? 30 : 100 }]
-      : (nDates > 40 ? [{ type: "slider", bottom: 4, height: 20, start: 0, end: 30 }] : []);
+      ? buildSliderZoom(nDates, 12)
+      : (nDates > 40 ? buildSliderZoom(nDates, 12) : []);
 
     dailyOverviewChart.setOption({
       backgroundColor: "transparent",
@@ -1583,7 +1594,7 @@
         },
       },
       legend: { show: false },
-      grid: { top: 28, left: 56, right: 20, bottom: zoomOpt.length ? 50 : 40 },
+      grid: { top: 28, left: 56, right: 20, bottom: zoomOpt.length ? 58 : 40 },
       dataZoom: zoomOpt,
       xAxis: {
         type: "category", data: dates,
