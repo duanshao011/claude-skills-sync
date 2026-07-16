@@ -502,6 +502,12 @@
   /** renderCost(null) = 全部笔记汇总；renderCost(noteId) = 单篇 */
   function renderCost(noteId) {
     console.log('[renderCost] called with noteId:', JSON.stringify(noteId), 'type:', typeof noteId);
+    // If user cleared the search input manually, force all-notes mode
+    var costInp = document.getElementById("costSearch");
+    if (noteId && costInp && !costInp.value.trim()) {
+      noteId = null;
+      if (costCombo) { costCombo.currentId = null; costCombo.keyword = ""; }
+    }
     if (costCombo) costCombo.currentId = noteId || null;
     const costData = DATA.cost || {};
 
@@ -586,7 +592,8 @@
             lineStyle: { color: "#FF2442", width: 2, type: "dashed" },
           },
         ],
-      });
+      }, true);
+      costChart.resize();
       return;
     }
 
