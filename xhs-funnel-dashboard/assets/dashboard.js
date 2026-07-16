@@ -408,20 +408,46 @@
     const dealRate = visitUv > 0 ? (dealUv / visitUv * 100) : null;
     const uvValue = visitUv > 0 ? (gmv / visitUv) : null;
 
+    // Per-note averages from cost_all summary (for UV comparison)
+    var caSum = (DATA.cost_all || {}).summary || {};
+    var nCnt = caSum.note_count || 0;
+    var avgVisitPer = nCnt > 0 ? Math.round(caSum.visit_uv / nCnt) : null;
+    var avgCartPer  = nCnt > 0 ? Math.round(caSum.cart_uv / nCnt) : null;
+    var avgDealPer  = nCnt > 0 ? Math.round(caSum.deal_uv / nCnt) : null;
+
+    // UV color: higher = better (green), lower = worse (red)
+    function uvColor(val, avg) {
+      if (val == null || avg == null || avg === 0) return null;
+      if (val === avg) return "#9CA3AF";
+      return val > avg ? "#10B981" : "#EF4444";
+    }
+
+    var visitUC = uvColor(visitUv, avgVisitPer);
+    var cartUC  = uvColor(cartUv, avgCartPer);
+    var dealUC  = uvColor(dealUv, avgDealPer);
+    function uvMeanHtml(avg) { return avg != null ? '<span style="color:#9CA3AF">均 ' + fmt.int(avg) + '</span>' : null; }
+
     const kpis = [
-      { l: "总阅读UV", v: fmt.int(readUv), rate: null, tip: "", u: "" },
-      { l: "总进店UV", v: fmt.int(visitUv), rate: visitRate != null ? visitRate.toFixed(2) + "%" : null, tip: "进店率 = 进店UV ÷ 阅读UV", u: "" },
-      { l: "总加购UV", v: fmt.int(cartUv), rate: cartRate != null ? cartRate.toFixed(2) + "%" : null, tip: "进店加购率 = 加购UV ÷ 进店UV", u: "" },
-      { l: "总成交UV", v: fmt.int(dealUv), rate: dealRate != null ? dealRate.toFixed(2) + "%" : null, tip: "进店转化率 = 成交UV ÷ 进店UV", u: "" },
-      { l: '总GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(gmv), rate: null, tip: "⚠ 多内容归因下含重复计算，非精确值", u: "元", approx: true },
-      { l: 'UV价值 <span class="gmv-approx" data-tip="UV价值 = GMV ÷ 进店UV，因GMV含多内容归因重复，该值为近似参考。">≈ 参考值</span>', v: uvValue != null ? "¥" + uvValue.toFixed(2) : "—", rate: null, tip: "UV价值 = 总GMV ÷ 进店UV（GMV含归因重复）", u: "", approx: true },
+      { l: "总阅读UV", v: fmt.int(readUv), valColor: null, rate: null, u: "" },
+      { l: "总进店UV", v: fmt.int(visitUv), valColor: visitUC, rate: visitRate != null ? visitRate.toFixed(2) + "%" : null, u: "" },
+      { l: "总加购UV", v: fmt.int(cartUv), valColor: cartUC, rate: cartRate != null ? cartRate.toFixed(2) + "%" : null, u: "" },
+      { l: "总成交UV", v: fmt.int(dealUv), valColor: dealUC, rate: dealRate != null ? dealRate.toFixed(2) + "%" : null, u: "" },
+      { l: '总GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(gmv), valColor: null, rate: null, u: "元", approx: true },
+      { l: 'UV价值 <span class="gmv-approx" data-tip="UV价值 = GMV ÷ 进店UV，因GMV含多内容归因重复，该值为近似参考。">≈ 参考值</span>', v: uvValue != null ? "¥" + uvValue.toFixed(2) : "—", valColor: null, rate: null, u: "", approx: true },
+      // Per-note mean row (compact, gray)
+      { l: "", v: "", valColor: null, rate: null, u: "", spacer: true },
+      { l: "全量笔记均值", v: "", valColor: null, rate: null, u: "" },
+      { l: "", v: fmt.int(avgVisitPer), valColor: null, rate: uvMeanHtml(avgVisitPer), u: "篇均" },
+      { l: "", v: fmt.int(avgCartPer), valColor: null, rate: uvMeanHtml(avgCartPer), u: "篇均" },
+      { l: "", v: fmt.int(avgDealPer), valColor: null, rate: uvMeanHtml(avgDealPer), u: "篇均" },
     ];
-    document.getElementById("trendKpis").innerHTML = kpis.map(k =>
-      `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
+    document.getElementById("trendKpis").innerHTML = kpis.map(k => {
+      if (k.spacer) return '<div></div>';
+      return `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
         <div class="trend-kpi-label">${k.l}</div>
-        <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
-      </div>`
-    ).join("");
+        <div class="trend-kpi-val"${k.valColor ? ' style="color:' + k.valColor + '"' : ""}>${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
+      </div>`;
+    }).join("");
 
     // 笔记发布日期（x 轴红字标注，与图表二一致）
     const pubDateRaw = note.pub_date ? note.pub_date : null;
