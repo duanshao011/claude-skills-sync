@@ -199,6 +199,14 @@
       else if (e.key === "Enter") { e.preventDefault(); if (items[self.hi]) select(items[self.hi].note_id); }
       else if (e.key === "Escape") { list.hidden = true; if (self.currentId) restoreInputDisplay(); }
     });
+    // Blur: if user cleared input then clicked away, reset to all-notes
+    inp.addEventListener("blur", () => {
+      if (!inp.value.trim() && self.currentId) {
+        self.currentId = null;
+        inp.classList.remove("has-value", "linked-outside");
+        if (cfg.onClear) cfg.onClear();
+      }
+    });
     document.addEventListener("click", function (ev) {
       if (!ev.target.closest("#" + cfg.inputId) && !ev.target.closest("#" + cfg.listId)) {
         list.hidden = true;
