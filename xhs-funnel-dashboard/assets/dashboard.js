@@ -1525,8 +1525,9 @@
         axisLabel: { color: C.muted, fontSize: 11 }, nameTextStyle: { color: C.dim },
       },
       series: barSeries,
-    });
+    }, true);
 
+    dailyOverviewChart.resize();
     dailyOverviewChart.on("click", function(params) {
       if (params.componentType === "series" && params.seriesType === "bar") {
         var di = params.dataIndex;
