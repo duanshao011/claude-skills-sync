@@ -1617,6 +1617,36 @@
     if (dailyOverviewChart) dailyOverviewChart.resize();
   });
 
+  // ===== 全局 GMV tooltip（避免被 overflow 裁剪） =====
+  function initGmvTooltip() {
+    var tip = document.getElementById("gmvGlobalTip");
+    if (!tip) return;
+    document.addEventListener("mouseover", function(e){
+      var el = e.target.closest(".gmv-approx");
+      if (!el) { tip.hidden = true; return; }
+      var text = el.getAttribute("data-tip");
+      if (!text) { tip.hidden = true; return; }
+      tip.textContent = text;
+      tip.hidden = false;
+      var rect = el.getBoundingClientRect();
+      var left = rect.left;
+      var top = rect.bottom + 8;
+      // Keep within viewport
+      if (left + 300 > window.innerWidth) left = window.innerWidth - 310;
+      if (left < 8) left = 8;
+      if (top + 80 > window.innerHeight) top = rect.top - tip.offsetHeight - 8;
+      tip.style.left = left + "px";
+      tip.style.top = top + "px";
+    }, true);
+    document.addEventListener("mouseout", function(e){
+      if (e.target.closest(".gmv-approx")) return;
+      // Small delay to avoid flicker when moving between elements
+      setTimeout(function(){
+        if (!document.querySelector(".gmv-approx:hover")) tip.hidden = true;
+      }, 50);
+    }, true);
+  }
+
   // ===== boot =====
   bindLinks();
   renderMeta();
@@ -1627,6 +1657,7 @@
   renderTable();
   bindModal();
   initTableCombo();
+  initGmvTooltip();
   initDailyToggles();
   renderDailyOverview();
   renderTrendModule();
