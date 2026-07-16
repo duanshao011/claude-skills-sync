@@ -388,6 +388,8 @@
     }
 
     // ===== 单篇笔记模式 =====
+    var trendModSub2 = document.querySelector("#modTrend .mod-sub");
+    if (trendModSub2) trendModSub2.textContent = "逐日转化趋势 · hover 看进店率 / 加购率 / 转化率";
     const rows = (DATA.trends || {})[noteId] || [];
     const note = DATA.notes.find(n => n.note_id === noteId) || {};
 
