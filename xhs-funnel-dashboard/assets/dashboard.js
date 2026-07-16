@@ -551,6 +551,9 @@
           <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
         </div>`
       ).join("");
+      var chartDom = document.getElementById("costChart");
+      if (costChart) { try { costChart.dispose(); } catch (ignore) {} }
+      costChart = echarts.init(chartDom);
       costChart.setOption({
         backgroundColor: "transparent",
         tooltip: {
