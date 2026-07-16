@@ -739,7 +739,8 @@
             lineStyle: { color: "#FF2442", width: 2, type: "dashed" },
           },
         ],
-      });
+      }, true);
+      costChart.resize();
     } catch (e) {
       console.error("costChart render error:", e);
       if (costChart) { try { costChart.dispose(); } catch (ignore) {} costChart = null; }
