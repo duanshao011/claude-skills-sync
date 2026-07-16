@@ -362,8 +362,14 @@
     if (hint) hint.dataset.enabled = "true";
 
     dom.addEventListener("wheel", function (event) {
-      if (event.shiftKey) hideChartPanHint(state.hintId);
-    }, { passive: true });
+      if (event.shiftKey) {
+        hideChartPanHint(state.hintId);
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.scrollBy({ left: event.deltaX, top: event.deltaY, behavior: "auto" });
+    }, { passive: false, capture: true });
 
     dom.addEventListener("pointerdown", function (event) {
       if (event.pointerType === "mouse" && event.button !== 0) return;
