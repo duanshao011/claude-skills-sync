@@ -1290,12 +1290,32 @@
     "#FF8194","#FF98A8","#FFAFBD","#FFC6D1",
     "#FFD1D8","#FFE0E5"
   ];
+  const DAILY_ORANGE_PALETTE = [
+    "#F97316","#FA8530","#FB9749","#FCA961",
+    "#FDBB7A","#FDCD93","#FEDFAC","#FEEDC5",
+    "#FFF3D8","#FFF8E8"
+  ];
+  const DAILY_GOLD_PALETTE = [
+    "#EAB308","#ECBD14","#EFC724","#F1D137",
+    "#F4DA4D","#F6E263","#F8EB79","#FAF290",
+    "#FCF7A7","#FDFABF"
+  ];
   const DAILY_REST_COLOR = "#D1D5DB";
+
+  const METRIC_META = {
+    visit: { label: "进店", palette: DAILY_RED_PALETTE, key: "visit_uv" },
+    cart:  { label: "加购", palette: DAILY_ORANGE_PALETTE, key: "cart_uv" },
+    deal:  { label: "成交", palette: DAILY_GOLD_PALETTE, key: "deal_uv" },
+  };
+
+  let DAILY_ACTIVE_METRICS = new Set(["visit"]);
   let dailyOverviewChart = null;
   let DAILY_SELECTED_DATE = null;
 
-  function colorForRank(rank) {
-    return DAILY_RED_PALETTE[rank - 1] || DAILY_REST_COLOR;
+  function colorForRank(rank, metric) {
+    metric = metric || "visit";
+    var pal = METRIC_META[metric] ? METRIC_META[metric].palette : DAILY_RED_PALETTE;
+    return pal[rank - 1] || DAILY_REST_COLOR;
   }
 
   function renderDailyOverview() {
