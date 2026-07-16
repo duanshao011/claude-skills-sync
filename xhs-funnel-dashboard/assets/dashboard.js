@@ -1541,6 +1541,27 @@
     document.getElementById("dailyDetailPanel").hidden = true;
   }
 
+  function initDailyToggles() {
+    document.querySelectorAll(".metric-toggle").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        this.classList.toggle("active");
+        var metric = this.dataset.metric;
+        if (this.classList.contains("active")) {
+          DAILY_ACTIVE_METRICS.add(metric);
+        } else {
+          DAILY_ACTIVE_METRICS.delete(metric);
+        }
+        // Ensure at least one active
+        if (!DAILY_ACTIVE_METRICS.size) {
+          this.classList.add("active");
+          DAILY_ACTIVE_METRICS.add(metric);
+          return;
+        }
+        renderDailyOverview();
+      });
+    });
+  }
+
   function expandDailyNotes(dateInt) {
     var dailyNotes = DATA.daily_notes || {};
     var notes = (dailyNotes[dateInt] || []).slice();
