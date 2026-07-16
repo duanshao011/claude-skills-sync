@@ -207,6 +207,27 @@ body{
 /* 转化率小号数字：紧跟主值，hover 卡片看文字说明 */
 .trend-kpi-rate{font-size:13px;font-weight:600;color:var(--brand);margin-left:4px}
 .trend-chart{height:340px}
+.chart-stage{position:relative}
+.chart-pan-hint{
+  position:absolute;z-index:6;top:8px;right:10px;
+  display:flex;align-items:center;gap:7px;
+  max-width:calc(100% - 20px);padding:6px 9px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:rgba(255,255,255,.94);box-shadow:0 4px 14px rgba(17,24,39,.07);
+  color:var(--muted);font-size:10px;line-height:1.25;white-space:nowrap;
+  opacity:0;transform:translateY(-4px);pointer-events:none;
+  transition:opacity .2s ease,transform .2s ease;
+}
+.chart-pan-hint.is-visible{opacity:1;transform:translateY(0)}
+.chart-pan-hint-icon{color:var(--brand);font-size:14px;font-weight:700;line-height:1}
+.chart-pan-hint-touch{display:none}
+@media (pointer:coarse){
+  .chart-pan-hint-mouse{display:none}
+  .chart-pan-hint-touch{display:inline}
+}
+@media (prefers-reduced-motion:reduce){
+  .chart-pan-hint{transition:none}
+}
 
 /* ---------- 图表二 · 单篇成本分析 ---------- */
 .cost-body{padding:18px 24px 24px}

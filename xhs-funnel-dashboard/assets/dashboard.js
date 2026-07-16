@@ -307,11 +307,152 @@
     };
   }
 
-  function buildSliderZoom(dateCount, height) {
+  function buildInsideZoom() {
     return [{
-      type: "slider", bottom: 4, height: height,
-      start: 0, end: dateCount > 40 ? 30 : 100,
+      type: "inside",
+      start: 0,
+      end: 100,
+      zoomOnMouseWheel: "shift",
+      moveOnMouseMove: true,
+      moveOnMouseWheel: false,
+      throttle: 40,
     }];
+  }
+
+  const CHART_PAN_STATES = new WeakMap();
+
+  function hideChartPanHint(hintId) {
+    const hint = document.getElementById(hintId);
+    if (!hint) return;
+    hint.dataset.dismissed = "true";
+    hint.classList.remove("is-visible");
+  }
+
+  function resetChartPan(chart) {
+    if (!chart || !chart.dispatchAction) return;
+    chart.dispatchAction({ type: "dataZoom", dataZoomIndex: 0, start: 0, end: 100 });
+  }
+
+  function bindChartPanInteractions(chart, hintId) {
+    if (!chart || !chart.getDom) return;
+    const dom = chart.getDom();
+    let state = CHART_PAN_STATES.get(dom);
+    if (state) {
+      state.chart = chart;
+      state.hintId = hintId;
+      resetChartPan(chart);
+      return;
+    }
+
+    state = {
+      chart: chart,
+      hintId: hintId,
+      pointerDown: false,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      dragged: false,
+      suppressClickUntil: 0,
+      lastTouchTap: 0,
+      clickTimer: null,
+    };
+    CHART_PAN_STATES.set(dom, state);
+
+    const hint = document.getElementById(hintId);
+    if (hint) hint.dataset.enabled = "true";
+
+    dom.addEventListener("wheel", function (event) {
+      if (event.shiftKey) hideChartPanHint(state.hintId);
+    }, { passive: true });
+
+    dom.addEventListener("pointerdown", function (event) {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      state.pointerDown = true;
+      state.pointerId = event.pointerId;
+      state.startX = event.clientX;
+      state.startY = event.clientY;
+      state.dragged = false;
+      hideChartPanHint(state.hintId);
+      if (dom.setPointerCapture) {
+        try { dom.setPointerCapture(event.pointerId); } catch (ignore) {}
+      }
+    });
+
+    dom.addEventListener("pointermove", function (event) {
+      if (!state.pointerDown || event.pointerId !== state.pointerId) return;
+      const dx = event.clientX - state.startX;
+      const dy = event.clientY - state.startY;
+      if (Math.sqrt(dx * dx + dy * dy) > 6) state.dragged = true;
+    });
+
+    function finishPointer(event) {
+      if (!state.pointerDown || event.pointerId !== state.pointerId) return;
+      state.pointerDown = false;
+      if (state.dragged) state.suppressClickUntil = Date.now() + 260;
+      if (event.pointerType === "touch" && !state.dragged) {
+        const now = Date.now();
+        if (now - state.lastTouchTap <= 320) {
+          state.lastTouchTap = 0;
+          state.suppressClickUntil = now + 360;
+          clearTimeout(state.clickTimer);
+          resetChartPan(state.chart);
+        } else {
+          state.lastTouchTap = now;
+        }
+      }
+      if (dom.releasePointerCapture) {
+        try { dom.releasePointerCapture(event.pointerId); } catch (ignore) {}
+      }
+      state.pointerId = null;
+    }
+
+    dom.addEventListener("pointerup", finishPointer);
+    dom.addEventListener("pointercancel", finishPointer);
+    dom.addEventListener("dblclick", function () {
+      clearTimeout(state.clickTimer);
+      state.suppressClickUntil = Date.now() + 320;
+      hideChartPanHint(state.hintId);
+      resetChartPan(state.chart);
+    });
+
+    resetChartPan(chart);
+  }
+
+  function runConfirmedChartClick(chart, callback) {
+    if (!chart || !chart.getDom) return callback();
+    const state = CHART_PAN_STATES.get(chart.getDom());
+    if (!state) return callback();
+    if (Date.now() < state.suppressClickUntil || state.dragged) return;
+    clearTimeout(state.clickTimer);
+    state.clickTimer = setTimeout(function () {
+      if (Date.now() >= state.suppressClickUntil) callback();
+    }, 260);
+  }
+
+  function initChartPanHints() {
+    const hints = Array.from(document.querySelectorAll(".chart-pan-hint[data-enabled='true']"));
+    if (!hints.length) return;
+
+    function reveal(hint) {
+      if (hint.dataset.shown || hint.dataset.dismissed) return;
+      hint.dataset.shown = "true";
+      hint.classList.add("is-visible");
+      setTimeout(function () { hint.classList.remove("is-visible"); }, 4000);
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      hints.forEach(reveal);
+      return;
+    }
+
+    const observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        reveal(entry.target);
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.35 });
+    hints.forEach(function (hint) { observer.observe(hint); });
   }
 
   function renderTrendModule() {
@@ -385,8 +526,8 @@
         backgroundColor: "transparent",
         tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
         legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
-        grid: { top: 40, left: 60, right: 30, bottom: 68 },
-        dataZoom: buildSliderZoom(dates.length, 20),
+        grid: { top: 40, left: 60, right: 30, bottom: 40 },
+        dataZoom: buildInsideZoom(),
         xAxis: {
           type: "category", data: dates,
           axisLine: { lineStyle: { color: C.border } },
@@ -406,6 +547,7 @@
           ...(s.avg ? { markLine: buildAvgMarkLine(s.col) } : {}),
         })),
       });
+      bindChartPanInteractions(trendChart, "trendPanHint");
       return;
     }
 
@@ -460,8 +602,8 @@
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
       legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
-      grid: { top: 40, left: 60, right: 30, bottom: 68 },
-      dataZoom: buildSliderZoom(dates.length, 20),
+      grid: { top: 40, left: 60, right: 30, bottom: 40 },
+      dataZoom: buildInsideZoom(),
       xAxis: {
         type: "category", data: dates,
         axisLine: { lineStyle: { color: C.border } },
@@ -487,6 +629,7 @@
         ...(s.avg ? { markLine: buildAvgMarkLine(s.col) } : {}),
       })),
     });
+    bindChartPanInteractions(trendChart, "trendPanHint");
   }
 
   // ===== 图表二 · 单篇成本分析 =====
@@ -580,8 +723,8 @@
               </table>`;
           },
         },
-        grid: { top: 20, left: 60, right: 70, bottom: 68 },
-        dataZoom: buildSliderZoom(dates.length, 20),
+        grid: { top: 20, left: 60, right: 70, bottom: 40 },
+        dataZoom: buildInsideZoom(),
         xAxis: {
           type: "category", data: dates,
           axisLine: { lineStyle: { color: C.border } },
@@ -614,6 +757,7 @@
           },
         ],
       }, true);
+      bindChartPanInteractions(costChart, "costPanHint");
       costChart.resize();
       return;
     }
@@ -722,8 +866,8 @@
               </table>`;
           },
         },
-        grid: { top: 20, left: 60, right: 70, bottom: 68 },
-        dataZoom: buildSliderZoom(dates.length, 20),
+        grid: { top: 20, left: 60, right: 70, bottom: 40 },
+        dataZoom: buildInsideZoom(),
         xAxis: {
           type: "category", data: dates,
           axisLine: { lineStyle: { color: C.border } },
@@ -762,6 +906,7 @@
           },
         ],
       }, true);
+      bindChartPanInteractions(costChart, "costPanHint");
       costChart.resize();
     } catch (e) {
       console.error("costChart render error:", e);
@@ -1519,9 +1664,7 @@
     if (!dailyOverviewChart) dailyOverviewChart = echarts.init(chartDom);
     dailyOverviewChart.off("click");
 
-    var zoomOpt = activeMetrics.length > 1
-      ? buildSliderZoom(nDates, 12)
-      : (nDates > 40 ? buildSliderZoom(nDates, 12) : []);
+    var zoomOpt = buildInsideZoom();
 
     dailyOverviewChart.setOption({
       backgroundColor: "transparent",
@@ -1594,7 +1737,7 @@
         },
       },
       legend: { show: false },
-      grid: { top: 28, left: 56, right: 20, bottom: zoomOpt.length ? 58 : 40 },
+      grid: { top: 28, left: 56, right: 20, bottom: 40 },
       dataZoom: zoomOpt,
       xAxis: {
         type: "category", data: dates,
@@ -1610,13 +1753,16 @@
       series: barSeries,
     }, true);
 
+    bindChartPanInteractions(dailyOverviewChart, "dailyPanHint");
     dailyOverviewChart.resize();
     dailyOverviewChart.on("click", function(params) {
       if (params.componentType === "series" && params.seriesType === "bar") {
         var di = params.dataIndex;
         if (di != null && di >= 0 && di < dateInts.length) {
-          DAILY_SELECTED_DATE = dateInts[di];
-          expandDailyNotes(DAILY_SELECTED_DATE);
+          runConfirmedChartClick(dailyOverviewChart, function () {
+            DAILY_SELECTED_DATE = dateInts[di];
+            expandDailyNotes(DAILY_SELECTED_DATE);
+          });
         }
       }
     });
@@ -1745,4 +1891,5 @@
   renderDailyOverview();
   renderTrendModule();
   renderCostModule();
+  initChartPanHints();
 })();

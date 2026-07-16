@@ -43,7 +43,14 @@
     </div>
     <div class="daily-body">
       <div class="trend-kpis" id="dailyOverviewKpis"></div>
-      <div class="trend-chart" id="dailyOverviewChart"></div>
+      <div class="chart-stage">
+        <div class="chart-pan-hint" id="dailyPanHint" role="note">
+          <span class="chart-pan-hint-icon">↔</span>
+          <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+          <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+        </div>
+        <div class="trend-chart" id="dailyOverviewChart"></div>
+      </div>
       <div class="daily-detail-panel" id="dailyDetailPanel" hidden>
         <div class="daily-detail-head">
           <span class="daily-detail-title" id="dailyDetailTitle"></span>
@@ -77,7 +84,14 @@
     </div>
     <div class="trend-body">
       <div class="trend-kpis" id="trendKpis"></div>
-      <div class="trend-chart" id="trendChart"></div>
+      <div class="chart-stage">
+        <div class="chart-pan-hint" id="trendPanHint" role="note">
+          <span class="chart-pan-hint-icon">↔</span>
+          <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+          <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+        </div>
+        <div class="trend-chart" id="trendChart"></div>
+      </div>
     </div>
   </section>
 
@@ -99,7 +113,14 @@
     </div>
     <div class="cost-body">
       <div class="cost-kpis" id="costKpis"></div>
-      <div class="cost-chart" id="costChart"></div>
+      <div class="chart-stage">
+        <div class="chart-pan-hint" id="costPanHint" role="note">
+          <span class="chart-pan-hint-icon">↔</span>
+          <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+          <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+        </div>
+        <div class="cost-chart" id="costChart"></div>
+      </div>
       <div class="cost-note">柱状图=每日实付（左轴 ¥） · 🔴红虚线=累计进店成本（右轴 ¥/UV） · hover 看详情</div>
     </div>
   </section>
