@@ -1366,7 +1366,6 @@
       { l: "总加购UV", v: fmt.int(totalCart), u: "" },
       { l: "总成交UV", v: fmt.int(totalDeal), u: "" },
       { l: "有数据笔记", v: fmt.int(totalNotes.size), u: "篇" },
-      { l: "", v: "📊 日维度聚合", u: "" },
     ];
     document.getElementById("dailyOverviewKpis").innerHTML = kpis.map(function(k){
       return '<div class="trend-kpi"><div class="trend-kpi-label">'+k.l+'</div><div class="trend-kpi-val">'+k.v+'<span class="u"> '+k.u+'</span></div></div>';
