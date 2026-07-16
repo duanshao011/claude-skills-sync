@@ -1110,7 +1110,7 @@
     else if (tier === "na") cls = "num-na";
     const kw = TABLE.keyword;
     if (c.key === "note_id") {
-      return `<td class="mono-id${fzCls}"${fzStyle} title="${v || ''}">${highlight(v, kw)}</td>`;
+      return `<td class="mono-id${fzCls}"${fzStyle} title="${v || ''}">${escapeHtml(v)}</td>`;
     }
     if (c.key === "creator" || c.key === "title") {
       return `<td class="${fzCls.trim()}"${fzStyle}>${highlight(v, kw)}</td>`;
