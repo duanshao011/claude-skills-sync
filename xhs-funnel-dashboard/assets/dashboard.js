@@ -1274,6 +1274,11 @@
         TABLE.page = 1;
         renderTable();
       },
+      onClear: function () {
+        TABLE.keyword = "";
+        TABLE.page = 1;
+        renderTable();
+      },
     });
     // 额外监听：用户打字但不选下拉项时，实时关键词过滤表格
     const el = document.getElementById("tableSearch");
