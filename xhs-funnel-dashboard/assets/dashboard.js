@@ -530,6 +530,8 @@
       }
       const s = ca.summary || {};
       const daily = ca.daily || [];
+      const dates = daily.map(r => fmtDate(r[0]));
+      const spendVals = daily.map(r => r[1]);
       // Average cost per UV type
       var avgVisitCost2 = s.visit_uv > 0 ? s.spend / s.visit_uv : null;
       var avgCartCost2 = s.cart_uv > 0 ? s.spend / s.cart_uv : null;
