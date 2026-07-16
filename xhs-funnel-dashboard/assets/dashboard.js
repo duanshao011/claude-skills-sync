@@ -599,20 +599,26 @@
     const s = entry.summary || {};
     const daily = entry.daily || [];
 
-    // 7 指标卡
+    // Overall averages for comparison (from cost_all summary)
+    var caSummary = (DATA.cost_all || {}).summary || {};
+    var avgVisitCost = caSummary.visit_uv > 0 ? caSummary.spend / caSummary.visit_uv : null;
+    var avgCartCost = caSummary.cart_uv > 0 ? caSummary.spend / caSummary.cart_uv : null;
+    var avgDealCost = caSummary.deal_uv > 0 ? caSummary.spend / caSummary.deal_uv : null;
+
+    // 7 指标卡 + 平均成本小字
     const kpiItems = [
-      { l: "累计消耗", v: fmt.money(s.spend), u: "元" },
-      { l: '累计GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
-      { l: 'ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复，该值为近似参考，实际ROI会偏低。">≈ 参考值</span>', v: s.roi == null ? "—" : Number(s.roi).toFixed(2), u: "", approx: true },
-      { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "" },
-      { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "" },
-      { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "" },
-      { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(2), u: "" },
+      { l: "累计消耗", v: fmt.money(s.spend), u: "元", rate: null },
+      { l: '累计GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true, rate: null },
+      { l: 'ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复，该值为近似参考，实际ROI会偏低。">≈ 参考值</span>', v: s.roi == null ? "—" : Number(s.roi).toFixed(2), u: "", approx: true, rate: null },
+      { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "", rate: avgVisitCost != null ? "均值 ¥" + avgVisitCost.toFixed(2) : null },
+      { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "", rate: avgCartCost != null ? "均值 ¥" + avgCartCost.toFixed(2) : null },
+      { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "", rate: avgDealCost != null ? "均值 ¥" + avgDealCost.toFixed(2) : null },
+      { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(2), u: "", rate: null },
     ];
     document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
       `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
         <div class="trend-kpi-label">${k.l}</div>
-        <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span></div>
+        <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
       </div>`
     ).join("");
 
