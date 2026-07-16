@@ -507,12 +507,19 @@
       }
       const s = ca.summary || {};
       const daily = ca.daily || [];
+      // Average costs (all notes)
+      var avgVisitCost = s.visit_uv > 0 ? s.spend / s.visit_uv : null;
+      var avgCartCost = s.cart_uv > 0 ? s.spend / s.cart_uv : null;
+      var avgDealCost = s.deal_uv > 0 ? s.spend / s.deal_uv : null;
       const kpiItems = [
         { l: "总消耗（全部）", v: fmt.money(s.spend), u: "元" },
         { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
         { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "" },
         { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "" },
         { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "" },
+        { l: "进店UV成本（均值）", v: avgVisitCost != null ? "¥" + avgVisitCost.toFixed(2) : "—", u: "", rate: null },
+        { l: "加购成本（均值）", v: avgCartCost != null ? "¥" + avgCartCost.toFixed(2) : "—", u: "", rate: null },
+        { l: "成交成本（均值）", v: avgDealCost != null ? "¥" + avgDealCost.toFixed(2) : "—", u: "", rate: null },
         { l: "笔记数", v: fmt.int(s.note_count), u: "篇" },
         { l: "", v: "📊 全部笔记汇总", u: "" },
       ];
