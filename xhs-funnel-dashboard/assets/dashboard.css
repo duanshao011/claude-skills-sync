@@ -83,17 +83,10 @@ body{
 .kpi.kpi-approx::before{background:#D97706}
 .kpi.kpi-approx .kpi-sub{color:#92400E}
 .gmv-approx{display:inline-block;font-size:10px;font-weight:600;color:#D97706;background:#FEF3C7;border:1px solid #FDE68A;border-radius:3px;padding:1px 6px;margin-left:6px;vertical-align:middle;line-height:16px;cursor:default;position:relative}
-.gmv-approx:hover::after{
-  content:attr(data-tip);
-  position:absolute;left:0;top:calc(100% + 8px);
-  z-index:999;white-space:normal;width:280px;
+.gmv-global-tip{
+  position:fixed;z-index:9999;max-width:300px;
   background:#78350F;color:#FEF3C7;font-size:12px;font-weight:500;line-height:1.6;
-  padding:10px 14px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);
-  pointer-events:none;animation:tipFadeIn .15s ease;
-}
-.gmv-approx:hover::before{
-  content:"";position:absolute;left:20px;top:100%;
-  border:6px solid transparent;border-bottom-color:#78350F;z-index:999;
+  padding:10px 14px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.22);
   pointer-events:none;animation:tipFadeIn .15s ease;
 }
 @keyframes tipFadeIn{from{opacity:0;translateY(4px)}to{opacity:1;translateY(0)}}
