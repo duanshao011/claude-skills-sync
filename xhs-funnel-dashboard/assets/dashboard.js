@@ -603,36 +603,41 @@
     var avgCartCost = caSummary.cart_uv > 0 ? caSummary.spend / caSummary.cart_uv : null;
     var avgDealCost = caSummary.deal_uv > 0 ? caSummary.spend / caSummary.deal_uv : null;
 
-    // Cost comparison helper: returns {color} for mean display (lower=better)
-    function costMeanColor(noteVal, avgVal) {
-      if (noteVal == null || avgVal == null) return null;
+    // Cost comparison helper: {valColor, hasMean, meanHtml}
+    function costCompare(noteVal, avgVal) {
+      if (noteVal == null || avgVal == null) return { valColor: null, meanHtml: null };
       var diff = noteVal - avgVal;
-      if (Math.abs(diff) < 0.005) return "#9CA3AF"; // equal
-      if (diff < 0) return "#10B981"; // below avg = good (green)
-      return "#EF4444"; // above avg = bad (red)
+      var color;
+      if (Math.abs(diff) < 0.005) color = "#9CA3AF";
+      else if (diff < 0) color = "#10B981"; // below avg = good (green)
+      else color = "#EF4444"; // above avg = bad (red)
+      return {
+        valColor: color,
+        meanHtml: '<span style="color:#9CA3AF">均 ¥' + avgVal.toFixed(2) + '</span>'
+      };
     }
 
     // Restore title bar to single-note mode
     var modSub2 = document.querySelector("#modCost .mod-sub");
     if (modSub2) modSub2.textContent = "笔记粒度的投放消耗与成本效率 · 对比全量均值";
 
-    var visitColor = costMeanColor(s.visit_uv_cost, avgVisitCost);
-    var cartColor  = costMeanColor(s.cart_cost, avgCartCost);
-    var dealColor  = costMeanColor(s.deal_cost, avgDealCost);
+    var visitComp = costCompare(s.visit_uv_cost, avgVisitCost);
+    var cartComp  = costCompare(s.cart_cost, avgCartCost);
+    var dealComp  = costCompare(s.deal_cost, avgDealCost);
 
     const kpiItems = [
-      { l: "累计消耗", v: fmt.money(s.spend), u: "元", rate: null },
-      { l: '累计GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true, rate: null },
-      { l: 'ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复，该值为近似参考，实际ROI会偏低。">≈ 参考值</span>', v: s.roi == null ? "—" : Number(s.roi).toFixed(2), u: "", approx: true, rate: null },
-      { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "", rate: visitColor && avgVisitCost != null ? '<span style="color:' + visitColor + '">均 ¥' + avgVisitCost.toFixed(2) + '</span>' : null },
-      { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "", rate: cartColor && avgCartCost != null ? '<span style="color:' + cartColor + '">均 ¥' + avgCartCost.toFixed(2) + '</span>' : null },
-      { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "", rate: dealColor && avgDealCost != null ? '<span style="color:' + dealColor + '">均 ¥' + avgDealCost.toFixed(2) + '</span>' : null },
-      { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(2), u: "", rate: null },
+      { l: "累计消耗", v: fmt.money(s.spend), u: "元", valColor: null, rate: null },
+      { l: '累计GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true, valColor: null, rate: null },
+      { l: 'ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复，该值为近似参考，实际ROI会偏低。">≈ 参考值</span>', v: s.roi == null ? "—" : Number(s.roi).toFixed(2), u: "", approx: true, valColor: null, rate: null },
+      { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "", valColor: visitComp.valColor, rate: visitComp.meanHtml },
+      { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "", valColor: cartComp.valColor, rate: cartComp.meanHtml },
+      { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "", valColor: dealComp.valColor, rate: dealComp.meanHtml },
+      { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(2), u: "", valColor: null, rate: null },
     ];
     document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
       `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
         <div class="trend-kpi-label">${k.l}</div>
-        <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
+        <div class="trend-kpi-val"${k.valColor ? ' style="color:' + k.valColor + '"' : ""}>${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
       </div>`
     ).join("");
 
