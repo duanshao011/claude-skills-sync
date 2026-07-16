@@ -528,13 +528,9 @@
       document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
         `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
           <div class="trend-kpi-label">${k.l}</div>
-          <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span></div>
+          <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
         </div>`
       ).join("");
-
-      if (!costChart) costChart = echarts.init(document.getElementById("costChart"));
-      const dates = daily.map(r => fmtDate(r[0]));
-      const spendVals = daily.map(r => r[1]);
       costChart.setOption({
         backgroundColor: "transparent",
         tooltip: {
