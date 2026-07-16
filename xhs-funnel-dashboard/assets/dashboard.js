@@ -343,7 +343,6 @@
         { l: "总成交UV（全部）", v: fmt.int(totalDeal), u: "" },
         { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(totalGmv), u: "元", approx: true },
         { l: "笔记数", v: fmt.int(DATA.notes.length), u: "篇" },
-        { l: "", v: "📊 全部笔记汇总", u: "" },
       ];
       document.getElementById("trendKpis").innerHTML = kpis.map(k =>
         `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
