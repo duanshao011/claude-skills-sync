@@ -121,7 +121,20 @@
         </div>
         <div class="cost-chart" id="costChart"></div>
       </div>
-      <div class="cost-note">柱状图=每日实付（左轴 ¥） · 🔴红虚线=累计进店成本（右轴 ¥/UV） · hover 看详情</div>
+      <div class="cost-note">柱状图=每日实付（左轴 ¥） · 🔴红虚线=累计进店成本（右轴 ¥/UV） · hover 看详情 · 汇总模式点柱看当天投放明细</div>
+      <div class="daily-detail-panel" id="costDetailPanel" hidden>
+        <div class="daily-detail-head">
+          <span class="daily-detail-title" id="costDetailTitle"></span>
+          <button class="daily-detail-close" id="costDetailClose">折叠 ↑</button>
+        </div>
+        <div class="daily-detail-table-wrap">
+          <table class="funnel-table" id="costDetailTable">
+            <thead id="costDetailHead"></thead>
+            <tbody id="costDetailBody"></tbody>
+          </table>
+        </div>
+        <div class="cost-detail-note">数据来源于薯条推广明细表；曝光量、阅读量为薯条官方统计，仅供参考。</div>
+      </div>
     </div>
   </section>
 

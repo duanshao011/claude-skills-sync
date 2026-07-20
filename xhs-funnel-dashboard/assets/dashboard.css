@@ -569,7 +569,7 @@ body{
 @keyframes dailyPanelIn{from{opacity:0;max-height:0}to{opacity:1;max-height:500px}}
 .daily-detail-head{
   display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px;background:var(--brand-soft);border-bottom:1px solid #FDE68A;
+  padding:14px 18px;background:var(--brand-soft);border-bottom:1px solid #E2E8F0;
 }
 .daily-detail-title{font-size:13px;font-weight:700;color:var(--text)}
 .daily-detail-close{
@@ -580,12 +580,13 @@ body{
 .daily-detail-close:hover{border-color:var(--brand);color:var(--brand)}
 .daily-detail-table-wrap{max-height:360px;overflow-y:auto}
 .daily-detail-table-wrap .funnel-table{font-size:12px}
-.daily-detail-table-wrap th{position:sticky;top:0;z-index:2;background:#FEF3C7;white-space:nowrap}
-.daily-detail-table-wrap .funnel-table thead tr:not(.group-row) th{position:sticky;top:0;background:#FEF3C7}
+.daily-detail-table-wrap th{position:sticky;top:0;z-index:2;background:#F1F5F9;color:#475569;white-space:nowrap}
+.daily-detail-table-wrap .funnel-table thead tr:not(.group-row) th{position:sticky;top:0;background:#F1F5F9;color:#475569}
 .daily-detail-table-wrap td{white-space:nowrap}
 .daily-detail-row-note{cursor:pointer;transition:background .12s}
 .daily-detail-row-note:hover{background:#FFF1F3}
 .daily-detail-row-note td:first-child{padding-left:18px}
+.cost-detail-note{padding:10px 18px;font-size:11px;color:var(--muted);background:var(--panel);border-top:1px dashed var(--border)}
 .daily-rank-badge{
   display:inline-flex;align-items:center;justify-content:center;
   width:18px;height:18px;border-radius:3px;font-size:10px;font-weight:700;margin-right:6px;

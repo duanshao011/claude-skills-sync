@@ -667,6 +667,9 @@
   /** renderCost(null) = 全部笔记汇总；renderCost(noteId) = 单篇 */
   function renderCost(noteId) {
     console.log('[renderCost] called with noteId:', JSON.stringify(noteId), 'type:', typeof noteId);
+    // 每次重渲染先收起「当天投放明细」面板（仅汇总模式点柱后再展开）
+    var _costDetailPanel = document.getElementById("costDetailPanel");
+    if (_costDetailPanel) _costDetailPanel.hidden = true;
     // If user cleared the search input manually, force all-notes mode
     var costInp = document.getElementById("costSearch");
     if (noteId && costInp && !costInp.value.trim()) {
@@ -721,12 +724,17 @@
             const di = params[0].dataIndex;
             const row = daily[di];
             const sp = row[1] != null ? "¥" + Number(row[1]).toFixed(2) : "—";
+            const nc = row[4] != null ? row[4] : 0;
+            const avg = (nc > 0 && row[1] != null) ? "¥" + (Number(row[1]) / nc).toFixed(2) : "—";
             const tdL2 = "color:#6B7280;text-align:right;padding-right:10px;white-space:nowrap";
-            const tdR2 = "font-weight:600;text-align:right";
+            const tdR2 = "font-weight:600;text-align:left";
             return `<div style="font-weight:700;margin-bottom:4px">${fmtDate(row[0])}</div>
               <table style="border-spacing:0 2px;font-size:13px;line-height:1.6">
               <tr><td style="${tdL2}">当日总消耗</td><td style="${tdR2}">${sp}</td></tr>
-              </table>`;
+              <tr><td style="${tdL2}">当日投放笔记数</td><td style="${tdR2}">${nc} 篇</td></tr>
+              <tr><td style="${tdL2}">平均每篇消耗</td><td style="${tdR2}">${avg}</td></tr>
+              </table>
+              <div style="margin-top:4px;font-size:10px;color:#9CA3AF;text-align:center">💡 点击柱子看当天投放明细</div>`;
           },
         },
         grid: { top: 20, left: 60, right: 70, bottom: 40 },
@@ -765,6 +773,18 @@
       }, true);
       bindChartPanInteractions(costChart, "costPanHint");
       costChart.resize();
+      // 汇总模式：点柱展开当天投放明细
+      costChart.off("click");
+      costChart.on("click", function (p) {
+        if (p.componentType === "series" && p.seriesType === "bar") {
+          var di2 = p.dataIndex;
+          if (di2 != null && di2 >= 0 && di2 < daily.length) {
+            runConfirmedChartClick(costChart, function () {
+              expandCostDailyNotes(daily[di2][0]);
+            });
+          }
+        }
+      });
       return;
     }
 
@@ -862,7 +882,7 @@
             const isPub = pubDateStr && dStr === pubDateStr;
             const cumCost = row[6] != null ? "¥" + Number(row[6]).toFixed(2) : "—";
             const tdL = "color:#6B7280;text-align:right;padding-right:10px;white-space:nowrap";
-            const tdR = "font-weight:600;text-align:right;font-variant-numeric:tabular-nums";
+            const tdR = "font-weight:600;text-align:left;font-variant-numeric:tabular-nums";
             const pubTag = isPub ? ' <span style="color:#FF2442;font-size:11px">笔记发布日期</span>' : "";
             return `<div style="font-weight:700;margin-bottom:6px">${dStr}${pubTag}</div>
               <table style="border-spacing:0 2px;font-size:13px;line-height:1.6">
@@ -914,6 +934,8 @@
       }, true);
       bindChartPanInteractions(costChart, "costPanHint");
       costChart.resize();
+      // 单篇模式不支持点柱展开（当天恒 1 篇），解绑避免残留监听
+      costChart.off("click");
     } catch (e) {
       console.error("costChart render error:", e);
       if (costChart) { try { costChart.dispose(); } catch (ignore) {} costChart = null; }
@@ -1696,12 +1718,12 @@
 
           var html = '<div style="font-weight:700;margin-bottom:6px;font-size:12px">📅 ' + dateLabel + '</div>';
           html += '<table style="border-spacing:0 1px;font-size:11px;width:100%">';
-          var TH = 'text-align:right;font-size:10px;color:#9CA3AF;font-weight:400;width:58px;padding-bottom:2px';
+          var TH = 'text-align:left;font-size:10px;color:#9CA3AF;font-weight:400;width:58px;padding-bottom:2px';
           html += '<tr><td style="width:16px"></td><td></td>';
           html += '<td style="' + TH + '">进店</td>';
           html += '<td style="' + TH + '">加购</td>';
           html += '<td style="' + TH + '">成交</td></tr>';
-          var T = 'text-align:right;font-weight:600;width:58px';
+          var T = 'text-align:left;font-weight:600;width:58px';
           html += '<tr><td style="width:16px"></td><td style="color:#6B7280;padding-bottom:4px">总计</td>';
           html += '<td style="' + T + ';color:#FF2442">' + tv + '</td>';
           html += '<td style="' + T + ';color:#F97316">' + tc + '</td>';
@@ -1733,9 +1755,9 @@
             }
             html += '<tr><td style="width:16px"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + DAILY_REST_COLOR + ';vertical-align:middle"></span></td>';
             html += '<td style="color:#9CA3AF;font-size:10px">等 ' + (notes.length - showCount) + ' 篇</td>';
-            html += '<td style="text-align:right;color:#9CA3AF;font-size:10px">' + fmt.int(restTotal) + '</td>';
-            html += '<td style="text-align:right;color:#9CA3AF;font-size:10px">' + fmt.int(restCart) + '</td>';
-            html += '<td style="text-align:right;color:#9CA3AF;font-size:10px">' + fmt.int(restDeal) + '</td></tr>';
+            html += '<td style="text-align:left;color:#9CA3AF;font-size:10px">' + fmt.int(restTotal) + '</td>';
+            html += '<td style="text-align:left;color:#9CA3AF;font-size:10px">' + fmt.int(restCart) + '</td>';
+            html += '<td style="text-align:left;color:#9CA3AF;font-size:10px">' + fmt.int(restDeal) + '</td></tr>';
           }
           html += '</table>';
           html += '<div style="margin-top:4px;font-size:10px;color:#9CA3AF;text-align:center">💡 点击柱子展开全部笔记明细</div>';
@@ -1843,6 +1865,53 @@
 
   document.getElementById("dailyDetailClose").addEventListener("click", function(){
     document.getElementById("dailyDetailPanel").hidden = true;
+  });
+
+  // ===== 图表三 · 当天投放明细展开（仿 expandDailyNotes，薯条口径） =====
+  function expandCostDailyNotes(dateInt) {
+    var costAll = DATA.cost_all || {};
+    var dailyNotes = costAll.daily_notes || {};
+    var notes = (dailyNotes[dateInt] || []).slice();
+    notes.sort(function(a, b){ return (b.spend || 0) - (a.spend || 0); });
+    var panel = document.getElementById("costDetailPanel");
+    var title = document.getElementById("costDetailTitle");
+    var thead = document.getElementById("costDetailHead");
+    var tbody = document.getElementById("costDetailBody");
+
+    title.textContent = fmtDate(dateInt) + " 薯条投放明细（共 " + notes.length + " 篇）";
+    thead.innerHTML = '<tr><th style="width:40px">#</th><th>达人昵称</th><th>笔记ID</th><th>消耗金额</th><th>曝光量</th><th>阅读量</th></tr>';
+
+    tbody.innerHTML = notes.map(function(n, i){
+      var rank = i + 1;
+      var clr = rank <= 10 ? colorForRank(rank) : DAILY_REST_COLOR;
+      return '<tr class="daily-detail-row-note" data-nid="' + escapeHtml(n.note_id) + '">' +
+        '<td><span class="daily-rank-badge" style="background:' + clr + ';color:#fff">' + rank + '</span></td>' +
+        '<td>' + escapeHtml(n.creator || "—") + '</td>' +
+        '<td class="mono-id">' + escapeHtml(n.note_id) + '</td>' +
+        '<td>' + fmt.money(n.spend) + '</td>' +
+        '<td>' + fmt.int(n.impression) + '</td>' +
+        '<td>' + fmt.int(n.read) + '</td></tr>';
+    }).join("");
+
+    // 点击行 → 联动跳转到该笔记的单篇成本图
+    tbody.querySelectorAll(".daily-detail-row-note").forEach(function(tr){
+      tr.addEventListener("click", function(){
+        var nid = tr.dataset.nid;
+        STATE.currentNote = nid;
+        if (trendCombo && trendCombo.selectById) trendCombo.selectById(nid);
+        if (costCombo && costCombo.selectById) costCombo.selectById(nid);
+        if (tableCombo && tableCombo.selectById) tableCombo.selectById(nid);
+        var el = document.getElementById("modCost");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  document.getElementById("costDetailClose").addEventListener("click", function(){
+    document.getElementById("costDetailPanel").hidden = true;
   });
 
   // ---------- 全局响应 ----------

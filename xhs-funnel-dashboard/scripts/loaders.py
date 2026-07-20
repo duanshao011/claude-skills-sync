@@ -255,12 +255,19 @@ def load_chili(path):
         agg["chili_max_daily"] = daily_sum.groupby("note_id").max()
         agg["chili_days"] = daily_sum.groupby("note_id").size()  # 累计投放天数
 
-    # 每日消耗明细 → 图表二柱状图数据源
+    # 每日消耗明细 → 图表三柱状图数据源 + 点击展开每日投放明细
     chili_daily = None
     if "launch_date" in invested:
+        # 动态聚合：spend 必选；impression/read 列存在才聚
+        agg_cols = {"spend": "sum"}
+        if "impression" in invested:
+            agg_cols["impression"] = "sum"
+        if "read" in invested:
+            agg_cols["read"] = "sum"
         chili_daily = (
-            invested.groupby(["note_id", "launch_date"])["spend"]
-            .sum().reset_index()
+            invested.groupby(["note_id", "launch_date"])
+            .agg(agg_cols)
+            .reset_index()
         )
         # 确保 launch_date 是 int 而非 nullable Int64（JSON safe）
         chili_daily["launch_date"] = chili_daily["launch_date"].astype(int)

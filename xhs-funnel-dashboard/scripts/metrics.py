@@ -324,6 +324,9 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
         cd["launch_date"] = pd.to_numeric(cd["launch_date"], errors="coerce").astype("Int64")
         g_spend = cd.groupby("launch_date", as_index=False)["spend"].sum().sort_values("launch_date")
         spend_map = {int(r["launch_date"]): float(r["spend"]) for _, r in g_spend.iterrows()}
+        # 当日投放笔记数（distinct note_id）→ 供柱子 hover 显示笔记数/均消耗
+        g_cnt = cd.groupby("launch_date")["note_id"].nunique()
+        count_map = {int(k): int(v) for k, v in g_cnt.items() if pd.notna(k)}
         # 汇总每日进店UV（从 star_daily）
         visit_map = {}
         if star_daily is not None and len(star_daily):
@@ -336,13 +339,39 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
         daily_list = []
         for d in all_dates:
             daily_list.append([d, _f(spend_map.get(d)), _f(visit_map.get(d))])
-        # 追加累计成本
+        # 追加累计成本 + 当日投放笔记数（末尾追加，不动前 4 列索引）
         n = len(daily_list)
         cum_s, cum_v = 0.0, 0.0
         for i in range(n):
             cum_s += daily_list[i][1] or 0.0
             cum_v += daily_list[i][2] or 0.0
             daily_list[i].append(_f(cum_s / cum_v) if cum_v > 0 else None)
+            daily_list[i].append(count_map.get(daily_list[i][0], 0))
+        # 薯条口径·当天投放明细（点柱展开用）：{launch_date: [{note_id, creator, spend, impression, read}]}
+        # creator 从 master 取（chili_agg 多表合并时 groupby sum 丢字符串列）
+        creator_map = {}
+        if "creator" in master.columns:
+            for nid, row in master.iterrows():
+                c = row.get("creator")
+                creator_map[str(nid)] = str(c) if pd.notna(c) and c else ""
+        cost_daily_notes = {}
+        has_imp = "impression" in cd.columns
+        has_read = "read" in cd.columns
+        for d, g in cd.groupby("launch_date"):
+            if pd.isna(d):
+                continue
+            items = []
+            for _, r in g.iterrows():
+                nid = str(r["note_id"])
+                items.append({
+                    "note_id": nid,
+                    "creator": creator_map.get(nid, ""),
+                    "spend": _f(r.get("spend")),
+                    "impression": _f(r.get("impression")) if has_imp else None,
+                    "read": _f(r.get("read")) if has_read else None,
+                })
+            items.sort(key=lambda x: -(x["spend"] or 0))
+            cost_daily_notes[int(d)] = items
         cost_all = {
             "summary": {
                 "spend": _f(master["spend"].sum()),
@@ -353,6 +382,7 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
                 "note_count": int(len(master)),
             },
             "daily": daily_list,
+            "daily_notes": cost_daily_notes,
         }
 
     # ===== 每日笔记明细（日维度进店趋势图表用） =====
