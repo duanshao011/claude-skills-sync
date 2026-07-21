@@ -232,7 +232,7 @@ def build_cost_daily(chili_daily, star_daily, master):
 
     每篇产出：
       summary  — 累计消耗/GMV/ROI/进店UV成本/加购成本/成交成本/历史最高单日消耗
-      daily    — [启动日, 当日实付, 进店UV, 加购UV, 成交UV, GMV, 累计进店成本]
+      daily    — [启动日, 当日实付, 进店UV, 加购UV, 成交UV, GMV, 阅读UV, 累计进店成本]
     薯条「启动日」× 星河「成交日(归因30)」按天对齐为近似——前端 hover 注明。
     """
     if chili_daily is None or not len(chili_daily):
@@ -260,6 +260,7 @@ def build_cost_daily(chili_daily, star_daily, master):
         daily = []
         for d in dates:
             sr = smap.get(d)
+            # [date, spend, visit_uv, cart_uv, deal_uv, gmv, read_uv]
             daily.append([
                 d,
                 _f(cmap.get(d)),
@@ -267,9 +268,10 @@ def build_cost_daily(chili_daily, star_daily, master):
                 _f(sr.get("cart_uv")) if sr is not None else None,
                 _f(sr.get("deal_uv")) if sr is not None else None,
                 _f(sr.get("gmv")) if sr is not None else None,
+                _f(sr.get("read_uv")) if sr is not None else None,
             ])
 
-        # ===== 每日追加：累计进店成本 =====
+        # ===== 每日追加：累计进店成本（index 7） =====
         n = len(daily)
         cum_s, cum_v = 0.0, 0.0
         for i in range(n):
@@ -307,14 +309,18 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
     if star_daily is not None and len(star_daily):
         sd = star_daily.copy()
         sd["date"] = pd.to_numeric(sd["date"], errors="coerce").astype("Int64")
+        if "read_uv" not in sd.columns:
+            sd["read_uv"] = 0
         g = sd.groupby("date", as_index=False).agg({
-            "visit_uv": "sum", "cart_uv": "sum", "deal_uv": "sum", "gmv": "sum"
+            "visit_uv": "sum", "cart_uv": "sum", "deal_uv": "sum",
+            "gmv": "sum", "read_uv": "sum"
         }).sort_values("date")
         for _, r in g.iterrows():
+            # [date, visit_uv, cart_uv, deal_uv, gmv, read_uv]
             trends_all.append([
                 int(r["date"]) if pd.notna(r["date"]) else None,
                 _f(r.get("visit_uv")), _f(r.get("cart_uv")),
-                _f(r.get("deal_uv")), _f(r.get("gmv"))
+                _f(r.get("deal_uv")), _f(r.get("gmv")), _f(r.get("read_uv"))
             ])
 
     cost_all = None
@@ -327,19 +333,32 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
         # 当日投放笔记数（distinct note_id）→ 供柱子 hover 显示笔记数/均消耗
         g_cnt = cd.groupby("launch_date")["note_id"].nunique()
         count_map = {int(k): int(v) for k, v in g_cnt.items() if pd.notna(k)}
-        # 汇总每日进店UV（从 star_daily）
-        visit_map = {}
+        # 汇总每日各UV（从 star_daily）供图表三多条成本线
+        visit_map, cart_map, deal_map, read_map = {}, {}, {}, {}
         if star_daily is not None and len(star_daily):
             sd = star_daily.copy()
             sd["date"] = pd.to_numeric(sd["date"], errors="coerce").astype("Int64")
-            g_visit = sd.groupby("date", as_index=False)["visit_uv"].sum()
-            visit_map = {int(r["date"]): float(r["visit_uv"]) for _, r in g_visit.iterrows()}
+            if "read_uv" not in sd.columns:
+                sd["read_uv"] = 0
+            g_uv = sd.groupby("date", as_index=False).agg({
+                "visit_uv": "sum", "cart_uv": "sum", "deal_uv": "sum", "read_uv": "sum"
+            })
+            for _, r in g_uv.iterrows():
+                d = int(r["date"])
+                visit_map[d] = float(r["visit_uv"])
+                cart_map[d] = float(r["cart_uv"])
+                deal_map[d] = float(r["deal_uv"])
+                read_map[d] = float(r["read_uv"])
         # 合并日期
         all_dates = sorted(set(spend_map) | set(visit_map))
         daily_list = []
         for d in all_dates:
-            daily_list.append([d, _f(spend_map.get(d)), _f(visit_map.get(d))])
-        # 追加累计成本 + 当日投放笔记数（末尾追加，不动前 4 列索引）
+            # [date, spend, visit_uv, cart_uv, deal_uv, read_uv]
+            daily_list.append([
+                d, _f(spend_map.get(d)), _f(visit_map.get(d)),
+                _f(cart_map.get(d)), _f(deal_map.get(d)), _f(read_map.get(d)),
+            ])
+        # 追加：累计进店成本(index 6) + 当日投放笔记数(index 7)
         n = len(daily_list)
         cum_s, cum_v = 0.0, 0.0
         for i in range(n):
@@ -379,6 +398,7 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
                 "visit_uv": _f(master["visit_uv"].sum()),
                 "cart_uv": _f(master["cart_uv"].sum()),
                 "deal_uv": _f(master["deal_uv"].sum()),
+                "read_uv": _f(master["read_uv_funnel"].sum()),
                 "note_count": int(len(master)),
             },
             "daily": daily_list,
@@ -405,6 +425,7 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
                     "visit_uv": _f(r.get("visit_uv")),
                     "cart_uv": _f(r.get("cart_uv")),
                     "deal_uv": _f(r.get("deal_uv")),
+                    "read_uv": _f(r.get("read_uv")),
                 })
             notes_list.sort(key=lambda x: -(x["visit_uv"] or 0))
             daily_notes[int(date_val)] = notes_list

@@ -235,10 +235,12 @@ def build_payload(master, waterlines, summary, daily, meta, cost=None,
         d = daily[daily["note_id"].isin(keep)]
         for nid, g in d.groupby("note_id"):
             g = g.sort_values("date")
+            # 每行: [date, visit_uv, cart_uv, deal_uv, gmv, read_uv]
             trends[str(nid)] = [
                 [int(r["date"]) if pd.notna(r["date"]) else None,
                  _clean(r.get("visit_uv")), _clean(r.get("cart_uv")),
-                 _clean(r.get("deal_uv")), _clean(r.get("gmv"))]
+                 _clean(r.get("deal_uv")), _clean(r.get("gmv")),
+                 _clean(r.get("read_uv"))]
                 for _, r in g.iterrows()
             ]
 

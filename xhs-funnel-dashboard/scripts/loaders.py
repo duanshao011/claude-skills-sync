@@ -188,11 +188,12 @@ def load_star(path):
 
     daily = None
     if "date" in df:
-        dcols = ["note_id", "date"] + [c for c in ["visit_uv", "cart_uv", "deal_uv", "gmv"] if c in df]
+        _daily_num = ["visit_uv", "cart_uv", "deal_uv", "gmv", "read_uv"]
+        dcols = ["note_id", "date"] + [c for c in _daily_num if c in df]
         daily = df[dcols].copy()
         daily["date"] = daily["date"].astype("Int64")
         daily = daily.groupby(["note_id", "date"], as_index=False)[
-            [c for c in ["visit_uv", "cart_uv", "deal_uv", "gmv"] if c in df]
+            [c for c in _daily_num if c in df]
         ].sum()
 
     return agg, daily, meta

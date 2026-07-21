@@ -35,14 +35,15 @@
         <span class="mod-name">日维度进店趋势</span>
         <span class="mod-sub">分组柱状图 · 悬停看笔记明细 · 点击柱子展开全部</span>
       </div>
-      <div class="daily-toggles" id="dailyToggles">
-        <button class="metric-toggle active" data-metric="visit" style="--mc:#FF2442">进店</button>
-        <button class="metric-toggle" data-metric="cart" style="--mc:#F97316">加购</button>
-        <button class="metric-toggle" data-metric="deal" style="--mc:#EAB308">成交</button>
-      </div>
     </div>
     <div class="daily-body">
       <div class="trend-kpis" id="dailyOverviewKpis"></div>
+      <div class="chart-toggles" id="dailyToggles">
+        <button class="metric-toggle-card" data-metric="read" style="--mc:#FB7185"><div class="mtc-label">阅读UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交UV</div><div class="mtc-val" data-slot="val">—</div></button>
+      </div>
       <div class="chart-stage">
         <div class="chart-pan-hint" id="dailyPanHint" role="note">
           <span class="chart-pan-hint-icon">↔</span>
@@ -84,6 +85,12 @@
     </div>
     <div class="trend-body">
       <div class="trend-kpis" id="trendKpis"></div>
+      <div class="chart-toggles" id="trendToggles">
+        <button class="metric-toggle-card" data-metric="read" style="--mc:#FB7185"><div class="mtc-label">阅读UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交UV</div><div class="mtc-val" data-slot="val">—</div></button>
+      </div>
       <div class="chart-stage">
         <div class="chart-pan-hint" id="trendPanHint" role="note">
           <span class="chart-pan-hint-icon">↔</span>
@@ -113,6 +120,12 @@
     </div>
     <div class="cost-body">
       <div class="cost-kpis" id="costKpis"></div>
+      <div class="chart-toggles" id="costToggles">
+        <button class="metric-toggle-card" data-metric="read" style="--mc:#FB7185"><div class="mtc-label">阅读成本</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店成本</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购成本</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交成本</div><div class="mtc-val" data-slot="val">—</div></button>
+      </div>
       <div class="chart-stage">
         <div class="chart-pan-hint" id="costPanHint" role="note">
           <span class="chart-pan-hint-icon">↔</span>
@@ -121,7 +134,7 @@
         </div>
         <div class="cost-chart" id="costChart"></div>
       </div>
-      <div class="cost-note">柱状图=每日实付（左轴 ¥） · 🔴红虚线=累计进店成本（右轴 ¥/UV） · hover 看详情 · 汇总模式点柱看当天投放明细</div>
+      <div class="cost-note">柱状图=每日实付（左轴 ¥） · 虚线=累计成本（右轴 ¥/UV，成本=累计实付÷累计对应UV） · 上方切换阅读/进店/加购/成交成本曲线 · 汇总模式点柱看当天投放明细</div>
       <div class="daily-detail-panel" id="costDetailPanel" hidden>
         <div class="daily-detail-head">
           <span class="daily-detail-title" id="costDetailTitle"></span>
@@ -156,31 +169,6 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
           自定义列
         </button>
-      </div>
-    </div>
-    <div class="query-panel">
-      <div class="qp-fields">
-        <div class="qp-field">
-          <label class="qp-label">达人昵称</label>
-          <input type="text" id="qpCreator" class="qp-input" placeholder="输入关键字模糊匹配" autocomplete="off">
-        </div>
-        <div class="qp-field">
-          <label class="qp-label">笔记ID</label>
-          <input type="text" id="qpNoteId" class="qp-input" placeholder="粘贴笔记ID">
-        </div>
-        <div class="qp-field qp-daterange">
-          <label class="qp-label">笔记发布日期</label>
-          <div class="qp-daterange-body">
-            <input type="date" id="qpDateStart" class="qp-input qp-date" placeholder="开始日期">
-            <span class="qp-dash">至</span>
-            <input type="date" id="qpDateEnd" class="qp-input qp-date" placeholder="结束日期">
-          </div>
-        </div>
-        <div class="qp-buttons">
-          <button class="qp-btn qp-btn-primary" id="qpQuery">查询</button>
-          <button class="qp-btn qp-btn-plain" id="qpReset">重置</button>
-          <button class="qp-btn qp-btn-plain" id="qpExport">导出</button>
-        </div>
       </div>
     </div>
     <div class="table-wrap">

@@ -9,6 +9,14 @@
     grid: "#F3F4F6", panel: "#FFFFFF", brand: "#FF2442",
   };
 
+  function updateToggleCards(containerId, valMap) {
+    document.querySelectorAll("#" + containerId + " .metric-toggle-card").forEach(function(btn){
+      var m = btn.dataset.metric;
+      var el = btn.querySelector("[data-slot=val]");
+      if (el && valMap[m] != null) el.textContent = valMap[m];
+    });
+  }
+
   // ===== 联动 state：每个图表各自的联动开关，默认全开，独立控制 =====
   const STATE = { links: { trend: true, cost: true, table: true }, currentNote: null };
 
@@ -286,24 +294,25 @@
     return s.length === 8 ? s.slice(4, 6) + "/" + s.slice(6, 8) : s;
   }
 
-  // 进店UV日均值虚线（type=average，UV类按整数显示）
-  function buildAvgMarkLine(color) {
+  // UV日均虚线：标签放在最右端外侧，避免和折线重叠
+  function buildAvgMarkLine(color, label) {
     return {
       symbol: "none",
       silent: true,
       precision: 0,
-      lineStyle: { color: color, type: "dashed", width: 1.5, opacity: 0.75 },
+      lineStyle: { color: color, type: "dashed", width: 1.5, opacity: 0.6 },
       label: {
-        formatter: function(p){ return "日均 " + Math.round(p.value); },
-        position: "insideEndTop",
-        fontSize: 11,
+        formatter: function(p){ return (label || "日均") + " " + Math.round(p.value); },
+        position: "insideEndBottom",
+        fontSize: 10,
         fontWeight: 600,
-        color: color,
-        backgroundColor: "rgba(255,255,255,0.85)",
-        padding: [2, 4],
+        color: "#111827",
+        backgroundColor: "rgba(255,255,255,0.92)",
+        padding: [2, 6],
         borderRadius: 3,
+        distance: 4,
       },
-      data: [{ type: "average", name: "进店UV日均" }],
+      data: [{ type: "average" }],
     };
   }
 
@@ -459,6 +468,59 @@
     hints.forEach(function (hint) { observer.observe(hint); });
   }
 
+  // 图表二折线：可切换 阅读/进店/加购/成交，默认仅进店；阅读UV量级大走右轴
+  const TREND_METRICS = {
+    read:  { label: "阅读UV", col: 5, color: "#FB7185", avg: true },
+    visit: { label: "进店UV", col: 1, color: "#FF2442", avg: true },
+    cart:  { label: "加购UV", col: 2, color: "#F97316", avg: true },
+    deal:  { label: "成交UV", col: 3, color: "#EAB308", avg: true },
+  };
+  function activeTrendMetrics() {
+    var a = [];
+    document.querySelectorAll("#trendToggles .metric-toggle-card.active").forEach(function(b){ a.push(b.dataset.metric); });
+    if (!a.length) a = ["visit"];
+    return ["read", "visit", "cart", "deal"].filter(function(m){ return a.indexOf(m) >= 0; });
+  }
+  function buildTrendOption(rows, suffix) {
+    var active = activeTrendMetrics();
+    var useDual = active.indexOf("read") >= 0 && active.length > 1;
+    var series = active.map(function(m){
+      var mm = TREND_METRICS[m];
+      var s = {
+        name: mm.label + suffix, type: "line",
+        data: rows.map(function(r){ return r[mm.col]; }),
+        smooth: true, symbol: "circle", symbolSize: 5,
+        yAxisIndex: (m === "read" && useDual) ? 1 : 0,
+        lineStyle: { color: mm.color, width: 2 }, itemStyle: { color: mm.color },
+      };
+      if (mm.avg) s.markLine = buildAvgMarkLine(mm.color, mm.label);
+      return s;
+    });
+    var yAxis = [
+      { type: "value", name: useDual ? "进店/加购/成交 UV" : "UV", position: "left",
+        axisLine: { show: false }, axisTick: { show: false },
+        splitLine: { lineStyle: { color: C.grid } },
+        axisLabel: { color: C.muted, fontSize: 11 }, nameTextStyle: { color: C.dim } },
+      { type: "value", name: "阅读UV", position: "right", show: useDual,
+        axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false },
+        axisLabel: { show: useDual, color: "#FB7185", fontSize: 11,
+          formatter: function(v){ return v >= 1000 ? (v/1000).toFixed(1)+"k" : v; } },
+        nameTextStyle: { color: "#FB7185", fontWeight: 600 } },
+    ];
+    return { series: series, yAxis: yAxis };
+  }
+  function initTrendToggles() {
+    document.querySelectorAll("#trendToggles .metric-toggle-card").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        this.classList.toggle("active");
+        if (!document.querySelectorAll("#trendToggles .metric-toggle-card.active").length) {
+          this.classList.add("active"); return;
+        }
+        renderTrend(trendCombo ? trendCombo.currentId : null);
+      });
+    });
+  }
+
   function renderTrendModule() {
     const trends = DATA.trends || {};
     const trendsAll = DATA.trends_all || [];
@@ -520,38 +582,31 @@
         </div>`
       ).join("");
 
+      const totalRead = rows.reduce((s, r) => s + (r[5] || 0), 0);
+      updateToggleCards("trendToggles", {
+        read: fmt.int(totalRead),
+        visit: fmt.int(totalVisit),
+        cart: fmt.int(totalCart),
+        deal: fmt.int(totalDeal)
+      });
+
       if (!trendChart) trendChart = echarts.init(document.getElementById("trendChart"));
       const dates = rows.map(r => fmtDate(r[0]));
-      const series = [
-        { name: "进店UV（全部）", data: rows.map(r => r[1]), col: "#FF2442", avg: true },
-        { name: "加购UV（全部）", data: rows.map(r => r[2]), col: "#F97316" },
-        { name: "成交UV（全部）", data: rows.map(r => r[3]), col: "#EAB308" },
-      ];
+      const opt = buildTrendOption(rows, "（全部）");
       trendChart.setOption({
         backgroundColor: "transparent",
         tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
         legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
-        grid: { top: 40, left: 60, right: 30, bottom: 40 },
+        grid: { top: 40, left: 60, right: 60, bottom: 40 },
         dataZoom: buildInsideZoom(),
         xAxis: {
           type: "category", data: dates,
           axisLine: { lineStyle: { color: C.border } },
           axisLabel: { fontSize: 11, color: C.muted, rotate: dates.length > 40 ? 45 : 0 },
         },
-        yAxis: {
-          type: "value", name: "UV", position: "left",
-          axisLine: { show: false }, axisTick: { show: false },
-          splitLine: { lineStyle: { color: C.grid } },
-          axisLabel: { color: C.muted, fontSize: 11 }, nameTextStyle: { color: C.dim },
-        },
-        series: series.map(s => ({
-          name: s.name, type: "line", data: s.data,
-          smooth: true, symbol: "circle", symbolSize: 5,
-          lineStyle: { color: s.col, width: 2 },
-          itemStyle: { color: s.col },
-          ...(s.avg ? { markLine: buildAvgMarkLine(s.col) } : {}),
-        })),
-      });
+        yAxis: opt.yAxis,
+        series: opt.series,
+      }, true);
       bindChartPanInteractions(trendChart, "trendPanHint");
       return;
     }
@@ -592,22 +647,25 @@
       </div>`
     ).join("");
 
+    updateToggleCards("trendToggles", {
+      read: fmt.int(readUv),
+      visit: fmt.int(visitUv),
+      cart: fmt.int(cartUv),
+      deal: fmt.int(dealUv)
+    });
+
     // 笔记发布日期（x 轴红字标注，与图表二一致）
     const pubDateRaw = note.pub_date ? note.pub_date : null;
     const pubDateStr = pubDateRaw ? fmtDate(pubDateRaw.replace(/-/g, "")) : null;
 
     if (!trendChart) trendChart = echarts.init(document.getElementById("trendChart"));
     const dates = rows.map(r => fmtDate(r[0]));
-    const series = [
-      { name: "进店UV", data: rows.map(r => r[1]), col: "#FF2442", avg: true },
-      { name: "加购UV", data: rows.map(r => r[2]), col: "#F97316" },
-      { name: "成交UV", data: rows.map(r => r[3]), col: "#EAB308" },
-    ];
+    const opt = buildTrendOption(rows, "");
     trendChart.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
       legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
-      grid: { top: 40, left: 60, right: 30, bottom: 40 },
+      grid: { top: 40, left: 60, right: 60, bottom: 40 },
       dataZoom: buildInsideZoom(),
       xAxis: {
         type: "category", data: dates,
@@ -620,25 +678,57 @@
           rotate: dates.length > 40 ? 45 : 0,
         },
       },
-      yAxis: {
-        type: "value", name: "UV", position: "left",
-        axisLine: { show: false }, axisTick: { show: false },
-        splitLine: { lineStyle: { color: C.grid } },
-        axisLabel: { color: C.muted, fontSize: 11 }, nameTextStyle: { color: C.dim },
-      },
-      series: series.map(s => ({
-        name: s.name, type: "line", data: s.data,
-        smooth: true, symbol: "circle", symbolSize: 5,
-        lineStyle: { color: s.col, width: 2 },
-        itemStyle: { color: s.col },
-        ...(s.avg ? { markLine: buildAvgMarkLine(s.col) } : {}),
-      })),
-    });
+      yAxis: opt.yAxis,
+      series: opt.series,
+    }, true);
     bindChartPanInteractions(trendChart, "trendPanHint");
   }
 
   // ===== 图表二 · 单篇成本分析 =====
   let costChart = null, costCombo = null;
+
+  // 图表三成本曲线：阅读/进店/加购/成交，默认仅进店；成本=累计实付÷累计对应UV
+  const COST_METRICS = {
+    read:  { label: "阅读成本", color: "#FB7185" },
+    visit: { label: "进店成本", color: "#FF2442" },
+    cart:  { label: "加购成本", color: "#F97316" },
+    deal:  { label: "成交成本", color: "#EAB308" },
+  };
+  function activeCostMetrics() {
+    var a = [];
+    document.querySelectorAll("#costToggles .metric-toggle-card.active").forEach(function(b){ a.push(b.dataset.metric); });
+    if (!a.length) a = ["visit"];
+    return ["read", "visit", "cart", "deal"].filter(function(m){ return a.indexOf(m) >= 0; });
+  }
+  function initCostToggles() {
+    document.querySelectorAll("#costToggles .metric-toggle-card").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        this.classList.toggle("active");
+        if (!document.querySelectorAll("#costToggles .metric-toggle-card.active").length) {
+          this.classList.add("active"); return;
+        }
+        renderCost(costCombo ? costCombo.currentId : null);
+      });
+    });
+  }
+  // 依据每日 [实付, 各UV] 逐日累计算成本曲线；uvIdxMap 给出每个指标在 daily 行中的UV列索引
+  function buildCostLines(daily, spendIdx, uvIdxMap) {
+    return activeCostMetrics().map(function(m){
+      var uvIdx = uvIdxMap[m];
+      var cumS = 0, cumU = 0;
+      var data = daily.map(function(r){
+        cumS += r[spendIdx] || 0;
+        cumU += (uvIdx != null ? r[uvIdx] : 0) || 0;
+        return cumU > 0 ? +(cumS / cumU).toFixed(4) : null;
+      });
+      return {
+        name: "累计" + COST_METRICS[m].label, type: "line", yAxisIndex: 1,
+        data: data, smooth: true, symbol: "none",
+        lineStyle: { color: COST_METRICS[m].color, width: 2, type: "dashed" },
+        itemStyle: { color: COST_METRICS[m].color },
+      };
+    });
+  }
 
   function renderCostModule() {
     const costData = DATA.cost || {};
@@ -703,9 +793,9 @@
       const kpiItems = [
         { l: "总消耗（全部）", v: fmt.money(s.spend), u: "元" },
         { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
-        { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "", rate: avgVisitCost2 != null ? "均 ¥" + avgVisitCost2.toFixed(2) : null },
-        { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "", rate: avgCartCost2 != null ? "均 ¥" + avgCartCost2.toFixed(2) : null },
-        { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "", rate: avgDealCost2 != null ? "均 ¥" + avgDealCost2.toFixed(2) : null },
+        { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "" },
+        { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "" },
+        { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "" },
         { l: "笔记数", v: fmt.int(s.note_count), u: "篇" },
       ];
       document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
@@ -714,6 +804,15 @@
           <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
         </div>`
       ).join("");
+
+      var avgReadCost2 = s.read_uv > 0 ? s.spend / s.read_uv : null;
+      updateToggleCards("costToggles", {
+        read: avgReadCost2 != null ? "¥" + avgReadCost2.toFixed(2) : "—",
+        visit: avgVisitCost2 != null ? "¥" + avgVisitCost2.toFixed(2) : "—",
+        cart: avgCartCost2 != null ? "¥" + avgCartCost2.toFixed(2) : "—",
+        deal: avgDealCost2 != null ? "¥" + avgDealCost2.toFixed(2) : "—"
+      });
+
       if (!costChart) costChart = echarts.init(document.getElementById("costChart"));
       costChart.setOption({
         backgroundColor: "transparent",
@@ -724,7 +823,7 @@
             const di = params[0].dataIndex;
             const row = daily[di];
             const sp = row[1] != null ? "¥" + Number(row[1]).toFixed(2) : "—";
-            const nc = row[4] != null ? row[4] : 0;
+            const nc = row[7] != null ? row[7] : 0;
             const avg = (nc > 0 && row[1] != null) ? "¥" + (Number(row[1]) / nc).toFixed(2) : "—";
             const tdL2 = "color:#6B7280;text-align:right;padding-right:10px;white-space:nowrap";
             const tdR2 = "font-weight:600;text-align:left";
@@ -764,12 +863,7 @@
             ]) },
             barMaxWidth: 30,
           },
-          { name: "累计进店成本（全部）", type: "line", yAxisIndex: 1,
-            data: daily.map(r => r[3]),
-            smooth: true, symbol: "none",
-            lineStyle: { color: "#FF2442", width: 2, type: "dashed" },
-          },
-        ],
+        ].concat(buildCostLines(daily, 1, { read: 5, visit: 2, cart: 3, deal: 4 })),
       }, true);
       bindChartPanInteractions(costChart, "costPanHint");
       costChart.resize();
@@ -856,6 +950,15 @@
       </div>`
     ).join("");
 
+    var noteForCost = DATA.notes.find(function(n){ return n.note_id === noteId; }) || {};
+    var singleReadCost = (noteForCost.read_uv_content > 0 && s.spend > 0) ? s.spend / noteForCost.read_uv_content : null;
+    updateToggleCards("costToggles", {
+      read: singleReadCost != null ? "¥" + singleReadCost.toFixed(2) : "—",
+      visit: s.visit_uv_cost != null ? "¥" + Number(s.visit_uv_cost).toFixed(2) : "—",
+      cart: s.cart_cost != null ? "¥" + Number(s.cart_cost).toFixed(2) : "—",
+      deal: s.deal_cost != null ? "¥" + Number(s.deal_cost).toFixed(2) : "—"
+    });
+
     // 笔记发布日期（用于 x 轴标注，对齐 fmtDate 格式 MM/DD）
     const noteInfo = DATA.notes.find(n => n.note_id === noteId);
     const pubDateRaw = noteInfo && noteInfo.pub_date ? noteInfo.pub_date : null;
@@ -880,7 +983,7 @@
             if (spend && spend > 0 && visit && visit > 0) vc = "¥" + (spend / visit).toFixed(2);
             const dStr = fmtDate(row[0]);
             const isPub = pubDateStr && dStr === pubDateStr;
-            const cumCost = row[6] != null ? "¥" + Number(row[6]).toFixed(2) : "—";
+            const cumCost = row[7] != null ? "¥" + Number(row[7]).toFixed(2) : "—";
             const tdL = "color:#6B7280;text-align:right;padding-right:10px;white-space:nowrap";
             const tdR = "font-weight:600;text-align:left;font-variant-numeric:tabular-nums";
             const pubTag = isPub ? ' <span style="color:#FF2442;font-size:11px">笔记发布日期</span>' : "";
@@ -925,12 +1028,7 @@
             ]) },
             barMaxWidth: 30,
           },
-          { name: "累计进店成本", type: "line", yAxisIndex: 1,
-            data: daily.map(r => r[6]),
-            smooth: true, symbol: "none",
-            lineStyle: { color: "#FF2442", width: 2, type: "dashed" },
-          },
-        ],
+        ].concat(buildCostLines(daily, 1, { read: 6, visit: 2, cart: 3, deal: 4 })),
       }, true);
       bindChartPanInteractions(costChart, "costPanHint");
       costChart.resize();
@@ -1041,6 +1139,7 @@
     const qNoteId = document.getElementById("qpNoteId");
     const qStart = document.getElementById("qpDateStart");
     const qEnd = document.getElementById("qpDateEnd");
+    if (!qCreator) return;
 
     document.getElementById("qpQuery").addEventListener("click", applyQuery);
     document.getElementById("qpReset").addEventListener("click", resetQuery);
@@ -1557,9 +1656,15 @@
     "#F4DA4D","#F6E263","#F8EB79","#FAF290",
     "#FCF7A7","#FDFABF"
   ];
+  const DAILY_ROSE_PALETTE = [
+    "#FB7185","#FB8497","#FC96A8","#FCA8B9",
+    "#FDBACB","#FDCCDC","#FEDEEE","#FEE8F0",
+    "#FFF1F5","#FFF6F9"
+  ];
   const DAILY_REST_COLOR = "#D1D5DB";
 
   const METRIC_META = {
+    read:  { label: "阅读", palette: DAILY_ROSE_PALETTE, key: "read_uv" },
     visit: { label: "进店", palette: DAILY_RED_PALETTE, key: "visit_uv" },
     cart:  { label: "加购", palette: DAILY_ORANGE_PALETTE, key: "cart_uv" },
     deal:  { label: "成交", palette: DAILY_GOLD_PALETTE, key: "deal_uv" },
@@ -1586,16 +1691,19 @@
 
     // Read active metrics from toggles
     var activeMetrics = [];
-    document.querySelectorAll(".metric-toggle.active").forEach(function(btn){
+    document.querySelectorAll("#dailyToggles .metric-toggle-card.active").forEach(function(btn){
       activeMetrics.push(btn.dataset.metric);
     });
     if (!activeMetrics.length) activeMetrics = ["visit"]; // at least one
+    // 阅读UV量级远大于其它，勾选阅读且还有其它指标时启用右轴避免压扁
+    var useDualAxis = activeMetrics.indexOf("read") >= 0 && activeMetrics.length > 1;
 
     // KPI cards — show all three totals regardless of toggle
-    var totalVisit = 0, totalCart = 0, totalDeal = 0, totalNotes = new Set();
-    trendsAll.forEach(function(r){ totalVisit += r[1]||0; totalCart += r[2]||0; totalDeal += r[3]||0; });
+    var totalRead = 0, totalVisit = 0, totalCart = 0, totalDeal = 0, totalNotes = new Set();
+    trendsAll.forEach(function(r){ totalVisit += r[1]||0; totalCart += r[2]||0; totalDeal += r[3]||0; totalRead += r[5]||0; });
     Object.keys(dailyNotes).forEach(function(d){ (dailyNotes[d]||[]).forEach(function(n){ totalNotes.add(n.note_id); }); });
     var kpis = [
+      { l: "总阅读UV", v: fmt.int(totalRead), u: "" },
       { l: "总进店UV", v: fmt.int(totalVisit), u: "" },
       { l: "总加购UV", v: fmt.int(totalCart), u: "" },
       { l: "总成交UV", v: fmt.int(totalDeal), u: "" },
@@ -1604,6 +1712,13 @@
     document.getElementById("dailyOverviewKpis").innerHTML = kpis.map(function(k){
       return '<div class="trend-kpi"><div class="trend-kpi-label">'+k.l+'</div><div class="trend-kpi-val">'+k.v+'<span class="u"> '+k.u+'</span></div></div>';
     }).join("");
+
+    updateToggleCards("dailyToggles", {
+      read: fmt.int(totalRead),
+      visit: fmt.int(totalVisit),
+      cart: fmt.int(totalCart),
+      deal: fmt.int(totalDeal)
+    });
 
     // Build per-date stacked data
     var dates = trendsAll.map(function(r){ return fmtDate(r[0]); });
@@ -1617,6 +1732,7 @@
       var metricKey = mm.key;
       var pal = mm.palette;
       var stackName = metric + "_stack";
+      var metricYIdx = (metric === "read" && useDualAxis) ? 1 : 0;
 
       // Build rank data for this metric
       var rankSeries = [];
@@ -1642,7 +1758,7 @@
       for (var ri2 = 0; ri2 < 10; ri2++) {
         barSeries.push({
           name: metric + "_Top" + (ri2 + 1),
-          type: "bar", stack: stackName, yAxisIndex: 0,
+          type: "bar", stack: stackName, yAxisIndex: metricYIdx,
           data: rankSeries[ri2],
           color: pal[ri2],
           barMaxWidth: activeMetrics.length > 1 ? 24 : 44,
@@ -1653,7 +1769,7 @@
       // Rest bar
       barSeries.push({
         name: metric + "_rest",
-        type: "bar", stack: stackName, yAxisIndex: 0,
+        type: "bar", stack: stackName, yAxisIndex: metricYIdx,
         data: restSeries, color: DAILY_REST_COLOR,
         barMaxWidth: activeMetrics.length > 1 ? 24 : 44,
         emphasis: { focus: "series" },
@@ -1662,12 +1778,12 @@
 
       // Daily total label (invisible bar on top of this stack)
       var dailyTotalData = trendsAll.map(function(r){
-        var idx = {visit:1, cart:2, deal:3}[metric] || 1;
+        var idx = {visit:1, cart:2, deal:3, read:5}[metric] || 1;
         return r[idx];
       });
       barSeries.push({
         name: metric + "_label",
-        type: "bar", stack: stackName, yAxisIndex: 0,
+        type: "bar", stack: stackName, yAxisIndex: metricYIdx,
         data: new Array(nDates).fill(null),
         label: {
           show: true,
@@ -1712,6 +1828,7 @@
           var dateLabel = fmtDate(dInt);
 
           var dSummary = trendsAll[dateIdx];
+          var tr = dSummary ? fmt.int(dSummary[5]) : "—";
           var tv = dSummary ? fmt.int(dSummary[1]) : "—";
           var tc = dSummary ? fmt.int(dSummary[2]) : "—";
           var td = dSummary ? fmt.int(dSummary[3]) : "—";
@@ -1720,11 +1837,13 @@
           html += '<table style="border-spacing:0 1px;font-size:11px;width:100%">';
           var TH = 'text-align:left;font-size:10px;color:#9CA3AF;font-weight:400;width:58px;padding-bottom:2px';
           html += '<tr><td style="width:16px"></td><td></td>';
+          html += '<td style="' + TH + '">阅读</td>';
           html += '<td style="' + TH + '">进店</td>';
           html += '<td style="' + TH + '">加购</td>';
           html += '<td style="' + TH + '">成交</td></tr>';
           var T = 'text-align:left;font-weight:600;width:58px';
           html += '<tr><td style="width:16px"></td><td style="color:#6B7280;padding-bottom:4px">总计</td>';
+          html += '<td style="' + T + ';color:#FB7185">' + tr + '</td>';
           html += '<td style="' + T + ';color:#FF2442">' + tv + '</td>';
           html += '<td style="' + T + ';color:#F97316">' + tc + '</td>';
           html += '<td style="' + T + ';color:#EAB308">' + td + '</td></tr>';
@@ -1732,29 +1851,32 @@
           if (!notes.length) { html += '</table>'; return html; }
 
           var showCount = notes.length <= 8 ? notes.length : 5;
-          html += '<tr><td colspan="5" style="padding:2px 0"><div style="border-top:1px dashed #E5E7EB"></div></td></tr>';
+          html += '<tr><td colspan="6" style="padding:2px 0"><div style="border-top:1px dashed #E5E7EB"></div></td></tr>';
           for (var i = 0; i < showCount; i++) {
             var n = notes[i];
             var rank = i + 1;
             var clr = rank <= 10 ? DAILY_RED_PALETTE[rank - 1] : DAILY_REST_COLOR;
-            var vv = fmt.int(n.visit_uv), cv = fmt.int(n.cart_uv), dv = fmt.int(n.deal_uv);
+            var rv = fmt.int(n.read_uv), vv = fmt.int(n.visit_uv), cv = fmt.int(n.cart_uv), dv = fmt.int(n.deal_uv);
             html += '<tr>';
             html += '<td style="width:16px"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + clr + ';vertical-align:middle"></span></td>';
             html += '<td style="font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px" title="' + escapeHtml(n.creator || '') + '">' + escapeHtml(n.creator || '—') + '</td>';
+            html += '<td style="' + T + ';color:#FB7185">' + rv + '</td>';
             html += '<td style="' + T + ';color:#FF2442">' + vv + '</td>';
             html += '<td style="' + T + ';color:#F97316">' + cv + '</td>';
             html += '<td style="' + T + ';color:#EAB308">' + dv + '</td>';
             html += '</tr>';
           }
           if (notes.length > showCount) {
-            var restTotal = 0, restCart = 0, restDeal = 0;
+            var restRead = 0, restTotal = 0, restCart = 0, restDeal = 0;
             for (var j = showCount; j < notes.length; j++) {
+              restRead += notes[j].read_uv || 0;
               restTotal += notes[j].visit_uv || 0;
               restCart += notes[j].cart_uv || 0;
               restDeal += notes[j].deal_uv || 0;
             }
             html += '<tr><td style="width:16px"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + DAILY_REST_COLOR + ';vertical-align:middle"></span></td>';
             html += '<td style="color:#9CA3AF;font-size:10px">等 ' + (notes.length - showCount) + ' 篇</td>';
+            html += '<td style="text-align:left;color:#9CA3AF;font-size:10px">' + fmt.int(restRead) + '</td>';
             html += '<td style="text-align:left;color:#9CA3AF;font-size:10px">' + fmt.int(restTotal) + '</td>';
             html += '<td style="text-align:left;color:#9CA3AF;font-size:10px">' + fmt.int(restCart) + '</td>';
             html += '<td style="text-align:left;color:#9CA3AF;font-size:10px">' + fmt.int(restDeal) + '</td></tr>';
@@ -1772,12 +1894,22 @@
         axisLine: { lineStyle: { color: C.border } },
         axisLabel: { fontSize: 11, color: C.muted, rotate: dates.length > 40 ? 45 : 0 },
       },
-      yAxis: {
-        type: "value", name: "UV", position: "left",
-        axisLine: { show: false }, axisTick: { show: false },
-        splitLine: { lineStyle: { color: C.grid } },
-        axisLabel: { color: C.muted, fontSize: 11 }, nameTextStyle: { color: C.dim },
-      },
+      yAxis: [
+        {
+          type: "value", name: useDualAxis ? "进店/加购/成交 UV" : "UV", position: "left",
+          axisLine: { show: false }, axisTick: { show: false },
+          splitLine: { lineStyle: { color: C.grid } },
+          axisLabel: { color: C.muted, fontSize: 11 }, nameTextStyle: { color: C.dim },
+        },
+        {
+          type: "value", name: "阅读UV", position: "right", show: useDualAxis,
+          axisLine: { show: false }, axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: useDualAxis, color: "#FB7185", fontSize: 11,
+            formatter: function(v){ return v >= 1000 ? (v/1000).toFixed(1)+"k" : v; } },
+          nameTextStyle: { color: "#FB7185", fontWeight: 600 },
+        },
+      ],
       series: barSeries,
     }, true);
 
@@ -1800,7 +1932,7 @@
   }
 
   function initDailyToggles() {
-    document.querySelectorAll(".metric-toggle").forEach(function(btn){
+    document.querySelectorAll("#dailyToggles .metric-toggle-card").forEach(function(btn){
       btn.addEventListener("click", function(){
         this.classList.toggle("active");
         var metric = this.dataset.metric;
@@ -1830,7 +1962,7 @@
     var tbody = document.getElementById("dailyDetailBody");
 
     title.textContent = fmtDate(dateInt) + " 笔记明细（共 " + notes.length + " 篇）";
-    thead.innerHTML = '<tr><th style="width:40px">#</th><th>达人</th><th>笔记ID</th><th>进店UV</th><th>加购UV</th><th>成交UV</th></tr>';
+    thead.innerHTML = '<tr><th style="width:40px">#</th><th>达人</th><th>笔记ID</th><th>阅读UV</th><th>进店UV</th><th>加购UV</th><th>成交UV</th></tr>';
 
     tbody.innerHTML = notes.map(function(n, i){
       var rank = i + 1;
@@ -1839,6 +1971,7 @@
         '<td><span class="daily-rank-badge" style="background:' + clr + ';color:#fff">' + rank + '</span></td>' +
         '<td>' + escapeHtml(n.creator || "—") + '</td>' +
         '<td class="mono-id">' + escapeHtml(n.note_id) + '</td>' +
+        '<td>' + fmt.int(n.read_uv) + '</td>' +
         '<td>' + fmt.int(n.visit_uv) + '</td>' +
         '<td>' + fmt.int(n.cart_uv) + '</td>' +
         '<td>' + fmt.int(n.deal_uv) + '</td></tr>';
@@ -1963,6 +2096,8 @@
   initTableCombo();
   initGmvTooltip();
   initDailyToggles();
+  initTrendToggles();
+  initCostToggles();
   renderDailyOverview();
   renderTrendModule();
   renderCostModule();
