@@ -115,14 +115,14 @@
     function getFiltered() {
       const kw = self.keyword;
       const candidates = cfg.candidates || [];
-      if (!kw) return candidates.slice(0, 200);
+      if (!kw) return candidates.slice(0, 500);
       const low = kw.toLowerCase();
       return candidates.filter(n => {
         for (const k of (cfg.filterKeys || ["note_id", "creator"])) {
           if ((n[k] || "").toLowerCase().includes(low)) return true;
         }
         return false;
-      }).slice(0, 200);
+      }).slice(0, 500);
     }
 
     function fmtPubDate(d) {
@@ -468,6 +468,77 @@
     hints.forEach(function (hint) { observer.observe(hint); });
   }
 
+  function initToc() {
+    var toc = document.getElementById("toc");
+    var items = Array.from(toc.querySelectorAll(".toc-item"));
+    var targets = items.map(function (item) {
+      return document.getElementById(item.dataset.target);
+    }).filter(Boolean);
+    var toggleBtn = document.getElementById("tocToggle");
+    var expandWrap = document.getElementById("tocExpand");
+    var expandBtn = expandWrap && expandWrap.querySelector(".toc-expand-btn");
+    if (!items.length || !targets.length) return;
+
+    // ---- toggle ----
+    function resizeCharts() {
+      if (trendChart) trendChart.resize();
+      if (costChart) costChart.resize();
+      if (dailyOverviewChart) dailyOverviewChart.resize();
+    }
+    function collapse() {
+      toc.classList.add("collapsed");
+      if (expandWrap) expandWrap.hidden = false;
+      localStorage.setItem("toc_collapsed", "1");
+      setTimeout(resizeCharts, 300);
+    }
+    function expand() {
+      toc.classList.remove("collapsed");
+      if (expandWrap) expandWrap.hidden = true;
+      localStorage.setItem("toc_collapsed", "0");
+      setTimeout(resizeCharts, 300);
+    }
+    if (toggleBtn) toggleBtn.addEventListener("click", collapse);
+    if (expandBtn) expandBtn.addEventListener("click", expand);
+    // restore state
+    if (localStorage.getItem("toc_collapsed") === "1") collapse();
+
+    // ---- click to scroll ----
+    var scrollLock = 0;
+    items.forEach(function (item) {
+      item.addEventListener("click", function (e) {
+        e.preventDefault();
+        var target = document.getElementById(item.dataset.target);
+        if (!target) return;
+        // Highlight immediately on click
+        items.forEach(function (it) { it.classList.remove("active"); });
+        item.classList.add("active");
+        scrollLock = Date.now();
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(function () { scrollLock = 0; }, 900);
+      });
+    });
+
+    // ---- scroll spy ----
+    function syncActive() {
+      if (scrollLock && Date.now() - scrollLock < 900) return;
+      var bestId = null, closest = Infinity;
+      for (var i = 0; i < targets.length; i++) {
+        var top = targets[i].getBoundingClientRect().top;
+        // section whose top is closest to viewport top (but still in or below viewport)
+        if (top >= -50 && top < closest) { closest = top; bestId = targets[i].id; }
+      }
+      // scrolled past everything → last section
+      if (!bestId) bestId = targets[targets.length - 1].id;
+      items.forEach(function (it) { it.classList.toggle("active", it.dataset.target === bestId); });
+    }
+    var scrollTimer;
+    window.addEventListener("scroll", function () {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(syncActive, 80);
+    }, { passive: true });
+    syncActive();
+  }
+
   // 图表二折线：可切换 阅读/进店/加购/成交，默认仅进店；阅读UV量级大走右轴
   const TREND_METRICS = {
     read:  { label: "阅读UV", col: 5, color: "#FB7185", avg: true },
@@ -526,7 +597,7 @@
     const trendsAll = DATA.trends_all || [];
     const candidates = DATA.notes
       .filter(n => trends[n.note_id])
-      .sort((a, b) => (b.gmv || 0) - (a.gmv || 0));
+      .sort((a, b) => (String(b.pub_date || "0").replace(/-/g, "") | 0) - (String(a.pub_date || "0").replace(/-/g, "") | 0));
 
     trendCombo = makeCombo({
       inputId: "trendSearch", listId: "trendList", candidates,
@@ -735,7 +806,7 @@
     const costAll = DATA.cost_all;
     const candidates = DATA.notes
       .filter(n => costData[n.note_id])
-      .sort((a, b) => (b.spend || 0) - (a.spend || 0));
+      .sort((a, b) => (String(b.pub_date || "0").replace(/-/g, "") | 0) - (String(a.pub_date || "0").replace(/-/g, "") | 0));
 
     costCombo = makeCombo({
       inputId: "costSearch", listId: "costList", candidates,
@@ -1589,7 +1660,7 @@
   function initTableCombo() {
     tableCombo = makeCombo({
       inputId: "tableSearch", listId: "tableList",
-      candidates: DATA.notes,
+      candidates: DATA.notes.slice().sort((a, b) => (String(b.pub_date || "0").replace(/-/g, "") | 0) - (String(a.pub_date || "0").replace(/-/g, "") | 0)),
       filterKeys: ["note_id", "creator"],
       moduleKey: "table",
       emptyPlaceholder: "（无数据）",
@@ -2102,4 +2173,5 @@
   renderTrendModule();
   renderCostModule();
   initChartPanHints();
+  initToc();
 })();

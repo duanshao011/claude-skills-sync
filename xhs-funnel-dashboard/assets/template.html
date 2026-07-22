@@ -7,6 +7,19 @@
 <style>/*__CSS__*/</style>
 </head>
 <body>
+<div class="app-layout">
+<nav class="toc" id="toc">
+  <div class="toc-head">
+    <span class="toc-title">目录</span>
+    <button class="toc-toggle" id="tocToggle" title="收起目录">◀</button>
+  </div>
+  <a class="toc-item active" data-target="sourceStrip">数据源</a>
+  <a class="toc-item" data-target="modDailyOverview">进店汇总</a>
+  <a class="toc-item" data-target="modTrend">进店趋势</a>
+  <a class="toc-item" data-target="modCost">成本分析</a>
+  <a class="toc-item" data-target="modTable">全链路数据</a>
+</nav>
+<div class="toc-expand" id="tocExpand" hidden><button class="toc-expand-btn" title="展开目录">▶</button></div>
 <div class="page">
 
   <header class="page-head">
@@ -191,6 +204,7 @@
     <span id="footAlign">—</span>
   </footer>
 </div>
+</div><!-- .app-layout -->
 
 <div class="tip-card" id="tipCard" hidden>
   <div class="tip-title" id="tipTitle"></div>
