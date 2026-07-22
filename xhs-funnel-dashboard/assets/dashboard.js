@@ -541,7 +541,7 @@
 
   // 图表二折线：可切换 阅读/进店/加购/成交，默认仅进店；阅读UV量级大走右轴
   const TREND_METRICS = {
-    read:  { label: "阅读UV", col: 5, color: "#FB7185", avg: true },
+    read:  { label: "阅读UV", col: 5, color: "#CC3300", avg: true },
     visit: { label: "进店UV", col: 1, color: "#FF2442", avg: true },
     cart:  { label: "加购UV", col: 2, color: "#F97316", avg: true },
     deal:  { label: "成交UV", col: 3, color: "#EAB308", avg: true },
@@ -574,9 +574,9 @@
         axisLabel: { color: C.muted, fontSize: 11 }, nameTextStyle: { color: C.dim } },
       { type: "value", name: "阅读UV", position: "right", show: useDual,
         axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false },
-        axisLabel: { show: useDual, color: "#FB7185", fontSize: 11,
+        axisLabel: { show: useDual, color: "#CC3300", fontSize: 11,
           formatter: function(v){ return v >= 1000 ? (v/1000).toFixed(1)+"k" : v; } },
-        nameTextStyle: { color: "#FB7185", fontWeight: 600 } },
+        nameTextStyle: { color: "#CC3300", fontWeight: 600 } },
     ];
     return { series: series, yAxis: yAxis };
   }
@@ -760,7 +760,7 @@
 
   // 图表三成本曲线：阅读/进店/加购/成交，默认仅进店；成本=累计实付÷累计对应UV
   const COST_METRICS = {
-    read:  { label: "阅读成本", color: "#FB7185" },
+    read:  { label: "阅读成本", color: "#CC3300" },
     visit: { label: "进店成本", color: "#FF2442" },
     cart:  { label: "加购成本", color: "#F97316" },
     deal:  { label: "成交成本", color: "#EAB308" },
@@ -1728,7 +1728,7 @@
     "#FCF7A7","#FDFABF"
   ];
   const DAILY_ROSE_PALETTE = [
-    "#FB7185","#FB8497","#FC96A8","#FCA8B9",
+    "#CC3300","#D65C33","#E07A4D","#EB9966",
     "#FDBACB","#FDCCDC","#FEDEEE","#FEE8F0",
     "#FFF1F5","#FFF6F9"
   ];
@@ -1914,7 +1914,7 @@
           html += '<td style="' + TH + '">成交</td></tr>';
           var T = 'text-align:left;font-weight:600;width:58px';
           html += '<tr><td style="width:16px"></td><td style="color:#6B7280;padding-bottom:4px">总计</td>';
-          html += '<td style="' + T + ';color:#FB7185">' + tr + '</td>';
+          html += '<td style="' + T + ';color:#CC3300">' + tr + '</td>';
           html += '<td style="' + T + ';color:#FF2442">' + tv + '</td>';
           html += '<td style="' + T + ';color:#F97316">' + tc + '</td>';
           html += '<td style="' + T + ';color:#EAB308">' + td + '</td></tr>';
@@ -1931,7 +1931,7 @@
             html += '<tr>';
             html += '<td style="width:16px"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:' + clr + ';vertical-align:middle"></span></td>';
             html += '<td style="font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px" title="' + escapeHtml(n.creator || '') + '">' + escapeHtml(n.creator || '—') + '</td>';
-            html += '<td style="' + T + ';color:#FB7185">' + rv + '</td>';
+            html += '<td style="' + T + ';color:#CC3300">' + rv + '</td>';
             html += '<td style="' + T + ';color:#FF2442">' + vv + '</td>';
             html += '<td style="' + T + ';color:#F97316">' + cv + '</td>';
             html += '<td style="' + T + ';color:#EAB308">' + dv + '</td>';
@@ -1976,9 +1976,9 @@
           type: "value", name: "阅读UV", position: "right", show: useDualAxis,
           axisLine: { show: false }, axisTick: { show: false },
           splitLine: { show: false },
-          axisLabel: { show: useDualAxis, color: "#FB7185", fontSize: 11,
+          axisLabel: { show: useDualAxis, color: "#CC3300", fontSize: 11,
             formatter: function(v){ return v >= 1000 ? (v/1000).toFixed(1)+"k" : v; } },
-          nameTextStyle: { color: "#FB7185", fontWeight: 600 },
+          nameTextStyle: { color: "#CC3300", fontWeight: 600 },
         },
       ],
       series: barSeries,
