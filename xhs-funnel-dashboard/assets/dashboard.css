@@ -398,7 +398,6 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
   padding:11px 14px;letter-spacing:1.5px;
   border-bottom:2px solid rgba(0,0,0,.05);
 }
-.funnel-table thead .group-row th.group-h:hover{background:inherit;color:inherit}
 .funnel-table thead .group-row th.grp-base  { background:#F1F5F9; color:#475569; border-top:4px solid #94A3B8 }
 .funnel-table thead .group-row th.grp-pgy   { background:#FFE8EC; color:#E11D48; border-top:4px solid #FF2442 }
 .funnel-table thead .group-row th.grp-star  { background:#FFF3E0; color:#C2410C; border-top:4px solid #F97316 }
@@ -419,9 +418,10 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
    自适应自定义列增减，且绝不误伤 colspan 分组头。
 */
 
-/* L2 表头两行 sticky top */
+/* L2 表头两行 sticky top：强制不透明底色 */
+.funnel-table thead th{background:#fff}
 .funnel-table thead .group-row th{position:sticky;top:0;z-index:2}
-.funnel-table thead tr:not(.group-row) th{position:sticky;top:var(--group-h-height,46px);z-index:2;border-top:none}
+.funnel-table thead tr:not(.group-row) th{position:sticky;top:var(--group-h-height,46px);z-index:2;border-top:none;background:#FAFBFC}
 
 /* L1 冻结列 body */
 .funnel-table tbody td.frozen-col{position:sticky;z-index:1;background:#fff}
@@ -524,7 +524,7 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 .modal-title{font-size:16px;font-weight:600}
 .modal-close{background:none;border:none;font-size:22px;color:var(--dim);cursor:pointer;line-height:1}
 .modal-close:hover{color:var(--text)}
-.modal-body{display:grid;grid-template-columns:1.4fr 1fr;gap:0;flex:1;min-height:400px;overflow:hidden}
+.modal-body{display:grid;grid-template-columns:1.6fr 1fr;gap:0;flex:1;min-height:400px;overflow:hidden}
 .modal-left,.modal-right{padding:18px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
 .modal-left{border-right:1px solid var(--divider)}
 .modal-sub{color:var(--muted);font-size:12px;display:flex;justify-content:space-between}
@@ -540,6 +540,11 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 }
 .col-group-head .cnt{color:var(--dim);font-weight:400;font-size:12px}
 .col-group-items{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+#selectedList .col-group-items{grid-template-columns:1fr}
+.col-item.drag-over{border-top:2px solid var(--brand);margin-top:-2px;background:var(--brand-soft)}
+.col-item.dragging{opacity:.4}
+.col-item.default-col{color:var(--text-2)}
+.default-dot{color:var(--dim);margin-left:auto;font-weight:700;font-size:16px;cursor:default}
 .col-item{
   display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;
   cursor:pointer;user-select:none;font-size:13px;color:var(--text-2);

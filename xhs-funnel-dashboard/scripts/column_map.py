@@ -53,13 +53,13 @@ STAR_SCHEMA = {
     "gmv":             (["商家GMV", "全店成交GMV(元)"], None),
 }
 
-# ---- 薯条（付费投放消耗），xlsx ----
-# 口径(2026-07-02更新)：投放金额 = 实际支付金额，仅订单状态=推广完成。
-# real_pay 缺失(老薯条表)时 loaders 回退到 spend(实际消耗)。
+# ---- 薯条（付费投放），xlsx ----
+# 唯一金额口径(2026-07-22)：投放金额 = 实际支付金额，仅订单状态=推广完成。
+# 不读取、不回退到“实际消耗”；缺少实际支付金额时直接报错。
 CHILI_SCHEMA = {
+    "order_id":    (["订单ID", "订单id"], None),
     "note_id":     (["笔记ID", "笔记id", "内容ID"], None),
     "creator":     (["被推广者", "达人昵称"], None),
-    "spend":       (["实际消耗（元）", "实际消耗(元)", "实际消耗"], None),
     "real_pay":    (["实际支付金额（元）", "实际支付金额(元)", "实际支付金额"], None),
     "budget":      (["推广总预算（元）", "推广总预算(元)", "推广总预算"], None),
     "status":      (["订单状态"], None),
@@ -92,7 +92,7 @@ LX_SCHEMA = {
 REQUIRED = {
     "pgy":   ["note_id"],
     "star":  ["note_id", "visit_uv", "gmv"],
-    "chili": ["note_id", "spend"],
+    "chili": ["order_id", "note_id", "real_pay"],
     "lx":    ["note_id"],
 }
 

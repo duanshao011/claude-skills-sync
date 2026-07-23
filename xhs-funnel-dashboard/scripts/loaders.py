@@ -3,7 +3,7 @@
 
 - load_pugongying: 多级表头(header=2)，按发布日期可选筛当期；返回笔记粒度档案
 - load_star:       锁口径(全部流量+归因30)再聚合，避免重复累加；返回(笔记粒度, 日维度)
-- load_chili:      过滤"实际消耗>0"剔除未投行；按笔记ID汇总消耗
+- load_chili:      仅使用“实际支付金额”，过滤实付>0；按笔记ID汇总投放金额
 - load_lingxi:     人群资产表，笔记粒度直接映射
 """
 import pandas as pd
@@ -201,34 +201,50 @@ def load_star(path):
 
 # ---------- 薯条 ----------
 def load_chili(path):
-    """口径(2026-07-02 更新)：投放金额 = 实际支付金额，仅订单状态=推广完成。
+    """唯一金额口径(2026-07-22)：投放金额 = 实际支付金额，仅订单状态=推广完成。
 
-    新薯条表(含 real_pay/status) → 新口径；老表(无 real_pay) → 回退旧口径(实际消耗>0)。
+    支持单个路径或路径列表。多文件先合并并按 order_id 去重（后传优先），
+    再按 note_id 汇总，避免历史表与增量表重叠时重复计算。
+    必须存在 order_id/real_pay；不读取、不回退到“实际消耗”。
     返回 (agg, chili_daily, meta)：
       agg          — 按 note_id 聚合 spend/chili_max_daily/chili_orders
       chili_daily  — 按 (note_id, launch_date) 的每日实付 → 图表二柱状图
-      meta         — launch_min/max 等
+      meta         — launch_min/max/files/dedup_rows 等
     """
-    raw = pd.read_excel(path, dtype=str)
-    df = _std_frame(raw, CHILI_SCHEMA, "chili")
+    paths = [path] if isinstance(path, (str, bytes)) else list(path)
+    frames = []
+    for p in paths:
+        raw = pd.read_excel(p, dtype=str)
+        one = _std_frame(raw, CHILI_SCHEMA, "chili")
+        one["_src"] = str(p)
+        frames.append(one)
+    df = pd.concat(frames, ignore_index=True)
+    df["order_id"] = df["order_id"].astype(str).str.strip()
     df["note_id"] = df["note_id"].astype(str).str.strip()
+    before_dedup = len(df)
+    df = df[df["order_id"].notna() & (df["order_id"] != "") & (df["order_id"] != "nan")]
+    df = df.drop_duplicates(subset="order_id", keep="last")
+    after_dedup = len(df)
 
-    # —— 金额字段：优先实际支付，无则回退实际消耗（兼容老表） ——
-    has_real_pay = "real_pay" in df
-    pay_col = "real_pay" if has_real_pay else "spend"
-    df["spend"] = _to_num(df[pay_col])
+    # —— 唯一金额字段：实际支付金额 ——
+    # “实际消耗”即使存在也不会进入标准字段，更不会参与任何汇总。
+    df["spend"] = _to_num(df["real_pay"])
     if "budget" in df:
         df["budget"] = _to_num(df["budget"])
     for c in ["impression", "read"]:
         if c in df:
             df[c] = _to_num(df[c])
 
-    # —— 状态筛选：有 status 列只取推广完成，无则不筛（兼容老表） ——
+    # —— 状态筛选：有 status 列只取推广完成，无则不筛 ——
     if "status" in df:
-        df = df[df["status"] == "推广完成"].copy()
+        df = df[df["status"].astype(str).str.strip() == "推广完成"].copy()
 
     # —— 启动时间 → launch_date（int YYYYMMDD） ——
-    meta = {}
+    meta = {
+        "files": [str(p) for p in paths],
+        "input_rows": int(before_dedup),
+        "dedup_rows": int(before_dedup - after_dedup),
+    }
     if "launch_time" in df:
         lt = pd.to_datetime(df["launch_time"], errors="coerce")
         df["launch_date"] = lt.dt.strftime("%Y%m%d").astype("Int64")

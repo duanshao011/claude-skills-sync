@@ -1012,7 +1012,7 @@
       { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "", valColor: visitComp.valColor, rate: visitComp.meanHtml },
       { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "", valColor: cartComp.valColor, rate: cartComp.meanHtml },
       { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "", valColor: dealComp.valColor, rate: dealComp.meanHtml },
-      { l: "历史最高单日", v: s.max_daily == null ? "—" : "¥" + Number(s.max_daily).toFixed(2), u: "", valColor: null, rate: null },
+      { l: "累计投放天数", v: s.days == null ? "—" : s.days, u: "天", valColor: null, rate: null },
     ];
     document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
       `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
@@ -1119,6 +1119,7 @@
     byKey: {},
     groups: DATA.column_groups || [],
     fixed: ["note_id", "creator"],
+    defaults: DATA.default_columns || [],
     selected: [],
     sortKey: null,
     sortDir: "desc",
@@ -1560,8 +1561,9 @@
       availCount += items.length;
       const groupHtml = items.map(c => {
         const inSel = MODAL.draft.includes(c.key);
-        const locked = TABLE.fixed.includes(c.key);
-        const cls = locked ? "disabled" : (inSel ? "selected" : "");
+        const fixedOnly = TABLE.fixed.includes(c.key);
+        const isDefault = TABLE.defaults.includes(c.key);
+        const cls = fixedOnly ? "disabled" : (inSel ? "selected" : "");
         const derCls = c.derived ? " col-derived" : "";
         return `<div class="col-item ${cls}${derCls}" data-key="${c.key}">
           <span class="cb"></span>
@@ -1576,29 +1578,69 @@
     }
     document.getElementById("availCount").textContent = availCount;
 
-    sel.innerHTML = MODAL.draft.map((k, i) => {
-      const c = TABLE.byKey[k];
-      if (!c) return "";
-      const locked = TABLE.fixed.includes(k);
-      const derCls = c.derived ? " col-derived" : "";
-      const showSep = i === TABLE.fixed.length && MODAL.draft.length > TABLE.fixed.length;
-      const sepHtml = i === TABLE.fixed.length && MODAL.draft.length > TABLE.fixed.length
-        ? '<div class="sep">— 以上为固定列 —</div>' : "";
-      return `${sepHtml}<div class="col-item ${locked ? "locked" : ""}${derCls}" data-key="${k}" draggable="${!locked}">
-        ${locked ? '<span class="lock">🔒</span>' : '<span class="drag-handle">⋮⋮</span>'}
-        <span>${c.label}</span>
-        ${locked ? "" : `<span class="remove-x" data-remove="${k}">×</span>`}
-      </div>`;
-    }).join("");
+    // Right panel: grouped by source
+    sel.innerHTML = "";
+    for (const g of TABLE.groups) {
+      const groupKeys = MODAL.draft.filter(k => {
+        const c = TABLE.byKey[k];
+        return c && c.group === g.key;
+      });
+      if (!groupKeys.length) continue;
+      const nowrap = groupKeys.length <= 3 ? " col-group-nowrap" : "";
+      const itemsHtml = groupKeys.map((k, i) => {
+        const c = TABLE.byKey[k];
+        if (!c) return "";
+        const fixed = TABLE.fixed.includes(k);
+        const def = !fixed && TABLE.defaults.includes(k);
+        const removable = !fixed && !def;
+        const dragOk = !fixed;
+        const derCls = c.derived ? " col-derived" : "";
+        const cls = fixed ? "locked" : (def ? "default-col" : "");
+        return `<div class="col-item ${cls}${derCls}" data-key="${k}" draggable="${dragOk}">
+          ${fixed ? '<span class="lock">🔒</span>' : '<span class="drag-handle">⋮⋮</span>'}
+          <span>${c.label}</span>
+          ${removable ? `<span class="remove-x" data-remove="${k}">×</span>` : `<span class="default-dot" title="默认字段，不可删除">·</span>`}
+        </div>`;
+      }).join("");
+      sel.insertAdjacentHTML("beforeend",
+        `<div class="col-group">
+          <div class="col-group-head">${g.label} <span class="cnt">${groupKeys.length}</span></div>
+          <div class="col-group-items${nowrap}">${itemsHtml}</div>
+        </div>`);
+    }
     document.getElementById("selCount").textContent = MODAL.draft.length;
 
     avail.querySelectorAll(".col-item").forEach(el => {
       el.addEventListener("click", () => {
         const k = el.dataset.key;
-        if (TABLE.fixed.includes(k)) return;
+        if (TABLE.fixed.includes(k) || TABLE.defaults.includes(k)) return;
         const idx = MODAL.draft.indexOf(k);
-        if (idx >= 0) MODAL.draft.splice(idx, 1);
-        else MODAL.draft.push(k);
+        if (idx >= 0) { MODAL.draft.splice(idx, 1); }
+        else {
+          // Insert at end of its group
+          const c = TABLE.byKey[k];
+          const grp = c ? c.group : null;
+          let insertAt = MODAL.draft.length;
+          if (grp) {
+            for (let i = MODAL.draft.length - 1; i >= 0; i--) {
+              const pc = TABLE.byKey[MODAL.draft[i]];
+              if (pc && pc.group === grp) { insertAt = i + 1; break; }
+            }
+            // If no column from this group exists, insert after the last column of the previous group
+            if (insertAt === MODAL.draft.length) {
+              const groupOrder = TABLE.groups.map(g => g.key);
+              const grpIdx = groupOrder.indexOf(grp);
+              for (let gi = grpIdx - 1; gi >= 0; gi--) {
+                for (let i = MODAL.draft.length - 1; i >= 0; i--) {
+                  const pc = TABLE.byKey[MODAL.draft[i]];
+                  if (pc && pc.group === groupOrder[gi]) { insertAt = i + 1; break; }
+                }
+                if (insertAt < MODAL.draft.length) break;
+              }
+            }
+          }
+          MODAL.draft.splice(insertAt, 0, k);
+        }
         renderModal();
       });
     });
@@ -1613,9 +1655,10 @@
     });
     let dragKey = null;
     sel.querySelectorAll(".col-item[draggable='true']").forEach(el => {
-      el.addEventListener("dragstart", () => { dragKey = el.dataset.key; el.style.opacity = ".4"; });
-      el.addEventListener("dragend", () => { el.style.opacity = "1"; dragKey = null; });
-      el.addEventListener("dragover", e => e.preventDefault());
+      el.addEventListener("dragstart", () => { dragKey = el.dataset.key; el.classList.add("dragging"); });
+      el.addEventListener("dragend", () => { el.classList.remove("dragging"); sel.querySelectorAll(".col-item").forEach(it => it.classList.remove("drag-over")); dragKey = null; });
+      el.addEventListener("dragover", e => { e.preventDefault(); el.classList.add("drag-over"); });
+      el.addEventListener("dragleave", () => { el.classList.remove("drag-over"); });
       el.addEventListener("drop", e => {
         e.preventDefault();
         const dropKey = el.dataset.key;

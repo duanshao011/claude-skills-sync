@@ -89,7 +89,7 @@
         <span class="mod-sub">选一篇笔记看其逐日进店 / 加购 / 成交 UV 走势</span>
       </div>
       <div class="module-tools">
-        <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink1" autocomplete="off" checked><span>🔗</span></label>
+        <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink1" autocomplete="off" checked></label>
         <div class="combo" id="trendCombo">
           <input type="text" id="trendSearch" class="ctrl-input combo-input" placeholder="搜索笔记ID 或 达人昵称" autocomplete="off">
           <ul class="combo-list" id="trendList" hidden></ul>
@@ -124,7 +124,7 @@
         <span class="mod-sub">笔记粒度的投放消耗与成本效率 · 近7天进店成本趋势判断</span>
       </div>
       <div class="module-tools">
-        <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink2" autocomplete="off" checked><span>🔗</span></label>
+        <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink2" autocomplete="off" checked></label>
         <div class="combo" id="costCombo">
           <input type="text" id="costSearch" class="ctrl-input combo-input" placeholder="搜索笔记ID 或 达人昵称（仅已投放笔记）" autocomplete="off">
           <ul class="combo-list" id="costList" hidden></ul>
@@ -173,7 +173,7 @@
         <span class="mod-sub">四表打通的笔记级明细 · 字段名悬停看口径 / 点击排序 / 右上角自定义列</span>
       </div>
       <div class="module-tools">
-        <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink3" autocomplete="off" checked><span>🔗</span></label>
+        <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink3" autocomplete="off" checked></label>
         <div class="combo" id="tableCombo">
           <input type="text" id="tableSearch" class="ctrl-input combo-input" placeholder="搜 达人昵称 / 笔记ID" autocomplete="off">
           <ul class="combo-list" id="tableList" hidden></ul>
@@ -182,6 +182,31 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
           自定义列
         </button>
+      </div>
+    </div>
+    <div class="query-panel" aria-label="全链路数据查询">
+      <div class="qp-fields">
+        <label class="qp-field" for="qpCreator">
+          <span class="qp-label">达人昵称</span>
+          <input class="qp-input" id="qpCreator" type="text" placeholder="输入达人昵称" autocomplete="off">
+        </label>
+        <label class="qp-field" for="qpNoteId">
+          <span class="qp-label">笔记ID</span>
+          <input class="qp-input" id="qpNoteId" type="text" placeholder="输入或粘贴笔记ID" autocomplete="off">
+        </label>
+        <div class="qp-field">
+          <span class="qp-label">笔记发布日期</span>
+          <div class="qp-daterange-body">
+            <input class="qp-date" id="qpDateStart" type="date" aria-label="笔记发布日期起始日期">
+            <span class="qp-dash">至</span>
+            <input class="qp-date" id="qpDateEnd" type="date" aria-label="笔记发布日期结束日期">
+          </div>
+        </div>
+        <div class="qp-buttons">
+          <button class="qp-btn qp-btn-primary" id="qpQuery" type="button">查询</button>
+          <button class="qp-btn qp-btn-plain" id="qpReset" type="button">重置</button>
+          <button class="qp-btn qp-btn-plain" id="qpExport" type="button">导出 CSV</button>
+        </div>
       </div>
     </div>
     <div class="table-wrap">

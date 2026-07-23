@@ -241,39 +241,13 @@ def main():
     chili_paths = [p for p in (args.chili or []) if p and os.path.exists(p)]
     if chili_paths:
         try:
-            import pandas as pd
-            agg_parts, daily_parts = [], []
-            cmeta = {}
-            for p in chili_paths:
-                res = load_chili(p)
-                if res is not None:
-                    a, d, m = res
-                    if a is not None and len(a):
-                        if a.index.name == "note_id":
-                            a = a.reset_index()
-                        agg_parts.append(a)
-                    if d is not None and len(d):
-                        daily_parts.append(d)
-                    for k, v in m.items():
-                        if k.endswith("_min") and v:
-                            cmeta[k] = min(cmeta[k], v) if k in cmeta and cmeta[k] else v
-                        elif k.endswith("_max") and v:
-                            cmeta[k] = max(cmeta[k], v) if k in cmeta and cmeta[k] else v
-                        elif v and k not in cmeta:
-                            cmeta[k] = v
-            if agg_parts:
-                chili_agg = pd.concat(agg_parts, ignore_index=True)
-                num_cols = [c for c in chili_agg.select_dtypes(include=["number"]).columns if c != "note_id"]
-                if "note_id" in chili_agg.columns and num_cols:
-                    chili_agg["note_id"] = chili_agg["note_id"].astype(str)
-                    chili_agg = chili_agg.groupby("note_id", as_index=False)[num_cols].sum()
-                    chili_agg = chili_agg.set_index("note_id")
-                elif "note_id" in chili_agg.columns:
-                    chili_agg = chili_agg.drop_duplicates(subset=["note_id"], keep="last").set_index("note_id")
-            else:
-                chili_agg = None
-            chili_daily = pd.concat(daily_parts, ignore_index=True).drop_duplicates() if daily_parts else None
-            source_status["chili"] = {"loaded": chili_agg is not None, "path": " · ".join(chili_paths)}
+            # 多份明细必须在订单粒度先去重，再按笔记汇总；不能分别汇总后直接相加。
+            chili_agg, chili_daily, cmeta = load_chili(chili_paths)
+            source_status["chili"] = {
+                "loaded": chili_agg is not None,
+                "path": " · ".join(chili_paths),
+                "dedup_rows": int((cmeta or {}).get("dedup_rows", 0)),
+            }
         except Exception as e:
             chili_agg, chili_daily, cmeta = None, None, {}
             source_status["chili"] = {"loaded": False, "path": " · ".join(chili_paths), "reason": f"加载失败：{e}"}
@@ -288,16 +262,8 @@ def main():
     lx, source_status["lx"] = _try(load_lingxi, args.lingxi, "灵犀")
     source_status["lx"]["name"] = "灵犀"
     source_status["lx"]["rows"] = int(len(lx)) if lx is not None else 0
-    # 灵犀命中主体数 = 灵犀笔记 ∩ (星河 ∪ 薯条)
-    if lx is not None and (star_agg is not None or chili_agg is not None):
-        subject_ids = set()
-        if star_agg is not None:
-            subject_ids |= set(star_agg.index)
-        if chili_agg is not None:
-            subject_ids |= set(chili_agg.index)
-        source_status["lx"]["hit"] = int(len(set(lx.index) & subject_ids))
-    else:
-        source_status["lx"]["hit"] = 0
+    # 灵犀命中数：在四表并集主体下，已加载的灵犀记录都会进入主表。
+    source_status["lx"]["hit"] = int(len(lx)) if lx is not None else 0
 
     # ===== 每张表的日期范围（用于状态卡展示） =====
     def _dt_period(series):

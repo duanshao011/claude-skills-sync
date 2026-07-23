@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """四表合并 + 派生指标 + 相对水位线。
 
-主体笔记 = 当期"有动作"的笔记 = 星河(有转化) ∪ 薯条(有消耗)。
-蒲公英作为档案全集，为这些笔记提供前端内容指标和达人合作成本。
-灵犀作为人群资产表，透传 TI 人群数、进店兑换比等种草指标。
+主体笔记 = 蒲公英 ∪ 星河 ∪ 薯条 ∪ 灵犀 的 note_id 并集。
+博哥上传哪几张表，就展示这些表覆盖到的全部笔记；缺表字段由前端明确标注。
 
-投放金额口径（2026-07-01 更新）：
-  投放金额 = 薯条实际消耗（不含达人合作费）
+投放金额口径（2026-07-22 更新）：
+  投放金额 = 薯条实际支付金额（仅推广完成；不含达人合作费）
   ROI = 商家GMV / 投放金额
   阅读UV成本 = 投放金额 / 蒲公英阅读UV
   进店UV成本 = 投放金额 / 星河进店UV
@@ -73,14 +72,15 @@ FIELD_LABELS = {
 
 
 def build_master(pgy, star_agg, chili_agg, lx=None):
-    """四表左连接到主表；缺表时对应字段为 NaN。"""
-    if star_agg is not None:
-        star_agg.index = star_agg.index.astype(str)
-    if chili_agg is not None:
-        chili_agg.index = chili_agg.index.astype(str)
+    """以四张表 note_id 并集构建主表；缺表时对应字段为 NaN。"""
+    for frame in (pgy, star_agg, chili_agg, lx):
+        if frame is not None:
+            frame.index = frame.index.astype(str)
+    idx_pgy = set(pgy.index) if pgy is not None else set()
     idx_star = set(star_agg.index) if star_agg is not None else set()
     idx_chili = set(chili_agg.index) if chili_agg is not None else set()
-    subject = sorted(idx_star | idx_chili)
+    idx_lx = set(lx.index) if lx is not None else set()
+    subject = sorted(idx_pgy | idx_star | idx_chili | idx_lx)
     master = pd.DataFrame(index=pd.Index(subject, name="note_id"))
 
     # 行级来源标记：每篇笔记在哪几张表里存在
@@ -290,6 +290,7 @@ def build_cost_daily(chili_daily, star_daily, master):
                 "cart_cost": _f(row.get("cart_cost")),
                 "deal_cost": _f(row.get("deal_cost")),
                 "max_daily": _f(row.get("chili_max_daily")),
+                "days": int(row.get("chili_days")) if pd.notna(row.get("chili_days")) else 0,
                 "creator": creator if isinstance(creator, str) else None,
             }
         else:
