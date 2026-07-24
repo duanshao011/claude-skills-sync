@@ -231,7 +231,7 @@ def build_cost_daily(chili_daily, star_daily, master):
     """图表二·单篇成本分析数据。只为有薯条消耗的笔记构建。
 
     每篇产出：
-      summary  — 累计消耗/GMV/ROI/进店UV成本/加购成本/成交成本/历史最高单日消耗
+      summary  — 累计消耗/GMV/ROI/阅读UV成本/进店UV成本/加购成本/成交成本/投放天数
       daily    — [启动日, 当日实付, 进店UV, 加购UV, 成交UV, GMV, 阅读UV, 累计进店成本]
     薯条「启动日」× 星河「成交日(归因30)」按天对齐为近似——前端 hover 注明。
     """
@@ -286,6 +286,7 @@ def build_cost_daily(chili_daily, star_daily, master):
                 "spend": _f(row.get("spend")),
                 "gmv": _f(row.get("gmv")),
                 "roi": _f(row.get("roi")),
+                "uv_cost": _f(row.get("uv_cost")),
                 "visit_uv_cost": _f(row.get("visit_uv_cost")),
                 "cart_cost": _f(row.get("cart_cost")),
                 "deal_cost": _f(row.get("deal_cost")),

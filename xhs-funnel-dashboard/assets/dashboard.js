@@ -968,10 +968,10 @@
 
     // Overall averages for comparison (from cost_all summary)
     var caSummary = (DATA.cost_all || {}).summary || {};
+    var avgReadCost = caSummary.read_uv > 0 ? caSummary.spend / caSummary.read_uv : null;
     var avgVisitCost = caSummary.visit_uv > 0 ? caSummary.spend / caSummary.visit_uv : null;
     var avgCartCost = caSummary.cart_uv > 0 ? caSummary.spend / caSummary.cart_uv : null;
     var avgDealCost = caSummary.deal_uv > 0 ? caSummary.spend / caSummary.deal_uv : null;
-    var overallRoi = DATA.summary ? DATA.summary.overall_roi : null;
 
     // Cost comparison helper: {valColor, hasMean, meanHtml}
     function costCompare(noteVal, avgVal) {
@@ -991,24 +991,14 @@
     var modSub2 = document.querySelector("#modCost .mod-sub");
     if (modSub2) modSub2.textContent = "笔记粒度的投放消耗与成本效率 · 对比全量均值";
 
+    var readComp  = costCompare(s.uv_cost, avgReadCost);
     var visitComp = costCompare(s.visit_uv_cost, avgVisitCost);
     var cartComp  = costCompare(s.cart_cost, avgCartCost);
     var dealComp  = costCompare(s.deal_cost, avgDealCost);
-    // ROI comparison (higher=better, opposite direction from cost)
-    var roiVal = s.roi;
-    var roiColor = null, roiMeanHtml = null;
-    if (roiVal != null && overallRoi != null && overallRoi > 0) {
-      var roiDiff = roiVal - overallRoi;
-      if (Math.abs(roiDiff) < 0.01) roiColor = "#9CA3AF";
-      else if (roiDiff > 0) roiColor = "#10B981"; // above avg = good
-      else roiColor = "#EF4444"; // below avg = bad
-      roiMeanHtml = '<span style="color:#9CA3AF">均 ' + Number(overallRoi).toFixed(2) + '</span>';
-    }
 
     const kpiItems = [
       { l: "累计消耗", v: fmt.money(s.spend), u: "元", valColor: null, rate: null },
-      { l: '累计GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true, valColor: null, rate: null },
-      { l: 'ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复，该值为近似参考，实际ROI会偏低。">≈ 参考值</span>', v: roiVal == null ? "—" : Number(roiVal).toFixed(2), u: "", approx: true, valColor: roiColor, rate: roiMeanHtml },
+      { l: "阅读UV成本", v: s.uv_cost == null ? "—" : "¥" + Number(s.uv_cost).toFixed(2), u: "", valColor: readComp.valColor, rate: readComp.meanHtml, tip: "累计实际支付金额 ÷ 星河阅读/播放UV" },
       { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "", valColor: visitComp.valColor, rate: visitComp.meanHtml },
       { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "", valColor: cartComp.valColor, rate: cartComp.meanHtml },
       { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "", valColor: dealComp.valColor, rate: dealComp.meanHtml },
