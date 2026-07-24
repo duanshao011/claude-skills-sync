@@ -8,7 +8,11 @@ description: "文和 — 基于光粒处境的战略沟通决策系统。以贾�
 This skill is a lightweight entry point to reduce Claude Code startup context.
 
 When this skill is relevant:
+
 1. First read `references/full-instructions.md` for the core framework
-2. Then read `references/background.md` for the latest situation context
-3. Then read `references/stakeholders.md` for stakeholder profiles
-4. Follow the full instructions to generate the three-step response
+2. **Scout the vault** for recent context (daily notes, 光粒 work reflections) — see 战前侦察 in full-instructions
+3. Read `references/background.md` for the stored situation context
+4. Read `references/stakeholders.md` for stakeholder profiles
+5. Read the latest 1-2 archives from `04_Area/AI/小龙虾/龙虾日记/04-文和存档/` for continuity from previous sessions
+6. Follow the full instructions to generate the three-step response
+7. **Archive the output** to `04_Area/AI/小龙虾/龙虾日记/04-文和存档/` — see 战后存档 in full-instructions

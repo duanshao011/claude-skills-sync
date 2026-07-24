@@ -64,6 +64,12 @@ PGY_NUM = ["exposure", "read_count", "read_uv", "avg_view_time",
 
 def load_pugongying(path, start=None, end=None):
     raw = pd.read_excel(path, header=2)
+    # 兼容历史标准化文件：表头就在第 1 行。固定 header=2 会把第 3 条数据误当表头，
+    # 随后列号兜底将“序号/笔记ID/昵称/日期”整体错位。
+    if not any(str(c).strip() in {"笔记id", "笔记ID", "内容ID", "note_id"} for c in raw.columns):
+        raw0 = pd.read_excel(path, header=0)
+        if any(str(c).strip() in {"笔记id", "笔记ID", "内容ID", "note_id"} for c in raw0.columns):
+            raw = raw0
     df = _std_frame(raw, PGY_SCHEMA, "pgy")
     df["note_id"] = df["note_id"].astype(str).str.strip()
     df = df[df["note_id"].notna() & (df["note_id"] != "") & (df["note_id"] != "nan")]

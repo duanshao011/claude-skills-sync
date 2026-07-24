@@ -147,7 +147,7 @@
         </div>
         <div class="cost-chart" id="costChart"></div>
       </div>
-      <div class="cost-note">柱状图=每日实付（左轴 ¥） · 虚线=累计成本（右轴 ¥/UV，成本=累计实付÷累计对应UV） · 上方切换阅读/进店/加购/成交成本曲线 · 汇总模式点柱看当天投放明细</div>
+      <div class="cost-note">上方成本胶囊=周期累计口径 · 指标本色实线=3日滚动成本（当前日及前2个数据点实付合计÷同期星河对应UV合计） · 灰色虚线=累计成本基线 · 多选指标自动上下分面 · 汇总模式点每日实付柱看当天投放明细</div>
       <div class="daily-detail-panel" id="costDetailPanel" hidden>
         <div class="daily-detail-head">
           <span class="daily-detail-title" id="costDetailTitle"></span>
@@ -182,31 +182,6 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
           自定义列
         </button>
-      </div>
-    </div>
-    <div class="query-panel" aria-label="全链路数据查询">
-      <div class="qp-fields">
-        <label class="qp-field" for="qpCreator">
-          <span class="qp-label">达人昵称</span>
-          <input class="qp-input" id="qpCreator" type="text" placeholder="输入达人昵称" autocomplete="off">
-        </label>
-        <label class="qp-field" for="qpNoteId">
-          <span class="qp-label">笔记ID</span>
-          <input class="qp-input" id="qpNoteId" type="text" placeholder="输入或粘贴笔记ID" autocomplete="off">
-        </label>
-        <div class="qp-field">
-          <span class="qp-label">笔记发布日期</span>
-          <div class="qp-daterange-body">
-            <input class="qp-date" id="qpDateStart" type="date" aria-label="笔记发布日期起始日期">
-            <span class="qp-dash">至</span>
-            <input class="qp-date" id="qpDateEnd" type="date" aria-label="笔记发布日期结束日期">
-          </div>
-        </div>
-        <div class="qp-buttons">
-          <button class="qp-btn qp-btn-primary" id="qpQuery" type="button">查询</button>
-          <button class="qp-btn qp-btn-plain" id="qpReset" type="button">重置</button>
-          <button class="qp-btn qp-btn-plain" id="qpExport" type="button">导出 CSV</button>
-        </div>
       </div>
     </div>
     <div class="table-wrap">
