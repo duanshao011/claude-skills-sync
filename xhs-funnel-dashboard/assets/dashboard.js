@@ -249,7 +249,7 @@
     const kpi = [
       { l: "总投入（薯条实付）", v: fmt.money(s.total_spend), u: "元", sub: "仅推广完成·实际支付，不含达人合作费", range: m.chili_period, rangeTip: "薯条投放周期" },
       { l: '总 GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单如果有多条笔记共同贡献，该订单GMV会被重复计入每条笔记，因此加总后的GMV高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.total_gmv), u: "元", sub: "⚠ 多内容归因存在重复计算", range: m.star_period, rangeTip: "星河数据周期", approx: true },
-      { l: '整体 ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复计算，该ROI为近似参考值，实际ROI会偏低。">≈ 参考值</span>', v: s.overall_roi == null ? "—" : Number(s.overall_roi).toFixed(2), u: "", sub: "口径：GMV / 薯条实付（GMV含归因重复）", approx: true },
+      { l: '整体 ROI <span class="gmv-approx" data-tip="ROI仅使用同时命中薯条和星河的同一批笔记：交集GMV ÷ 交集实付。因GMV含多内容归因重复，该ROI仍为近似参考值。">≈ 参考值</span>', v: s.overall_roi == null ? "—" : Number(s.overall_roi).toFixed(2), u: "", sub: "同样本交集 " + fmt.int(s.matched_note_count || 0) + " 篇 · GMV / 薯条实付", approx: true },
       { l: "笔记数",        v: fmt.int(s.note_count),    u: "篇", sub: "已投 " + fmt.int(s.invested_count) + " 篇" },
     ];
     document.getElementById("kpiRow").innerHTML = kpi.map(k =>
@@ -282,7 +282,17 @@
         </div>
       </div>`;
     }).join("");
-    document.getElementById("sourceStrip").innerHTML = cards;
+    const quality = [];
+    if ((DATA.summary.funnel_violation_count || 0) > 0) {
+      quality.push(DATA.summary.funnel_violation_count + "篇成交UV高于加购UV，请结合星河归因链路判断");
+    }
+    if ((DATA.meta.latest_data_gap_days || 0) > 0) {
+      quality.push("薯条最新日期比星河晚" + DATA.meta.latest_data_gap_days + "天，末端成本仍在等待归因回补");
+    }
+    const qualityHtml = quality.length
+      ? '<div class="data-quality-note"><strong>数据质量提示</strong><span>' + quality.join("；") + "</span></div>"
+      : "";
+    document.getElementById("sourceStrip").innerHTML = cards + qualityHtml;
   }
 
   // ===== 图表一 · 单篇趋势分析 =====
@@ -693,7 +703,8 @@
       : "—";
 
     // 计算复合指标
-    const readUv = note.read_uv_content || note.read_uv_funnel || 0;
+    // 阅读/进店/加购/成交业务漏斗统一采用淘宝星河UV。
+    const readUv = note.read_uv_funnel || 0;
     const visitUv = note.visit_uv || 0;
     const cartUv = note.cart_uv || 0;
     const dealUv = note.deal_uv || 0;
@@ -782,7 +793,7 @@
       });
     });
   }
-  // 图表三 daily 统一计算：实线=当前点及前2个数据点的滚动成本；灰虚线=截至当前点的累计成本。
+  // 图表三 daily 已补齐自然日：实线=当前日及前2个自然日的滚动成本；灰虚线=截至当前日的累计成本。
   function costRatio(spend, uv) {
     var denominator = Number(uv) || 0;
     return denominator > 0 ? +(Number(spend || 0) / denominator).toFixed(4) : null;
@@ -827,27 +838,42 @@
       if (!row) return "";
       var dateText = fmtDate(row[0]);
       var pubTag = !isSummary && pubDateStr && dateText === pubDateStr
-        ? ' <span style="color:#FF2442;font-size:11px">笔记发布日期</span>' : "";
+        ? '<span style="color:#FF2442;font-size:11px;font-weight:600">笔记发布日期</span>' : "";
       var spend = row[1] == null ? "—" : "¥" + Number(row[1]).toFixed(2);
-      var tdL = "color:#6B7280;text-align:right;padding-right:10px;white-space:nowrap";
-      var tdR = "font-weight:600;text-align:left;font-variant-numeric:tabular-nums";
-      var rows = '<tr><td style="' + tdL + '">当日消耗</td><td style="' + tdR + '">' + spend + "</td></tr>";
+      var summaryItems = [
+        '<span style="color:#6B7280">当日消耗</span><b style="font-variant-numeric:tabular-nums">' + spend + "</b>"
+      ];
       if (isSummary) {
         var noteCount = row[7] != null ? Number(row[7]) : 0;
         var avgSpend = noteCount > 0 && row[1] != null ? "¥" + (Number(row[1]) / noteCount).toFixed(2) : "—";
-        rows += '<tr><td style="' + tdL + '">当日投放笔记数</td><td style="' + tdR + '">' + noteCount + " 篇</td></tr>";
-        rows += '<tr><td style="' + tdL + '">平均每篇消耗</td><td style="' + tdR + '">' + avgSpend + "</td></tr>";
+        summaryItems.push('<span style="color:#6B7280">投放笔记</span><b>' + noteCount + " 篇</b>");
+        summaryItems.push('<span style="color:#6B7280">篇均消耗</span><b style="font-variant-numeric:tabular-nums">' + avgSpend + "</b>");
       }
-      trendData.metrics.forEach(function(metric){
-        var label = COST_METRICS[metric].label;
+      var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(' + summaryItems.length + ',auto);gap:8px 18px;padding:9px 10px;background:#F7F7F8;border:1px solid #ECEDEF">'
+        + summaryItems.map(function(item){ return '<div style="display:grid;gap:2px">' + item + "</div>"; }).join("") + "</div>";
+      var metricCards = trendData.metrics.map(function(metric){
+        var conf = COST_METRICS[metric];
         var values = trendData.byMetric[metric];
-        rows += '<tr><td style="' + tdL + '">当日' + label + '</td><td style="' + tdR + '">' + formatCostValue(values.daily[index]) + "</td></tr>";
-        rows += '<tr><td style="' + tdL + '">3日滚动' + label + '</td><td style="' + tdR + '">' + formatCostValue(values.rolling[index]) + "</td></tr>";
-        rows += '<tr><td style="' + tdL + '">累计' + label + '</td><td style="' + tdR + '">' + formatCostValue(values.cumulative[index]) + "</td></tr>";
-      });
-      var clickHint = isSummary ? '<div style="margin-top:4px;font-size:10px;color:#9CA3AF;text-align:center">点击柱子查看当天投放明细</div>' : "";
-      return '<div style="font-weight:700;margin-bottom:6px">' + dateText + pubTag + '</div>'
-        + '<table style="border-spacing:0 2px;font-size:13px;line-height:1.6">' + rows + "</table>" + clickHint;
+        var rows = [
+          ["当日", values.daily[index]],
+          ["3日滚动", values.rolling[index]],
+          ["累计基线", values.cumulative[index]],
+        ];
+        return '<div style="min-width:168px;padding:9px 10px;border:1px solid #ECEDEF;border-left:3px solid ' + conf.color + ';background:#fff">'
+          + '<div style="margin-bottom:6px;color:' + conf.color + ';font-size:12px;font-weight:700">' + conf.label + "</div>"
+          + rows.map(function(item){
+              return '<div style="display:flex;justify-content:space-between;gap:18px;line-height:1.8">'
+                + '<span style="color:#6B7280;white-space:nowrap">' + item[0] + "</span>"
+                + '<b style="font-variant-numeric:tabular-nums;white-space:nowrap">' + formatCostValue(item[1]) + "</b></div>";
+            }).join("") + "</div>";
+      }).join("");
+      var columns = trendData.metrics.length > 1 ? 2 : 1;
+      var clickHint = isSummary ? '<div style="margin-top:8px;font-size:10px;color:#9CA3AF;text-align:center">点击每日实付柱查看当天投放明细</div>' : "";
+      return '<div style="min-width:230px;max-width:460px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px;font-weight:700">'
+        + '<span>' + dateText + "</span>" + pubTag + "</div>" + summaryHtml
+        + '<div style="display:grid;grid-template-columns:repeat(' + columns + ',minmax(168px,1fr));gap:8px;margin-top:8px">' + metricCards + "</div>"
+        + clickHint + "</div>";
     };
   }
 
@@ -867,20 +893,22 @@
   function spendYAxis(gridIndex) {
     return {
       type: "value", gridIndex: gridIndex, name: "元", position: "left",
+      nameLocation: "end", nameGap: 10,
       axisLine: { show: false }, axisTick: { show: false },
       splitLine: { lineStyle: { color: C.grid } },
-      axisLabel: { color: "#FF2442", fontSize: 11, fontWeight: 600, formatter: function(v){ return v >= 1000 ? (v / 1000).toFixed(1) + "k" : Math.round(v); } },
-      nameTextStyle: { color: "#FF2442", fontWeight: 600 },
+      axisLabel: { margin: 12, color: "#FF2442", fontSize: 11, fontWeight: 600, formatter: function(v){ return v >= 1000 ? (v / 1000).toFixed(1) + "k" : Math.round(v); } },
+      nameTextStyle: { color: "#FF2442", fontWeight: 600, padding: [0, 0, 0, 2] },
     };
   }
 
   function costYAxis(gridIndex, color, position) {
     return {
       type: "value", gridIndex: gridIndex, name: "元/UV", position: position || "left",
+      nameLocation: "end", nameGap: 10,
       axisLine: { show: false }, axisTick: { show: false },
       splitLine: { lineStyle: { color: C.grid } },
-      axisLabel: { color: color, fontSize: 11, fontWeight: 600, formatter: function(v){ return "¥" + Number(v).toFixed(2); } },
-      nameTextStyle: { color: color, fontWeight: 600 },
+      axisLabel: { margin: 12, color: color, fontSize: 11, fontWeight: 600, formatter: function(v){ return "¥" + Number(v).toFixed(2); } },
+      nameTextStyle: { color: color, fontWeight: 600, padding: position === "right" ? [0, 2, 0, 0] : [0, 0, 0, 2] },
     };
   }
 
@@ -913,7 +941,7 @@
 
     if (!multi) {
       var metric = trendData.metrics[0];
-      grids.push({ top: 20, left: 60, right: 70, bottom: 40 });
+      grids.push({ top: 30, left: 88, right: 96, bottom: 52, containLabel: false });
       xAxes.push(costXAxis(dates, 0, true, pubDateStr));
       yAxes.push(spendYAxis(0));
       var singleCostAxis = costYAxis(0, COST_METRICS[metric].color, "right");
@@ -928,10 +956,10 @@
       series.push(rollingCostSeries(metric, trendData.byMetric[metric].rolling, 0, 1));
       series.push(cumulativeCostSeries(metric, trendData.byMetric[metric].cumulative, 0, 1));
     } else {
-      grids.push({ top: 20, height: 72, left: 70, right: 70 });
+      grids.push({ top: 34, height: 92, left: 96, right: 48, containLabel: false });
       xAxes.push(costXAxis(dates, 0, false, pubDateStr));
       yAxes.push(spendYAxis(0));
-      titles.push({ text: "每日实付", left: 72, top: 0, textStyle: { color: C.muted, fontSize: 11, fontWeight: 600 } });
+      titles.push({ text: "每日实付", left: 98, top: 6, textStyle: { color: C.muted, fontSize: 12, fontWeight: 700 } });
       series.push({
         name: isSummary ? "当日总实付" : "当日实付", type: "bar", xAxisIndex: 0, yAxisIndex: 0, data: spendVals,
         itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -940,11 +968,11 @@
       });
       trendData.metrics.forEach(function(metric, index){
         var axisIndex = index + 1;
-        var top = 120 + index * 125;
-        grids.push({ top: top, height: 88, left: 70, right: 70 });
+        var top = 166 + index * 160;
+        grids.push({ top: top, height: 108, left: 96, right: 48, containLabel: false });
         xAxes.push(costXAxis(dates, axisIndex, index === trendData.metrics.length - 1, pubDateStr));
         yAxes.push(costYAxis(axisIndex, COST_METRICS[metric].color, "left"));
-        titles.push({ text: COST_METRICS[metric].label, left: 72, top: top - 20, textStyle: { color: COST_METRICS[metric].color, fontSize: 11, fontWeight: 600 } });
+        titles.push({ text: COST_METRICS[metric].label, left: 98, top: top - 28, textStyle: { color: COST_METRICS[metric].color, fontSize: 12, fontWeight: 700 } });
         series.push(rollingCostSeries(metric, trendData.byMetric[metric].rolling, axisIndex, axisIndex));
         series.push(cumulativeCostSeries(metric, trendData.byMetric[metric].cumulative, axisIndex, axisIndex));
       });
@@ -957,7 +985,10 @@
       title: titles,
       tooltip: {
         trigger: "axis", axisPointer: { type: "cross" },
-        backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text, fontSize: 13 },
+        appendToBody: true, confine: false, enterable: false,
+        backgroundColor: "#fff", borderColor: C.border, padding: 10,
+        extraCssText: "box-shadow:0 10px 30px rgba(17,24,39,.12);border-radius:2px;",
+        textStyle: { color: C.text, fontSize: 12 },
         formatter: buildCostTooltip(daily, trendData, isSummary, pubDateStr),
       },
       axisPointer: { link: [{ xAxisIndex: "all" }] },
@@ -968,7 +999,7 @@
   function renderCostChart(daily, uvIdxMap, isSummary, pubDateStr) {
     var chartEl = document.getElementById("costChart");
     var metricCount = activeCostMetrics().length;
-    chartEl.style.height = (metricCount > 1 ? 120 + metricCount * 125 : 360) + "px";
+    chartEl.style.height = (metricCount > 1 ? 188 + metricCount * 160 : 400) + "px";
     if (!costChart) costChart = echarts.init(chartEl);
     costChart.setOption(buildCostChartOption(daily, uvIdxMap, isSummary, pubDateStr), true);
     bindChartPanInteractions(costChart, "costPanHint");
@@ -1165,7 +1196,7 @@
     fixed: ["note_id", "creator"],
     defaults: DATA.default_columns || [],
     selected: [],
-    sortKey: null,
+    sortKey: "pub_date",
     sortDir: "desc",
     keyword: "",
     page: 1,

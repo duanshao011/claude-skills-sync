@@ -7,8 +7,9 @@
 投放金额口径（2026-07-22 更新）：
   投放金额 = 薯条实际支付金额（仅推广完成；不含达人合作费）
   ROI = 商家GMV / 投放金额
-  阅读UV成本 = 投放金额 / 蒲公英阅读UV
+  阅读UV成本 = 投放金额 / 星河阅读/播放UV
   进店UV成本 = 投放金额 / 星河进店UV
+  阅读/进店/加购/成交业务UV全部固定采用星河口径
   组件点击成本 = 投放金额 / (正文点击量 + 底栏点击量 + 评论区点击量)
 
 水位线 = 本期主体笔记每个指标的百分位（P25/P75 分档），每期自适应，不预设死阈值。
@@ -124,13 +125,20 @@ def build_master(pgy, star_agg, chili_agg, lx=None):
             lx2 = lx2.drop(columns=overlap)
         master = master.join(lx2, how="left")
 
-    master["creator"] = master.get("creator_pgy", pd.Series(index=master.index))
+    def _clean_creator(series):
+        s = series.astype("string").str.strip()
+        # “光粒”是品牌/项目占位账号，任何来源都不得作为真实达人昵称。
+        return s.mask(s.isin(["", "nan", "None", "—", "光粒"]))
+
+    master["creator"] = _clean_creator(
+        master.get("creator_pgy", pd.Series(index=master.index, dtype="string"))
+    )
     if "creator_star" in master:
-        master["creator"] = master["creator"].fillna(master["creator_star"])
-    if "creator_lx" in master:
-        master["creator"] = master["creator"].fillna(master["creator_lx"])
+        master["creator"] = master["creator"].fillna(_clean_creator(master["creator_star"]))
     if "creator_chili" in master:
-        master["creator"] = master["creator"].fillna(master["creator_chili"])
+        master["creator"] = master["creator"].fillna(_clean_creator(master["creator_chili"]))
+    if "creator_lx" in master:
+        master["creator"] = master["creator"].fillna(_clean_creator(master["creator_lx"]))
 
     fill0 = ["read_uv_funnel", "visit_uv", "new_visit_uv", "search_visit_uv",
              "cart_uv", "deal_uv", "gmv", "spend", "chili_impression",
@@ -184,13 +192,46 @@ def build_master(pgy, star_agg, chili_agg, lx=None):
     return master
 
 
+PGY_SCORE_FIELDS = {
+    "play_5s", "read_3s", "avg_view_time", "finish_rate", "interact_rate",
+    "body_cta_ctr", "comment_cta_ctr", "content_ctr", "component_click_total",
+    "natural_ratio", "read_uv_cost",
+}
+STAR_SCORE_FIELDS = {
+    "read_uv_funnel", "visit_uv", "cart_uv", "deal_uv", "gmv", "uv_value",
+    "visit_rate", "cart_rate", "deal_rate", "new_visit_ratio", "search_visit_ratio",
+}
+STAR_CHILI_SCORE_FIELDS = {"roi", "uv_cost", "visit_uv_cost", "cart_cost", "deal_cost"}
+LX_SCORE_FIELDS = {
+    "ti_users", "iti_users", "visit_users", "ti_visit_ratio", "iti_visit_ratio",
+}
+
+
+def _score_source_mask(master, field):
+    """水位线只比较拥有对应来源的笔记，缺来源补0不得参与排名。"""
+    if field == "component_cost":
+        return master["in_pgy"] & master["in_chili"]
+    if field == "read_uv_cost":
+        return master["in_pgy"] & master["in_chili"]
+    if field in PGY_SCORE_FIELDS:
+        return master["in_pgy"]
+    if field in STAR_CHILI_SCORE_FIELDS:
+        return master["in_star"] & master["in_chili"]
+    if field in STAR_SCORE_FIELDS:
+        return master["in_star"]
+    if field in LX_SCORE_FIELDS:
+        return master["in_lx"]
+    return pd.Series(True, index=master.index)
+
+
 def add_waterlines(master):
-    """对每个 SCORE_FIELD 算百分位与分档（优质/达标/预警）。成本类方向反转。"""
+    """按真实数据来源计算百分位与分档；缺来源记录固定为 na。"""
     waterlines = {}
     for field, direction in SCORE_FIELDS.items():
         if field not in master:
             continue
-        s = pd.to_numeric(master[field], errors="coerce")
+        mask = _score_source_mask(master, field)
+        s = pd.to_numeric(master[field], errors="coerce").where(mask)
         pct = s.rank(pct=True)
         if direction < 0:
             pct = 1 - pct
@@ -227,6 +268,16 @@ def _f(v):
     return None if (math.isnan(v) or math.isinf(v)) else v
 
 
+def _complete_natural_dates(date_values):
+    """将 YYYYMMDD 日期集合补齐为连续自然日，供严格3日滚动窗口使用。"""
+    values = sorted({int(v) for v in date_values if pd.notna(v)})
+    if not values:
+        return []
+    start = pd.to_datetime(str(values[0]), format="%Y%m%d")
+    end = pd.to_datetime(str(values[-1]), format="%Y%m%d")
+    return [int(d.strftime("%Y%m%d")) for d in pd.date_range(start, end, freq="D")]
+
+
 def build_cost_daily(chili_daily, star_daily, master):
     """图表二·单篇成本分析数据。只为有薯条消耗的笔记构建。
 
@@ -256,7 +307,7 @@ def build_cost_daily(chili_daily, star_daily, master):
                 if pd.isna(d):
                     continue
                 smap[int(d)] = r
-        dates = sorted(set(cmap) | set(smap))
+        dates = _complete_natural_dates(set(cmap) | set(smap))
         daily = []
         for d in dates:
             sr = smap.get(d)
@@ -326,19 +377,24 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
             ])
 
     cost_all = None
-    if chili_daily is not None and len(chili_daily):
-        # 汇总每日花费
+    matched_mask = master["in_chili"] & master["in_star"]
+    matched_ids = set(master.index[matched_mask].astype(str))
+    if chili_daily is not None and len(chili_daily) and matched_ids:
+        # 成本效率只允许同样本：薯条与星河均命中的笔记。
         cd = chili_daily.copy()
+        cd["note_id"] = cd["note_id"].astype(str)
+        cd = cd[cd["note_id"].isin(matched_ids)].copy()
         cd["launch_date"] = pd.to_numeric(cd["launch_date"], errors="coerce").astype("Int64")
         g_spend = cd.groupby("launch_date", as_index=False)["spend"].sum().sort_values("launch_date")
         spend_map = {int(r["launch_date"]): float(r["spend"]) for _, r in g_spend.iterrows()}
-        # 当日投放笔记数（distinct note_id）→ 供柱子 hover 显示笔记数/均消耗
         g_cnt = cd.groupby("launch_date")["note_id"].nunique()
         count_map = {int(k): int(v) for k, v in g_cnt.items() if pd.notna(k)}
-        # 汇总每日各UV（从 star_daily）供图表三多条成本线
+
         visit_map, cart_map, deal_map, read_map = {}, {}, {}, {}
         if star_daily is not None and len(star_daily):
             sd = star_daily.copy()
+            sd["note_id"] = sd["note_id"].astype(str)
+            sd = sd[sd["note_id"].isin(matched_ids)].copy()
             sd["date"] = pd.to_numeric(sd["date"], errors="coerce").astype("Int64")
             if "read_uv" not in sd.columns:
                 sd["read_uv"] = 0
@@ -351,28 +407,26 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
                 cart_map[d] = float(r["cart_uv"])
                 deal_map[d] = float(r["deal_uv"])
                 read_map[d] = float(r["read_uv"])
-        # 合并日期
-        all_dates = sorted(set(spend_map) | set(visit_map))
+
+        # 补齐自然日，保证前端“当前点及前2点”严格等于当前日及前2个自然日。
+        all_dates = _complete_natural_dates(set(spend_map) | set(visit_map))
         daily_list = []
         for d in all_dates:
             # [date, spend, visit_uv, cart_uv, deal_uv, read_uv]
             daily_list.append([
-                d, _f(spend_map.get(d)), _f(visit_map.get(d)),
-                _f(cart_map.get(d)), _f(deal_map.get(d)), _f(read_map.get(d)),
+                d, _f(spend_map.get(d, 0)), _f(visit_map.get(d, 0)),
+                _f(cart_map.get(d, 0)), _f(deal_map.get(d, 0)), _f(read_map.get(d, 0)),
             ])
-        # 追加：累计进店成本(index 6) + 当日投放笔记数(index 7)
-        n = len(daily_list)
         cum_s, cum_v = 0.0, 0.0
-        for i in range(n):
-            cum_s += daily_list[i][1] or 0.0
-            cum_v += daily_list[i][2] or 0.0
-            daily_list[i].append(_f(cum_s / cum_v) if cum_v > 0 else None)
-            daily_list[i].append(count_map.get(daily_list[i][0], 0))
-        # 薯条口径·当天投放明细（点柱展开用）：{launch_date: [{note_id, creator, spend, impression, read}]}
-        # creator 从 master 取（chili_agg 多表合并时 groupby sum 丢字符串列）
+        for row in daily_list:
+            cum_s += row[1] or 0.0
+            cum_v += row[2] or 0.0
+            row.append(_f(cum_s / cum_v) if cum_v > 0 else None)
+            row.append(count_map.get(row[0], 0))
+
         creator_map = {}
         if "creator" in master.columns:
-            for nid, row in master.iterrows():
+            for nid, row in master.loc[matched_mask].iterrows():
                 c = row.get("creator")
                 creator_map[str(nid)] = str(c) if pd.notna(c) and c else ""
         cost_daily_notes = {}
@@ -393,15 +447,17 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
                 })
             items.sort(key=lambda x: -(x["spend"] or 0))
             cost_daily_notes[int(d)] = items
+
+        matched = master.loc[matched_mask]
         cost_all = {
             "summary": {
-                "spend": _f(master["spend"].sum()),
-                "gmv": _f(master["gmv"].sum()),
-                "visit_uv": _f(master["visit_uv"].sum()),
-                "cart_uv": _f(master["cart_uv"].sum()),
-                "deal_uv": _f(master["deal_uv"].sum()),
-                "read_uv": _f(master["read_uv_funnel"].sum()),
-                "note_count": int(len(master)),
+                "spend": _f(matched["spend"].sum()),
+                "gmv": _f(matched["gmv"].sum()),
+                "visit_uv": _f(matched["visit_uv"].sum()),
+                "cart_uv": _f(matched["cart_uv"].sum()),
+                "deal_uv": _f(matched["deal_uv"].sum()),
+                "read_uv": _f(matched["read_uv_funnel"].sum()),
+                "note_count": int(matched_mask.sum()),
             },
             "daily": daily_list,
             "daily_notes": cost_daily_notes,
@@ -432,13 +488,20 @@ def compute(pgy, star_agg, chili_agg, lx=None, chili_daily=None, star_daily=None
             notes_list.sort(key=lambda x: -(x["visit_uv"] or 0))
             daily_notes[int(date_val)] = notes_list
 
-    total_spend = float(master["spend"].sum())
-    total_gmv = float(master["gmv"].sum())
+    total_spend = float(master.loc[master["in_chili"], "spend"].sum())
+    total_gmv = float(master.loc[master["in_star"], "gmv"].sum())
+    matched = master.loc[matched_mask]
+    matched_spend = float(matched["spend"].sum())
+    matched_gmv = float(matched["gmv"].sum())
     summary = {
         "note_count": int(len(master)),
         "total_spend": total_spend,
         "total_gmv": total_gmv,
-        "overall_roi": (total_gmv / total_spend) if total_spend else None,
+        "overall_roi": (matched_gmv / matched_spend) if matched_spend else None,
+        "matched_note_count": int(matched_mask.sum()),
+        "matched_spend": matched_spend,
+        "matched_gmv": matched_gmv,
+        "funnel_violation_count": int((master.loc[master["in_star"], "deal_uv"] > master.loc[master["in_star"], "cart_uv"]).sum()),
         "invested_count": int(master["is_invested"].sum()),
     }
     return master, waterlines, summary, cost, trends_all, cost_all, daily_notes

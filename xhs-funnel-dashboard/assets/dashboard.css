@@ -923,6 +923,8 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:32px}
 .daily-detail-panel{border-color:#FFDDE2;border-radius:14px}
 .daily-detail-head{background:#FFF5F6;border-color:#FFE1E6}
 .page-foot{border-color:var(--border)}
+.data-quality-note{grid-column:1/-1;display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border:1px solid #FED7AA;border-radius:12px;background:#FFF7ED;color:#9A3412;font-size:12px;line-height:1.6}
+.data-quality-note strong{white-space:nowrap;color:#C2410C}
 
 @media (max-width:1280px){
   .page-meta{max-width:52%;border-radius:14px}

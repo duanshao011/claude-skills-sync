@@ -60,6 +60,9 @@ def scan_data_dir(root):
         if "蒲公英" in name:
             candidates["pgy"].append((mtime, full))
         elif "星河" in name or "小红星" in name:
+            # 排除二次加工的分日趋势/汇总宽表，只允许标准星河明细进入数据链路。
+            if any(tag in name for tag in ("分日趋势", "分日汇总", "趋势", "汇总")):
+                continue
             candidates["star"].append((mtime, full))
         elif "薯条" in name:
             candidates["chili"].append((mtime, full))
@@ -296,6 +299,15 @@ def main():
 
     align_ok, align_msg, period = check_alignment(smeta or {}, cmeta or {})
 
+    latest_gap_days = None
+    star_latest = (smeta or {}).get("date_max")
+    chili_latest = (cmeta or {}).get("launch_max")
+    if star_latest and chili_latest:
+        latest_gap_days = (
+            pd.to_datetime(str(chili_latest), format="%Y%m%d")
+            - pd.to_datetime(str(star_latest), format="%Y%m%d")
+        ).days
+
     meta = {
         "period": period,
         "flow_type": (smeta or {}).get("flow_type", "全部流量"),
@@ -307,6 +319,7 @@ def main():
         # KPI 卡片专用时间范围：薯条=投放周期(启动时间)，星河=数据日期周期
         "chili_period": _period_str((cmeta or {}).get("launch_min"), (cmeta or {}).get("launch_max")),
         "star_period": _period_str((smeta or {}).get("date_min"), (smeta or {}).get("date_max")),
+        "latest_data_gap_days": latest_gap_days,
     }
 
     payload = build_payload(master, waterlines, summary, daily, meta, cost=cost,

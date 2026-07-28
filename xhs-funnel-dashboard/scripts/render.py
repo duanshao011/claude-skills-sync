@@ -32,7 +32,8 @@ COLUMN_GROUPS = [
             {"key": "note_id",    "label": "笔记ID",     "unit": "",   "type": "id",
              "formula": "小红书笔记唯一 ID", "meaning": "四表关联的主键", "source": "四表"},
             {"key": "creator",    "label": "达人昵称",   "unit": "",   "type": "text",
-             "formula": "优先取蒲公英博主昵称", "meaning": "笔记作者", "source": "蒲公英/灵犀"},
+             "formula": "蒲公英 → 星河 → 薯条；灵犀仅使用非品牌占位昵称兜底",
+             "meaning": "笔记真实作者；灵犀中的光粒等品牌账号不回填", "source": "四表身份字段"},
             {"key": "pub_date",   "label": "笔记发布日期", "unit": "",   "type": "date",
              "formula": "取蒲公英笔记发布日期", "meaning": "笔记创作时间", "source": "蒲公英"},
             {"key": "note_type",  "label": "笔记类型",   "unit": "",   "type": "text",
@@ -162,12 +163,12 @@ COLUMN_GROUPS = [
 DEFAULT_COLUMNS = [
     # 基础信息
     "note_id", "creator", "pub_date",
-    # 蒲公英（前端内容）
-    "read_uv_content", "content_ctr", "avg_view_time",
+    # 蒲公英（前端内容）：阅读UV原始字段保留在自定义列，不参与默认业务漏斗
+    "content_ctr", "avg_view_time",
     "body_cta_click", "comment_cta_click", "component_click_total",
     "component_cost",
-    # 淘宝星河（后端转化）—— 阅读UV/加购UV/成交UV/商家GMV/UV价值/UV成本
-    "read_uv_funnel", "cart_uv", "deal_uv", "gmv", "uv_value", "uv_cost",
+    # 淘宝星河（后端转化）—— 所有阅读/进店/加购/成交业务UV的唯一来源
+    "read_uv_funnel", "visit_uv", "cart_uv", "deal_uv", "gmv", "uv_value", "uv_cost",
     # 薯条投放（成本统计）—— 累计金额/累计投放天数/ROI
     "spend", "chili_days", "roi",
     # 灵犀（人群资产）

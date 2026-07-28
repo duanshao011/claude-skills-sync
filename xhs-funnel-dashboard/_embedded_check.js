@@ -249,7 +249,7 @@
     const kpi = [
       { l: "总投入（薯条实付）", v: fmt.money(s.total_spend), u: "元", sub: "仅推广完成·实际支付，不含达人合作费", range: m.chili_period, rangeTip: "薯条投放周期" },
       { l: '总 GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单如果有多条笔记共同贡献，该订单GMV会被重复计入每条笔记，因此加总后的GMV高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.total_gmv), u: "元", sub: "⚠ 多内容归因存在重复计算", range: m.star_period, rangeTip: "星河数据周期", approx: true },
-      { l: '整体 ROI <span class="gmv-approx" data-tip="ROI = GMV / 薯条实付，因分子GMV含多内容归因重复计算，该ROI为近似参考值，实际ROI会偏低。">≈ 参考值</span>', v: s.overall_roi == null ? "—" : Number(s.overall_roi).toFixed(2), u: "", sub: "口径：GMV / 薯条实付（GMV含归因重复）", approx: true },
+      { l: '整体 ROI <span class="gmv-approx" data-tip="ROI仅使用同时命中薯条和星河的同一批笔记：交集GMV ÷ 交集实付。因GMV含多内容归因重复，该ROI仍为近似参考值。">≈ 参考值</span>', v: s.overall_roi == null ? "—" : Number(s.overall_roi).toFixed(2), u: "", sub: "同样本交集 " + fmt.int(s.matched_note_count || 0) + " 篇 · GMV / 薯条实付", approx: true },
       { l: "笔记数",        v: fmt.int(s.note_count),    u: "篇", sub: "已投 " + fmt.int(s.invested_count) + " 篇" },
     ];
     document.getElementById("kpiRow").innerHTML = kpi.map(k =>
@@ -282,7 +282,17 @@
         </div>
       </div>`;
     }).join("");
-    document.getElementById("sourceStrip").innerHTML = cards;
+    const quality = [];
+    if ((DATA.summary.funnel_violation_count || 0) > 0) {
+      quality.push(DATA.summary.funnel_violation_count + "篇成交UV高于加购UV，请结合星河归因链路判断");
+    }
+    if ((DATA.meta.latest_data_gap_days || 0) > 0) {
+      quality.push("薯条最新日期比星河晚" + DATA.meta.latest_data_gap_days + "天，末端成本仍在等待归因回补");
+    }
+    const qualityHtml = quality.length
+      ? '<div class="data-quality-note"><strong>数据质量提示</strong><span>' + quality.join("；") + "</span></div>"
+      : "";
+    document.getElementById("sourceStrip").innerHTML = cards + qualityHtml;
   }
 
   // ===== 图表一 · 单篇趋势分析 =====
@@ -693,7 +703,8 @@
       : "—";
 
     // 计算复合指标
-    const readUv = note.read_uv_content || note.read_uv_funnel || 0;
+    // 阅读/进店/加购/成交业务漏斗统一采用淘宝星河UV。
+    const readUv = note.read_uv_funnel || 0;
     const visitUv = note.visit_uv || 0;
     const cartUv = note.cart_uv || 0;
     const dealUv = note.deal_uv || 0;
@@ -782,7 +793,7 @@
       });
     });
   }
-  // 图表三 daily 统一计算：实线=当前点及前2个数据点的滚动成本；灰虚线=截至当前点的累计成本。
+  // 图表三 daily 已补齐自然日：实线=当前日及前2个自然日的滚动成本；灰虚线=截至当前日的累计成本。
   function costRatio(spend, uv) {
     var denominator = Number(uv) || 0;
     return denominator > 0 ? +(Number(spend || 0) / denominator).toFixed(4) : null;
