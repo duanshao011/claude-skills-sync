@@ -70,7 +70,7 @@ async function checkStartupFetch() {
 }
 
 app.listen(PORT, async () => {
-  console.log(`信息源监控 running at http://localhost:${PORT}`);
+  console.log(`准星 running at http://localhost:${PORT}`);
   await checkStartupFetch();
 });
 

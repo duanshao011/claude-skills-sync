@@ -1,4 +1,4 @@
-# 信息源监控 — 设计文档
+# 准星 — 设计文档
 
 > 日期：2026-07-09
 > 状态：待确认
@@ -12,7 +12,7 @@
 
 ## 2. 使用方式
 
-- 通过 Claude Code skill 触发启动（触发词：信息源、信息源监控）
+- 通过 Claude Code skill 触发启动（触发词：准星、准星监控）
 - 终端执行 `npm start`，自动打开浏览器 `http://localhost:3000`
 - 本地使用，不需要部署到服务器
 - 关闭终端即停止服务
@@ -258,7 +258,7 @@ async function fetch(channelId) {
 ## 11. 项目目录结构
 
 ```
-~/.claude/skills/信息源skill/
+~/.claude/skills/准星skill/
 ├── SKILL.md                    # Skill 定义文件
 ├── design.md                   # 本设计文档
 └── app/                        # 应用代码
@@ -287,7 +287,7 @@ async function fetch(channelId) {
 
 skill 的职责是启动/停止应用服务：
 
-- **触发词**：信息源、信息源监控、info-source
+- **触发词**：准星、准星监控、zhunxing
 - **启动行为**：`cd app && npm start` → 自动打开浏览器
 - **停止行为**：关闭终端或 Ctrl+C
 

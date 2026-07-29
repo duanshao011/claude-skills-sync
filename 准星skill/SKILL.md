@@ -1,15 +1,15 @@
 ---
-name: 信息源
-description: "本地信息源监控阅读器（YouTube频道RSS聚合+AI摘要）；用户说信息源、信息源监控、info-source时使用。"
+name: 准星
+description: "本地信息源监控阅读器（YouTube频道RSS聚合+AI摘要）；用户说准星、准星监控、zhunxing时使用。"
 ---
 
-# 信息源监控
+# 准星
 
 本地 RSS 阅读器，聚合关注博主的最新内容。当前支持 YouTube，后续可扩展公众号、小红书等渠道。
 
 ## 使用方式
 
-1. 运行 `scripts/open-info-source.ps1`（Windows 启动脚本）
+1. 运行 `scripts/open-zhunxing.ps1`（Windows 启动脚本）
 2. 脚本自动检查 `http://localhost:3000` 是否可访问
 3. 未启动则自动在后台拉起服务
 4. 用默认浏览器打开页面

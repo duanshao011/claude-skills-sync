@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $url = "http://localhost:3000"
 $workspace = Join-Path $PSScriptRoot "..\app"
 
-function Test-InfoSource {
+function Test-Zhunxing {
   try {
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 2
     return $response.StatusCode -ge 200 -and $response.StatusCode -lt 500
@@ -12,7 +12,7 @@ function Test-InfoSource {
   }
 }
 
-if (-not (Test-InfoSource)) {
+if (-not (Test-Zhunxing)) {
   $serverJs = Join-Path $workspace "server.js"
   if (Test-Path -LiteralPath $serverJs) {
     # Check if node_modules exists
@@ -32,7 +32,7 @@ if (-not (Test-InfoSource)) {
     $ready = $false
     for ($i = 0; $i -lt 15; $i++) {
       Start-Sleep -Milliseconds 500
-      if (Test-InfoSource) {
+      if (Test-Zhunxing) {
         $ready = $true
         break
       }
@@ -46,4 +46,4 @@ if (-not (Test-InfoSource)) {
 }
 
 Start-Process $url
-Write-Host "信息源监控已打开: $url"
+Write-Host "准星已打开: $url"
