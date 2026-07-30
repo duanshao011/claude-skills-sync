@@ -1,102 +1,73 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { fetchAll, fetchBlogger, youtube } from '../fetchers/index.js';
+import { fetchManager, validateChannel } from '../fetchers/index.js';
+import { ProviderError, serializeProviderError } from '../providers/errors.js';
 
 const router = Router();
 
-router.post('/', async (req, res) => {
-  try {
-    const results = await fetchAll();
-    res.json({ results });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+router.post('/', (req, res) => {
+  const task = fetchManager.enqueueAll();
+  res.status(202).json({ task_id: task.id, status: task.status });
 });
 
-// Validate channel before adding (must be before /:id)
 router.post('/validate', async (req, res) => {
-  const { channel_type, channel_input } = req.body;
-  if (channel_type !== 'youtube') {
-    return res.status(400).json({ error: 'Only youtube is supported currently' });
-  }
-  if (!channel_input) {
-    return res.status(400).json({ error: 'channel_input is required' });
+  const { channel_type: channelType, channel_input: channelInput } = req.body || {};
+  if (!channelType || !channelInput) {
+    return res.status(400).json({ error: 'channel_type and channel_input are required' });
   }
 
   try {
-    const parsed = youtube.parseChannelUrl(channel_input);
-
-    // Handle parse errors (search URLs, video URLs, etc.)
-    if (parsed.type === 'error') {
-      return res.status(400).json({ error: parsed.reason });
-    }
-
-    let channelId = parsed.value;
-
-    if (parsed.type === 'handle') {
-      const resolved = await youtube.resolveHandle(parsed.value);
-      if (resolved) {
-        channelId = resolved;
-      } else {
-        return res.status(400).json({
-          error: '无法从 @' + parsed.value + ' 获取频道ID，请尝试在浏览器中打开该频道，复制频道主页的完整链接（youtube.com/channel/UC... 格式）',
-        });
-      }
-    }
-
-    if (parsed.type === 'unknown') {
-      return res.status(400).json({
-        error: parsed.reason || '无法识别输入格式，请粘贴完整的频道链接',
-      });
-    }
-
-    // Try RSS validation, but don't block on failure (temporary rate-limit)
-    let channelName = '';
-    let rssOk = true;
-    try {
-      const result = await youtube.validate(channelId);
-      channelName = result.channel_name;
-    } catch (err) {
-      rssOk = false;
-      channelName = parsed.type === 'handle' ? '@' + parsed.value : channelId;
-    }
-
-    res.json({
-      valid: true,
-      channel_id: channelId,
-      channel_name: channelName,
-      rss_available: rssOk,
-    });
-  } catch (err) {
-    res.status(400).json({
-      error: '频道验证失败，请检查URL或频道ID是否正确',
-      detail: err.message,
+    res.json(await validateChannel(channelType, channelInput));
+  } catch (error) {
+    const status = error instanceof ProviderError && error.code !== 'PROVIDER_FETCH_FAILED' ? 503 : 400;
+    const detail = serializeProviderError(error);
+    res.status(status).json({
+      error: detail.message,
+      code: detail.code,
+      provider: detail.provider,
+      retryable: detail.retryable,
     });
   }
 });
 
 router.get('/status', (req, res) => {
-  const row = db.get(`
-    SELECT MAX(last_fetched_at) as last_fetch, COUNT(*) as blogger_count
-    FROM bloggers
-  `);
-
+  const summary = db.get(`SELECT MAX(last_fetched_at) AS last_fetch,
+    COUNT(*) AS blogger_count,
+    SUM(CASE WHEN last_fetch_status = 'running' THEN 1 ELSE 0 END) AS running_count,
+    SUM(CASE WHEN last_fetch_status = 'failed' THEN 1 ELSE 0 END) AS failed_count
+    FROM bloggers`);
+  const tasks = fetchManager.list();
+  const latest = tasks[0] || null;
   res.json({
-    last_fetch: row ? row.last_fetch : null,
-    blogger_count: row ? row.blogger_count : 0,
+    status: latest?.status || 'idle',
+    total: latest?.progress?.total || 0,
+    completed: latest?.progress?.completed || 0,
+    succeeded: latest?.progress?.succeeded || 0,
+    failed: latest?.progress?.failed || 0,
+    results: Array.isArray(latest?.result) ? latest.result : (latest?.result ? [latest.result] : []),
+    error: latest?.error || null,
+    task_id: latest?.id || null,
+    last_fetch: summary?.last_fetch || null,
+    blogger_count: summary?.blogger_count || 0,
+    running_count: summary?.running_count || 0,
+    failed_count: summary?.failed_count || 0,
+    bloggers: db.all(`SELECT id, name, channel_type, last_fetched_at, last_fetch_attempted_at,
+      last_fetch_status, last_fetch_error, fetch_cursor FROM bloggers ORDER BY id`),
+    tasks,
   });
 });
 
-router.post('/:id', async (req, res) => {
+router.get('/status/:taskId', (req, res) => {
+  const task = fetchManager.get(req.params.taskId);
+  if (!task) return res.status(404).json({ error: 'Fetch task not found' });
+  res.json(task);
+});
+
+router.post('/:id', (req, res) => {
   const blogger = db.get('SELECT * FROM bloggers WHERE id = ?', [req.params.id]);
   if (!blogger) return res.status(404).json({ error: 'Blogger not found' });
-
-  try {
-    const result = await fetchBlogger(blogger);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const task = fetchManager.enqueueBlogger(blogger);
+  res.status(202).json({ task_id: task.id, status: task.status, blogger_id: blogger.id });
 });
 
 export default router;

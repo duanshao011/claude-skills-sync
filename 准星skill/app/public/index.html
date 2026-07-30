@@ -8,145 +8,68 @@
 </head>
 <body>
 <div class="app">
-
-  <!-- ===== LEFT SIDEBAR ===== -->
-  <div class="sidebar">
-    <div class="sidebar-header">
-      <h1>准<span>星</span></h1>
-      <div class="dimension-tabs">
-        <div class="dim-tab active" data-dim="blogger">信息源</div>
-        <div class="dim-tab" data-dim="topic">分组</div>
+  <aside class="sidebar">
+    <header class="brand-header">
+      <div class="brand-row">
+        <svg class="crosshair" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="9"/><path d="M20 2v9M20 29v9M2 20h9M29 20h9"/><circle class="target-dot" cx="20" cy="20" r="2"/></svg>
+        <div><h1>准星</h1><span class="brand-en">ZHUNXING</span></div>
       </div>
-    </div>
-    <div class="sidebar-search">
-      <input type="text" id="sidebarSearch" placeholder="搜索...">
-    </div>
+      <p class="positioning">聚焦关注圈，盯住目标博主，把最新内容集中送到眼前</p>
+      <nav class="dimension-tabs" aria-label="内容维度">
+        <button class="dim-tab active" data-dim="blogger">博主</button>
+        <button class="dim-tab" data-dim="topic">主题</button>
+      </nav>
+    </header>
+    <div class="sidebar-search"><label class="sr-only" for="sidebarSearch">搜索</label><input type="search" id="sidebarSearch" placeholder="搜索博主 / 主题"></div>
     <div class="sidebar-list" id="sidebarList"></div>
-    <div class="sidebar-footer">
-      <div class="add-btn" id="addBtn">+ 添加信息源</div>
-    </div>
-  </div>
+    <footer class="sidebar-footer"><button class="add-btn" id="addBtn">添加博主</button></footer>
+  </aside>
 
-  <!-- ===== MIDDLE ARTICLE LIST ===== -->
-  <div class="article-list">
-    <div class="article-list-header" id="articleListHeader">
-      <h2>选择一个信息源</h2>
-    </div>
-    <div class="top-bar" id="topBar" style="display:none">
-      <div class="top-stats" id="topStats"></div>
-      <span class="top-action" id="readAllBtn">全部已读</span>
-    </div>
-    <div class="article-list-body" id="articleListBody">
-      <div class="empty-hint">在左侧选择信息源开始浏览</div>
-    </div>
-  </div>
-
-  <!-- ===== RIGHT CONTENT PANEL ===== -->
-  <div class="content-panel">
-    <div class="content-header" id="contentHeader" style="display:none">
-      <div class="source-info">
-        <span class="source-badge" id="sourceBadge"></span>
-        <span class="pub-time" id="pubTime"></span>
+  <section class="article-list">
+    <header class="article-list-header" id="articleListHeader"><div><span class="eyebrow">FOCUS</span><h2>选择一位博主</h2></div></header>
+    <div class="update-console">
+      <div class="update-head">
+        <button class="fetch-btn" id="fetchAllBtn">更新全部</button>
+        <span id="lastFetchText">尚未更新</span>
       </div>
-      <div class="content-actions">
-        <a class="content-action-btn" id="originBtn" target="_blank">原文</a>
-        <span class="content-action-btn" id="summaryBtn">AI 摘要</span>
-      </div>
+      <div class="progress-track" id="fetchProgress" hidden><span id="fetchProgressBar"></span></div>
+      <div class="fetch-status" id="fetchStatus" role="status"></div>
+      <div class="fetch-errors" id="fetchErrors" hidden></div>
     </div>
-    <div class="content-body" id="contentBody">
-      <div class="empty-hint">选择一篇文章阅读</div>
-    </div>
-  </div>
+    <div class="top-bar" id="topBar" hidden><div class="top-stats" id="topStats"></div><button class="top-action" id="readAllBtn">全部已读</button></div>
+    <div class="article-list-body" id="articleListBody"><div class="empty-hint">从左侧选定一个关注目标</div></div>
+  </section>
 
+  <main class="content-panel">
+    <header class="content-header" id="contentHeader" hidden>
+      <div class="source-info"><span class="source-icon" id="sourceIcon"></span><span class="pub-time" id="pubTime"></span></div>
+      <div class="content-actions"><button class="content-action-btn" id="summaryBtn">生成摘要</button><a class="content-action-btn" id="originBtn" target="_blank" rel="noopener noreferrer">查看原文</a></div>
+    </header>
+    <article class="content-body" id="contentBody"><div class="empty-hint content-empty"><svg class="crosshair large" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="9"/><path d="M20 2v9M20 29v9M2 20h9M29 20h9"/><circle class="target-dot" cx="20" cy="20" r="2"/></svg><strong>选择一篇文章</strong><span>从左侧列表点击内容开始阅读</span></div></article>
+  </main>
 </div>
 
-<!-- ===== Tag popover ===== -->
-<div class="tag-popover" id="tagPopover">
-  <div class="tag-popover-header">归入分组</div>
-  <div class="tag-popover-list" id="tagPopoverList"></div>
-</div>
+<div class="tag-popover" id="tagPopover"><div class="tag-popover-header">归入主题（可多选）</div><div class="tag-popover-list" id="tagPopoverList"></div></div>
+<div class="unfollow-tooltip" id="unfollowTooltip"><p>取消关注 <strong id="unfollowName"></strong>？</p><div class="unfollow-hint">该博主及其已抓取内容将同步删除。</div><div class="tooltip-btns"><button class="btn-cancel">取消</button><button class="btn-confirm">确认删除</button></div></div>
 
-<!-- ===== Unfollow tooltip ===== -->
-<div class="unfollow-tooltip" id="unfollowTooltip">
-  <p>取消关注 <span class="tooltip-name" id="unfollowName"></span>？</p>
-  <div class="unfollow-hint">已抓取的历史内容会保留</div>
-  <div class="tooltip-btns">
-    <button class="btn-cancel">取消</button>
-    <button class="btn-confirm">确认</button>
-  </div>
-</div>
-
-<!-- ===== Topic modal ===== -->
 <div class="modal-overlay" id="topicModal">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 id="modalTitle">编辑分组</h3>
-      <button class="modal-close">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div class="field-label">分组名称</div>
-      <div class="topic-name-row">
-        <input type="text" id="topicNameInput" placeholder="输入分组名称">
-      </div>
-      <div class="field-label">分组内的信息源</div>
-      <div class="chip-input-wrap" id="chipWrap">
-        <input class="chip-input" id="chipSearch" placeholder="搜索添加...">
-      </div>
-      <div class="chip-dropdown" id="chipDropdown"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="modal-btn secondary">取消</button>
-      <button class="modal-btn primary">保存</button>
-    </div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-header"><div><span class="eyebrow">TOPIC</span><h3 id="modalTitle">编辑主题</h3></div><button class="modal-close" aria-label="关闭">×</button></div>
+    <div class="modal-body"><label class="field-label" for="topicNameInput">主题名称</label><input class="text-input" id="topicNameInput" placeholder="输入主题名称"><label class="field-label" for="chipSearch">主题下的博主</label><div class="chip-input-wrap" id="chipWrap"><input class="chip-input" id="chipSearch" placeholder="搜索添加博主"></div><div class="chip-dropdown" id="chipDropdown"></div></div>
+    <div class="modal-footer"><button class="modal-btn secondary">取消</button><button class="modal-btn primary">保存</button></div>
   </div>
 </div>
 
-<!-- ===== Add blogger modal ===== -->
 <div class="modal-overlay" id="addModal">
-  <div class="modal" style="width:460px">
-    <div class="modal-header">
-      <h3>添加信息源</h3>
-      <button class="modal-close">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div class="field-label">平台</div>
-      <div class="channel-select" id="channelSelect">
-        <span class="channel-option active" data-channel="youtube">YouTube</span>
-        <span class="channel-option" data-channel="bilibili">B 站</span>
-        <span class="channel-option" data-channel="xiaohongshu">小红书</span>
-        <span class="channel-option" data-channel="douyin-hot">抖音热门</span>
-        <span class="channel-option" data-channel="douyin-account">抖音达人</span>
-        <span class="channel-option" data-channel="gongzhonghao">公众号</span>
-      </div>
-      <div id="addFormArea">
-        <div class="field-label" id="addFieldLabel">频道链接</div>
-        <div class="input-row">
-          <input type="text" id="addUrlInput" placeholder="https://www.youtube.com/@频道名">
-          <button class="modal-btn primary small" id="validateBtn">验证</button>
-        </div>
-        <div class="validate-result" id="validateResult"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="modal-btn secondary">取消</button>
-      <button class="modal-btn primary" id="confirmAddBtn" disabled>添加</button>
-    </div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
+    <div class="modal-header"><div><span class="eyebrow">NEW TARGET</span><h3 id="addModalTitle">添加博主</h3></div><button class="modal-close" aria-label="关闭">×</button></div>
+    <div class="modal-body"><div class="field-label">渠道</div><div class="channel-select" id="channelSelect"></div><label class="field-label" for="addUrlInput">主页链接或账号 ID</label><div class="validate-row"><input class="text-input" id="addUrlInput"><button class="modal-btn primary" id="validateBtn">验证</button></div><div id="validateResult" aria-live="polite"></div></div>
+    <div class="modal-footer"><button class="modal-btn secondary">取消</button><button class="modal-btn primary" id="confirmAddBtn" disabled>添加并抓取</button></div>
   </div>
 </div>
 
-<!-- ===== Summary overlay ===== -->
-<div class="summary-overlay" id="summaryOverlay" style="display:none">
-  <div class="summary-card">
-    <div class="modal-header">
-      <h3>AI 摘要</h3>
-      <button class="modal-close" id="summaryClose">&times;</button>
-    </div>
-    <div class="summary-card-body" id="summaryContent">
-      <div class="loading-spinner">生成中...</div>
-    </div>
-  </div>
-</div>
-
-<script src="app.js"></script>
+<div class="summary-overlay" id="summaryOverlay" hidden><div class="summary-card" role="dialog" aria-modal="true" aria-labelledby="summaryTitle"><div class="modal-header"><div><span class="eyebrow">AI EXTRACTION</span><h3 id="summaryTitle">长文萃取</h3><p class="summary-subtitle">采用长文萃取规则生成</p></div><button class="modal-close" id="summaryClose" aria-label="关闭长文萃取">×</button></div><div class="summary-card-body" id="summaryContent" aria-live="polite"></div></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="app.js"></script>
 </body>
 </html>

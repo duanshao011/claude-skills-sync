@@ -892,23 +892,19 @@
 
   function spendYAxis(gridIndex) {
     return {
-      type: "value", gridIndex: gridIndex, name: "元", position: "left",
-      nameLocation: "end", nameGap: 10,
+      type: "value", gridIndex: gridIndex, position: "left",
       axisLine: { show: false }, axisTick: { show: false },
       splitLine: { lineStyle: { color: C.grid } },
       axisLabel: { margin: 12, color: "#FF2442", fontSize: 11, fontWeight: 600, formatter: function(v){ return v >= 1000 ? (v / 1000).toFixed(1) + "k" : Math.round(v); } },
-      nameTextStyle: { color: "#FF2442", fontWeight: 600, padding: [0, 0, 0, 2] },
     };
   }
 
   function costYAxis(gridIndex, color, position) {
     return {
-      type: "value", gridIndex: gridIndex, name: "元/UV", position: position || "left",
-      nameLocation: "end", nameGap: 10,
+      type: "value", gridIndex: gridIndex, position: position || "left",
       axisLine: { show: false }, axisTick: { show: false },
       splitLine: { lineStyle: { color: C.grid } },
       axisLabel: { margin: 12, color: color, fontSize: 11, fontWeight: 600, formatter: function(v){ return "¥" + Number(v).toFixed(2); } },
-      nameTextStyle: { color: color, fontWeight: 600, padding: position === "right" ? [0, 2, 0, 0] : [0, 0, 0, 2] },
     };
   }
 
@@ -959,7 +955,7 @@
       grids.push({ top: 34, height: 92, left: 96, right: 48, containLabel: false });
       xAxes.push(costXAxis(dates, 0, false, pubDateStr));
       yAxes.push(spendYAxis(0));
-      titles.push({ text: "每日实付", left: 98, top: 6, textStyle: { color: C.muted, fontSize: 12, fontWeight: 700 } });
+      titles.push({ text: "每日实付（元）", left: 98, top: 6, textStyle: { color: "#FF2442", fontSize: 12, fontWeight: 700 } });
       series.push({
         name: isSummary ? "当日总实付" : "当日实付", type: "bar", xAxisIndex: 0, yAxisIndex: 0, data: spendVals,
         itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -972,7 +968,7 @@
         grids.push({ top: top, height: 108, left: 96, right: 48, containLabel: false });
         xAxes.push(costXAxis(dates, axisIndex, index === trendData.metrics.length - 1, pubDateStr));
         yAxes.push(costYAxis(axisIndex, COST_METRICS[metric].color, "left"));
-        titles.push({ text: COST_METRICS[metric].label, left: 98, top: top - 28, textStyle: { color: COST_METRICS[metric].color, fontSize: 12, fontWeight: 700 } });
+        titles.push({ text: COST_METRICS[metric].label + "（元/UV）", left: 98, top: top - 28, textStyle: { color: COST_METRICS[metric].color, fontSize: 12, fontWeight: 700 } });
         series.push(rollingCostSeries(metric, trendData.byMetric[metric].rolling, axisIndex, axisIndex));
         series.push(cumulativeCostSeries(metric, trendData.byMetric[metric].cumulative, axisIndex, axisIndex));
       });

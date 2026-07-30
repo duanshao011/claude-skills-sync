@@ -1,3 +1,9 @@
 node_modules/
-data/feeds.db
 .env
+.zhunxing.pid
+logs/
+*.log
+data/*.db
+data/*.db-*
+data/*.test.db
+data/test-*.db

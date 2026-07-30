@@ -299,6 +299,13 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
   text-align:center;color:var(--dim);font-size:11px;padding-top:8px;
   border-top:1px solid var(--divider);margin-top:8px;
 }
+.cost-legend{display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;line-height:1.5}
+.cost-legend-item{display:inline-flex;align-items:center;gap:7px;color:var(--muted);white-space:nowrap}
+.cost-legend-item i{display:inline-block;flex:0 0 auto}
+.cost-legend-bar{width:7px;height:13px;background:#FF2442}
+.cost-legend-solid{width:24px;height:3px;background:#FF2442}
+.cost-legend-dashed{width:24px;height:0;border-top:2px dashed #9CA3AF}
+.cost-legend-note{color:var(--dim)}
 
 /* 近7天决策提示条 */
 .adv-bar{

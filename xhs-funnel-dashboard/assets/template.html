@@ -147,7 +147,12 @@
         </div>
         <div class="cost-chart" id="costChart"></div>
       </div>
-      <div class="cost-note">上方成本胶囊=周期累计口径 · 指标本色实线=3日滚动成本（当前日及前2个自然日实付合计÷同期星河对应UV合计） · 灰色虚线=累计成本基线 · 汇总成本仅使用薯条与星河同样本交集 · 多选指标自动上下分面 · 汇总模式点每日实付柱看当天投放明细</div>
+      <div class="cost-note cost-legend" aria-label="成本趋势图例">
+        <span class="cost-legend-item"><i class="cost-legend-bar"></i>每日实付</span>
+        <span class="cost-legend-item"><i class="cost-legend-solid"></i>3日滚动</span>
+        <span class="cost-legend-item"><i class="cost-legend-dashed"></i>累计基线</span>
+        <span class="cost-legend-note">汇总成本按薯条与星河同样本计算</span>
+      </div>
       <div class="daily-detail-panel" id="costDetailPanel" hidden>
         <div class="daily-detail-head">
           <span class="daily-detail-title" id="costDetailTitle"></span>

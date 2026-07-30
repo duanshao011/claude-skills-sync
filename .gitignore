@@ -3,3 +3,6 @@
 Thumbs.db
 *.local
 
+# Legacy local directory left behind after 信息源skill was renamed to 准星skill
+/信息源skill/
+

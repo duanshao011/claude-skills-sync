@@ -12,13 +12,17 @@ export async function fetchChannel(channelId) {
   const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
   const feed = await parser.parseURL(feedUrl);
 
-  return feed.items.map(item => ({
-    title: item.title || '',
-    url: item.link || '',
-    summary: extractSummary(item),
-    thumbnail: extractThumbnail(item),
-    published_at: item.pubDate || item.isoDate || null,
-  }));
+  return {
+    articles: feed.items.map(item => ({
+      title: item.title || '',
+      url: item.link || '',
+      externalId: extractVideoId(item),
+      summary: extractSummary(item),
+      thumbnail: extractThumbnail(item),
+      publishedAt: item.pubDate || item.isoDate || null,
+    })),
+    cursor: feed.items[0]?.isoDate || feed.items[0]?.pubDate || null,
+  };
 }
 
 function extractSummary(item) {
@@ -33,6 +37,11 @@ function extractSummary(item) {
   if (item.contentSnippet) return item.contentSnippet;
   if (item.content) return stripHtml(String(item.content)).slice(0, 200);
   return '';
+}
+
+function extractVideoId(item) {
+  const match = (item.link || item.id || '').match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
+  return match ? match[1] : null;
 }
 
 function extractThumbnail(item) {

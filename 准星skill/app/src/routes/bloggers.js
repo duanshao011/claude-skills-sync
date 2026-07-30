@@ -60,6 +60,7 @@ router.post('/', (req, res) => {
   );
 
   const blogger = db.get('SELECT * FROM bloggers WHERE id = last_insert_rowid()');
+  db.save();
   res.status(201).json(blogger);
 
   // Fetch avatar async (don't block response)
@@ -68,6 +69,7 @@ router.post('/', (req, res) => {
       const avatarUrl = await extractAvatar(channel_id);
       if (avatarUrl) {
         db.run('UPDATE bloggers SET avatar_url = ? WHERE id = ?', [avatarUrl, blogger.id]);
+        db.save();
       }
     });
   }
@@ -78,10 +80,13 @@ router.delete('/:id', (req, res) => {
   const blogger = db.get('SELECT * FROM bloggers WHERE id = ?', [req.params.id]);
   if (!blogger) return res.status(404).json({ error: 'Blogger not found' });
 
-  db.run('DELETE FROM articles WHERE blogger_id = ?', [req.params.id]);
-  db.run('DELETE FROM blogger_topics WHERE blogger_id = ?', [req.params.id]);
-  db.run('DELETE FROM bloggers WHERE id = ?', [req.params.id]);
-  res.json({ deleted: true, name: blogger.name });
+  const deleted = db.transaction(() => {
+    const articles = db.run('DELETE FROM articles WHERE blogger_id = ?', [req.params.id]).changes;
+    const topicLinks = db.run('DELETE FROM blogger_topics WHERE blogger_id = ?', [req.params.id]).changes;
+    const bloggers = db.run('DELETE FROM bloggers WHERE id = ?', [req.params.id]).changes;
+    return { articles, topic_links: topicLinks, bloggers };
+  })();
+  res.json({ deleted: true, name: blogger.name, deleted_counts: deleted });
 });
 
 // Update blogger's topic assignments
@@ -92,12 +97,14 @@ router.put('/:id/topics', (req, res) => {
   const blogger = db.get('SELECT * FROM bloggers WHERE id = ?', [id]);
   if (!blogger) return res.status(404).json({ error: 'Blogger not found' });
 
-  db.run('DELETE FROM blogger_topics WHERE blogger_id = ?', [id]);
-  if (Array.isArray(topic_ids) && topic_ids.length > 0) {
-    for (const tid of topic_ids) {
-      db.run('INSERT OR IGNORE INTO blogger_topics (blogger_id, topic_id) VALUES (?, ?)', [id, tid]);
+  db.transaction(() => {
+    db.run('DELETE FROM blogger_topics WHERE blogger_id = ?', [id]);
+    if (Array.isArray(topic_ids) && topic_ids.length > 0) {
+      for (const tid of topic_ids) {
+        db.run('INSERT OR IGNORE INTO blogger_topics (blogger_id, topic_id) VALUES (?, ?)', [id, tid]);
+      }
     }
-  }
+  })();
 
   const topics = db.all(`
     SELECT t.* FROM topics t

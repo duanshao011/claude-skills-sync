@@ -4,93 +4,119 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const DB_PATH = path.join(DATA_DIR, 'feeds.db');
+const defaultDbPath = path.join(__dirname, '..', 'data', 'feeds.db');
+const DB_PATH = process.env.INFO_SOURCE_DB_PATH
+  ? path.resolve(process.env.INFO_SOURCE_DB_PATH)
+  : defaultDbPath;
 
-fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
-let db = null;
-let saveTimer = null;
-
-// Load or create database
 const SQL = await initSqlJs();
-if (fs.existsSync(DB_PATH)) {
-  const buffer = fs.readFileSync(DB_PATH);
-  db = new SQL.Database(buffer);
-} else {
-  db = new SQL.Database();
-}
+const database = fs.existsSync(DB_PATH)
+  ? new SQL.Database(fs.readFileSync(DB_PATH))
+  : new SQL.Database();
 
-// Enable WAL-like behavior via manual save
-function scheduleSave() {
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    fs.writeFileSync(DB_PATH, Buffer.from(db.export()));
-  }, 200);
-}
+let saveTimer = null;
+let transactionDepth = 0;
 
-// Run a SQL statement and return the db object (for chaining)
-function run(sql, params = []) {
-  db.run(sql, params);
-  scheduleSave();
-  return { changes: db.getRowsModified() };
-}
-
-// Query multiple rows
-function all(sql, params = []) {
-  const stmt = db.prepare(sql);
-  if (params.length > 0) stmt.bind(params);
-  const rows = [];
-  while (stmt.step()) {
-    rows.push(stmt.getAsObject());
+function persist() {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
   }
-  stmt.free();
-  return rows;
+  fs.writeFileSync(DB_PATH, Buffer.from(database.export()));
 }
 
-// Query single row
+function scheduleSave() {
+  if (transactionDepth > 0) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(persist, 200);
+  saveTimer.unref?.();
+}
+
+function run(sql, params = []) {
+  database.run(sql, params);
+  scheduleSave();
+  return { changes: database.getRowsModified() };
+}
+
+function all(sql, params = []) {
+  const stmt = database.prepare(sql);
+  try {
+    if (params.length > 0) stmt.bind(params);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    return rows;
+  } finally {
+    stmt.free();
+  }
+}
+
 function get(sql, params = []) {
-  const rows = all(sql, params);
-  return rows.length > 0 ? rows[0] : null;
+  return all(sql, params)[0] || null;
 }
 
-// Execute multiple statements
 function exec(sql) {
-  db.exec(sql);
+  database.exec(sql);
   scheduleSave();
 }
 
-// Wrap operations in a transaction
 function transaction(fn) {
   return (...args) => {
-    db.exec('BEGIN');
+    if (transactionDepth > 0) return fn(...args);
+
+    database.exec('BEGIN');
+    transactionDepth++;
     try {
       const result = fn(...args);
-      db.exec('COMMIT');
-      scheduleSave();
+      if (result && typeof result.then === 'function') {
+        throw new TypeError('db.transaction only supports synchronous callbacks');
+      }
+      database.exec('COMMIT');
+      transactionDepth--;
+      persist();
       return result;
-    } catch (e) {
-      db.exec('ROLLBACK');
-      throw e;
+    } catch (error) {
+      transactionDepth--;
+      database.exec('ROLLBACK');
+      throw error;
     }
   };
 }
 
-// Save manually (call before important operations)
 function save() {
-  fs.writeFileSync(DB_PATH, Buffer.from(db.export()));
+  if (transactionDepth === 0) persist();
 }
 
-// Initialize schema
-db.exec(`
+function close() {
+  if (transactionDepth === 0) persist();
+  database.close();
+}
+
+function hasColumn(table, column) {
+  return all(`PRAGMA table_info(${table})`).some(row => row.name === column);
+}
+
+function addColumn(table, definition) {
+  const column = definition.trim().split(/\s+/)[0];
+  if (!hasColumn(table, column)) database.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+}
+
+database.exec('PRAGMA foreign_keys = ON');
+database.exec(`
   CREATE TABLE IF NOT EXISTS bloggers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     channel_type TEXT NOT NULL,
     channel_id TEXT NOT NULL,
     avatar_color TEXT,
+    avatar_url TEXT,
     created_at TEXT DEFAULT (datetime('now','localtime')),
     last_fetched_at TEXT,
+    last_fetch_attempted_at TEXT,
+    last_fetch_status TEXT DEFAULT 'never',
+    last_fetch_error TEXT,
+    fetch_cursor TEXT,
     UNIQUE(channel_type, channel_id)
   );
 
@@ -98,8 +124,11 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     blogger_id INTEGER NOT NULL,
     title TEXT NOT NULL,
+    title_cn TEXT,
     url TEXT NOT NULL,
+    external_id TEXT,
     summary TEXT,
+    summary_cn TEXT,
     ai_summary TEXT,
     thumbnail TEXT,
     published_at TEXT,
@@ -124,7 +153,22 @@ db.exec(`
     FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
   );
 `);
-scheduleSave();
+
+addColumn('bloggers', 'avatar_url TEXT');
+addColumn('bloggers', 'last_fetch_attempted_at TEXT');
+addColumn('bloggers', "last_fetch_status TEXT DEFAULT 'never'");
+addColumn('bloggers', 'last_fetch_error TEXT');
+addColumn('bloggers', 'fetch_cursor TEXT');
+database.exec("UPDATE bloggers SET last_fetch_status = 'never' WHERE last_fetch_status IS NULL OR last_fetch_status = ''");
+addColumn('articles', 'title_cn TEXT');
+addColumn('articles', 'summary_cn TEXT');
+addColumn('articles', 'external_id TEXT');
+database.exec(`
+  CREATE UNIQUE INDEX IF NOT EXISTS articles_blogger_external_id_unique
+  ON articles(blogger_id, external_id)
+  WHERE external_id IS NOT NULL AND external_id <> ''
+`);
+persist();
 
 const PALETTE = [
   'linear-gradient(135deg,#ff6b6b,#ee5a24)',
@@ -143,4 +187,5 @@ export function randomColor(name) {
   return PALETTE[sum % PALETTE.length];
 }
 
-export default { run, all, get, exec, transaction, save };
+export { DB_PATH };
+export default { run, all, get, exec, transaction, save, close };
