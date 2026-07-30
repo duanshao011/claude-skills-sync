@@ -1,8 +1,16 @@
 import db from '../db.js';
 import * as youtube from './youtube.js';
+import * as redfox from './redfox.js';
 import { translateArticles, isAvailable as translationAvailable } from '../translator.js';
 
-const fetchers = { youtube };
+const fetchers = {
+  youtube,
+  'douyin-hot': redfox,
+  'douyin-account': redfox,
+  xiaohongshu: redfox,
+  bilibili: redfox,
+  gongzhonghao: redfox,
+};
 
 export function getFetcher(channelType) {
   return fetchers[channelType] || null;
@@ -19,7 +27,7 @@ export async function fetchBlogger(blogger) {
   let lastErr;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      articles = await fetcher.fetchChannel(blogger.channel_id);
+      articles = await fetcher.fetchChannel(blogger.channel_id, blogger.channel_type);
       break;
     } catch (err) {
       lastErr = err;

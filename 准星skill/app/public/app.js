@@ -9,8 +9,22 @@ const state = {
   selectedArticleId: null,
   selectedArticle: null,
   summaryAvailable: false,
-  pendingBloggerId: null, // for unfollow
+  pendingBloggerId: null,
 };
+
+// ===== Platform config =====
+const PLATFORM_CONFIG = {
+  youtube:       { label: 'YouTube',    color: '#ef4444', bg: '#fef2f2' },
+  'douyin-hot':  { label: '抖音热门',    color: '#111',    bg: '#f9fafb' },
+  'douyin-account': { label: '抖音达人', color: '#111',    bg: '#f9fafb' },
+  xiaohongshu:   { label: '小红书',      color: '#ff2442', bg: '#fff0f3' },
+  bilibili:      { label: 'B 站',       color: '#fb7299', bg: '#fff0f6' },
+  gongzhonghao:  { label: '公众号',      color: '#07c160', bg: '#e8f5e9' },
+};
+
+function platformCfg(type) {
+  return PLATFORM_CONFIG[type] || { label: type || '未知', color: '#9ca3af', bg: '#f9fafb' };
+}
 
 // ===== API =====
 const api = {
@@ -35,7 +49,7 @@ async function init() {
     state.summaryAvailable = config.summaryAvailable;
     if (!state.summaryAvailable) {
       document.getElementById('summaryBtn').classList.add('disabled');
-      document.getElementById('summaryBtn').title = '需要配置 ANTHROPIC_API_KEY';
+      document.getElementById('summaryBtn').title = '需要配置 API Key';
     }
   } catch {}
   await loadBloggers();
@@ -64,23 +78,22 @@ function renderSidebar() {
     const withoutContent = list.filter(b => b.unread_count === 0);
 
     let html = '';
-    if (withContent.length) html += '<div class="list-group-label">有新内容</div>';
+    if (withContent.length) html += '<div class="list-group-label">有更新</div>';
     withContent.forEach(b => html += renderBloggerItem(b));
     if (withoutContent.length) html += '<div class="list-group-label">已读完</div>';
     withoutContent.forEach(b => html += renderBloggerItem(b));
-    if (!list.length) html += '<div class="empty-hint">无匹配博主</div>';
+    if (!list.length) html += '<div class="empty-hint">无匹配信息源</div>';
     container.innerHTML = html;
   } else {
     const list = state.topics.filter(t =>
       !searchVal || t.name.toLowerCase().includes(searchVal)
     );
-    let html = '<div class="list-group-label">我的主题</div>';
+    let html = '<div class="list-group-label">我的分组</div>';
     list.forEach(t => html += renderTopicItem(t));
-    if (!list.length) html += '<div class="empty-hint">暂无主题，点击下方新建</div>';
+    if (!list.length) html += '<div class="empty-hint">暂无分组</div>';
     container.innerHTML = html;
   }
 
-  // Restore selection highlight
   if (state.dimension === 'blogger' && state.selectedBloggerId) {
     const el = container.querySelector(`[data-blogger-id="${state.selectedBloggerId}"]`);
     if (el) el.classList.add('active');
@@ -92,10 +105,11 @@ function renderSidebar() {
 }
 
 function renderBloggerItem(b) {
-  const abbr = b.name.charAt(0);
+  const cfg = platformCfg(b.channel_type);
+  const abbr = b.name.charAt(0).toUpperCase();
   const badge = b.unread_count > 0 ? `<div class="avatar-badge">${b.unread_count}</div>` : '';
   const avatarHtml = b.avatar_url
-    ? `<img class="list-avatar" src="${esc(b.avatar_url)}" style="border-radius:50%;object-fit:cover;width:32px;height:32px;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="list-avatar" style="background:${b.avatar_color||'#ccc'};display:none;">${abbr}</div>`
+    ? `<img class="list-avatar" src="${esc(b.avatar_url)}" style="border-radius:50%;object-fit:cover;width:34px;height:34px;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="list-avatar" style="background:${b.avatar_color||'#ccc'};display:none;">${abbr}</div>`
     : `<div class="list-avatar" style="background:${b.avatar_color||'#ccc'};">${abbr}</div>`;
   return `
     <div class="list-item" data-blogger-id="${b.id}" onclick="selectBlogger(${b.id})">
@@ -105,11 +119,14 @@ function renderBloggerItem(b) {
       </div>
       <div class="list-info">
         <div class="list-name">${esc(b.name)}</div>
-        <div class="list-meta">${esc(b.channel_type)}</div>
+        <div class="list-meta">
+          <span class="platform-dot" style="background:${cfg.color}"></span>
+          ${cfg.label}
+        </div>
       </div>
       <div class="hover-actions">
-        <button class="act-btn tag-btn" title="归入主题" onclick="event.stopPropagation();showTagPopover(event,${b.id})">🏷</button>
-        <button class="act-btn del-btn" title="取消关注" onclick="event.stopPropagation();showUnfollow(event,${b.id},'${esc(b.name)}')">✕</button>
+        <button class="act-btn tag-btn" title="归入分组" onclick="event.stopPropagation();showTagPopover(event,${b.id})">+</button>
+        <button class="act-btn del-btn" title="取消关注" onclick="event.stopPropagation();showUnfollow(event,${b.id},'${esc(b.name)}')">&times;</button>
       </div>
     </div>`;
 }
@@ -119,16 +136,16 @@ function renderTopicItem(t) {
   return `
     <div class="list-item" data-topic-id="${t.id}" onclick="selectTopic(${t.id})">
       <div class="topic-icon-wrap">
-        <div class="list-topic-icon" style="background:#eef0ff;">${t.icon||'📌'}</div>
+        <div class="list-topic-icon">${t.icon||'#'}</div>
         ${badge}
       </div>
       <div class="list-info">
         <div class="list-name">${esc(t.name)}</div>
-        <div class="list-meta">${t.blogger_count||0} 位博主</div>
+        <div class="list-meta">${t.blogger_count||0} 个信息源</div>
       </div>
       <div class="hover-actions">
-        <button class="act-btn edit-btn" title="编辑主题" onclick="event.stopPropagation();openTopicModal(event,${t.id})">✎</button>
-        <button class="act-btn del-btn" title="删除主题" onclick="event.stopPropagation();confirmDeleteTopic(event,${t.id},'${esc(t.name)}')">✕</button>
+        <button class="act-btn edit-btn" title="编辑" onclick="event.stopPropagation();openTopicModal(event,${t.id})">+</button>
+        <button class="act-btn del-btn" title="删除" onclick="event.stopPropagation();confirmDeleteTopic(event,${t.id},'${esc(t.name)}')">&times;</button>
       </div>
     </div>`;
 }
@@ -143,7 +160,7 @@ async function selectBlogger(id) {
 
   document.querySelectorAll('.dim-tab').forEach(t => t.classList.remove('active'));
   document.querySelector('.dim-tab[data-dim="blogger"]').classList.add('active');
-  document.getElementById('addBtn').textContent = '+ 添加博主';
+  document.getElementById('addBtn').textContent = '+ 添加信息源';
 
   renderSidebar();
   const articles = await api.get(`/api/articles?blogger_id=${id}`);
@@ -161,7 +178,7 @@ async function selectTopic(id) {
 
   document.querySelectorAll('.dim-tab').forEach(t => t.classList.remove('active'));
   document.querySelector('.dim-tab[data-dim="topic"]').classList.add('active');
-  document.getElementById('addBtn').textContent = '+ 新建主题';
+  document.getElementById('addBtn').textContent = '+ 新建分组';
 
   renderSidebar();
   const articles = await api.get(`/api/articles?topic_id=${id}`);
@@ -182,21 +199,22 @@ function renderArticleList(articles, source) {
     if (source.type === 'blogger') {
       const b = state.bloggers.find(x => x.id == state.selectedBloggerId);
       if (b) {
-        header.innerHTML += `<div class="channel-tags"><span class="channel-tag" style="background:#fff0f0;color:#ff5252;">${esc(b.channel_type)}</span></div>`;
+        const cfg = platformCfg(b.channel_type);
+        header.innerHTML += `<div class="channel-tags"><span class="channel-tag" style="background:${cfg.bg};color:${cfg.color};border-color:${cfg.color}20;">${cfg.label}</span></div>`;
       }
     }
   } else {
-    header.innerHTML = `<h2>选择一位博主</h2>`;
+    header.innerHTML = '<h2>选择一个信息源</h2>';
   }
 
   const unread = articles.filter(a => !a.is_read).length;
   let topHtml = '';
   if (articles.length > 0) {
     const latest = articles[0].published_at;
-    topHtml = `<span><span class="stat-num">${unread}</span> 条未读</span>`;
+    topHtml = `<span><span class="stat-num">${unread}</span> 未读</span>`;
     if (latest) {
       const ago = timeAgo(latest);
-      topHtml += `<span>·</span><span>最近更新 ${ago}</span>`;
+      topHtml += `<span>&middot;</span><span>更新于 ${ago}</span>`;
     }
   }
   document.getElementById('topStats').innerHTML = topHtml;
@@ -208,10 +226,9 @@ function renderArticleList(articles, source) {
   }
 
   body.innerHTML = articles.map(a => {
+    const cfg = platformCfg(a.channel_type);
     const cls = a.is_read ? '' : 'unread';
     const active = a.id == state.selectedArticleId ? ' active' : '';
-    const channelLabel = a.channel_type === 'youtube' ? 'YouTube' : (a.channel_type || '');
-    const dotColor = a.channel_type === 'youtube' ? '#ff0000' : '#ff5252';
     const snippet = (a.summary_cn || a.summary || '').slice(0, 100);
     const title = a.title_cn || a.title;
     const pubTime = a.published_at ? timeAgo(a.published_at) : '';
@@ -220,8 +237,11 @@ function renderArticleList(articles, source) {
         <div class="article-title">${esc(title)}</div>
         <div class="article-snippet">${esc(snippet)}</div>
         <div class="article-meta">
-          <span class="source-dot" style="background:${dotColor};"></span>
-          ${esc(channelLabel)} · ${pubTime} · ${esc(a.blogger_name)}
+          <span class="source-label" style="background:${cfg.bg};color:${cfg.color}">${cfg.label}</span>
+          <span>&middot;</span>
+          <span>${pubTime}</span>
+          <span>&middot;</span>
+          <span>${esc(a.blogger_name)}</span>
         </div>
       </div>`;
   }).join('');
@@ -245,18 +265,16 @@ async function selectArticle(id) {
   const article = state.currentArticles.find(a => a.id == id);
   state.selectedArticle = article;
 
-  // Update article list highlight
   document.querySelectorAll('.article-item').forEach(el => el.classList.remove('active'));
   const el = document.querySelector(`[data-article-id="${id}"]`);
   if (el) el.classList.add('active');
 
-  // Mark as read
   if (article && !article.is_read) {
     await api.put(`/api/articles/${id}/read`);
     article.is_read = 1;
     el?.classList.remove('unread');
     renderArticleList(state.currentArticles, getCurrentSource());
-    loadBloggers(); // refresh sidebar counts
+    loadBloggers();
   }
 
   renderContent(article);
@@ -278,20 +296,20 @@ function getCurrentSource() {
 function renderContent(article) {
   document.getElementById('contentHeader').style.display = 'flex';
 
-  const channelLabel = article.channel_type === 'youtube' ? 'YouTube' : (article.channel_type || '');
-  const iconColor = article.channel_type === 'youtube' ? '#fff0f0;color:#ff0000' : '#fff0f0;color:#ff5252';
-  document.getElementById('sourceIcon').innerHTML = `<span style="background:${iconColor.split(';')[0]};color:${iconColor.split('color:')[1]};padding:3px 8px;border-radius:6px;font-size:10px;font-weight:500;">${channelLabel}</span>`;
+  const cfg = platformCfg(article.channel_type);
+  document.getElementById('sourceBadge').textContent = cfg.label;
+  document.getElementById('sourceBadge').style.background = cfg.bg;
+  document.getElementById('sourceBadge').style.color = cfg.color;
+  document.getElementById('sourceBadge').style.border = `1px solid ${cfg.color}30`;
 
   const pubAt = article.published_at ? new Date(article.published_at) : null;
   document.getElementById('pubTime').textContent = pubAt
-    ? `${pubAt.toLocaleDateString('zh-CN')} ${pubAt.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})} 发布`
+    ? `${pubAt.toLocaleDateString('zh-CN')} ${pubAt.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}`
     : '';
 
   document.getElementById('originBtn').href = article.url || '#';
   document.getElementById('originBtn').style.display = article.url ? '' : 'none';
-  document.getElementById('favBtn').style.display = 'none'; // Future feature
 
-  // Summary button
   const summaryBtn = document.getElementById('summaryBtn');
   if (state.summaryAvailable) {
     summaryBtn.classList.remove('disabled');
@@ -299,21 +317,22 @@ function renderContent(article) {
     summaryBtn.onclick = () => generateSummary(article.id);
   } else {
     summaryBtn.classList.add('disabled');
-    summaryBtn.title = '需要配置 ANTHROPIC_API_KEY';
+    summaryBtn.title = '需要配置 API Key';
     summaryBtn.onclick = null;
   }
 
   let bodyHtml = `<h1>${esc(article.title_cn || article.title)}</h1>`;
   if (article.title_cn && article.title_cn !== article.title) {
-    bodyHtml += `<div style="font-size:12px;color:#999;margin-top:-12px;margin-bottom:12px;">${esc(article.title)}</div>`;
+    bodyHtml += `<div style="font-size:12px;color:#9ca3af;margin-top:-16px;margin-bottom:16px;">${esc(article.title)}</div>`;
   }
 
-  // YouTube embed
   if (article.channel_type === 'youtube') {
     const videoId = extractVideoId(article.url);
     if (videoId) {
       bodyHtml += `<div class="video-wrap"><iframe src="https://www.youtube.com/embed/${videoId}" allowfullscreen></iframe></div>`;
     }
+  } else if (article.thumbnail) {
+    bodyHtml += `<img class="content-thumb" src="${esc(article.thumbnail)}" alt="" onerror="this.style.display='none'">`;
   }
 
   const descText = article.summary_cn || article.summary;
@@ -329,13 +348,13 @@ async function generateSummary(articleId) {
   const overlay = document.getElementById('summaryOverlay');
   const content = document.getElementById('summaryContent');
   overlay.style.display = 'flex';
-  content.innerHTML = '<div class="loading-spinner">AI 摘要生成中…（大约需要 10-20 秒）</div>';
+  content.innerHTML = '<div class="loading-spinner">AI 摘要生成中...</div>';
 
   try {
     const result = await api.post(`/api/articles/${articleId}/summary`);
     content.innerHTML = esc(result.summary);
   } catch (err) {
-    content.innerHTML = `<div style="color:#ff5252;">生成失败：${esc(err.message)}</div>`;
+    content.innerHTML = `<div style="color:#ef4444;">生成失败：${esc(err.message)}</div>`;
   }
 }
 
@@ -355,7 +374,7 @@ document.querySelectorAll('.dim-tab').forEach(tab => {
     state.dimension = dim;
     document.querySelectorAll('.dim-tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
-    document.getElementById('addBtn').textContent = dim === 'blogger' ? '+ 添加博主' : '+ 新建主题';
+    document.getElementById('addBtn').textContent = dim === 'blogger' ? '+ 添加信息源' : '+ 新建分组';
     renderSidebar();
 
     if (dim === 'blogger' && state.selectedBloggerId) {
@@ -366,9 +385,9 @@ document.querySelectorAll('.dim-tab').forEach(tab => {
       state.selectedBloggerId = null;
       state.selectedTopicId = null;
       state.currentArticles = [];
-      document.getElementById('articleListHeader').innerHTML = '<h2>选择一位博主</h2>';
+      document.getElementById('articleListHeader').innerHTML = '<h2>选择一个信息源</h2>';
       document.getElementById('topBar').style.display = 'none';
-      document.getElementById('articleListBody').innerHTML = '<div class="empty-hint">👈 在左侧选择博主或主题开始浏览</div>';
+      document.getElementById('articleListBody').innerHTML = '<div class="empty-hint">在左侧选择信息源开始浏览</div>';
       clearContent();
     }
   });
@@ -384,18 +403,11 @@ async function showTagPopover(e, bloggerId) {
   const list = document.getElementById('tagPopoverList');
 
   await loadTopics();
-  // Get current topic assignments for this blogger
-  let assigned = [];
-  try {
-    const b = await api.get(`/api/bloggers/${bloggerId}`);
-    // We need to get topics for this blogger. Let's check by looking through all topics
-  } catch {}
-  // Simple approach: fetch all topics and check
   const btResponse = state.topics;
   list.innerHTML = btResponse.map(t => {
     return `<div class="tag-option" data-topic-id="${t.id}" onclick="this.classList.toggle('checked')">
-      <div class="tag-check">✓</div>
-      <span>${t.icon||'📌'}</span>
+      <div class="tag-check">&check;</div>
+      <span>${esc(t.icon||'#')}</span>
       <span>${esc(t.name)}</span>
     </div>`;
   }).join('');
@@ -406,7 +418,6 @@ async function showTagPopover(e, bloggerId) {
   pop.dataset.bloggerId = bloggerId;
   pop.classList.add('show');
 
-  // Check existing assignments
   const bData = state.bloggers.find(b => b.id == bloggerId);
   if (bData) {
     try {
@@ -425,11 +436,6 @@ async function getBloggerTopics(bloggerId) {
   const data = await r.json();
   return data.topics || [];
 }
-
-// Save tag assignments when popover closes
-document.getElementById('tagPopover').addEventListener('mouseleave', async function() {
-  // We'll save on click-outside
-});
 
 document.addEventListener('click', async function(e) {
   const pop = document.getElementById('tagPopover');
@@ -482,9 +488,9 @@ document.querySelector('#unfollowTooltip .btn-confirm').addEventListener('click'
     state.selectedArticleId = null;
     state.selectedArticle = null;
     state.currentArticles = [];
-    document.getElementById('articleListHeader').innerHTML = '<h2>选择一位博主</h2>';
+    document.getElementById('articleListHeader').innerHTML = '<h2>选择一个信息源</h2>';
     document.getElementById('topBar').style.display = 'none';
-    document.getElementById('articleListBody').innerHTML = '<div class="empty-hint">👈 在左侧选择博主或主题开始浏览</div>';
+    document.getElementById('articleListBody').innerHTML = '<div class="empty-hint">在左侧选择信息源开始浏览</div>';
     clearContent();
   }
   await loadBloggers();
@@ -498,29 +504,25 @@ function openTopicModal(e, topicId) {
   const topic = state.topics.find(t => t.id == topicId);
   if (!topic) return;
 
-  document.getElementById('modalTitle').textContent = '编辑主题';
+  document.getElementById('modalTitle').textContent = '编辑分组';
   document.getElementById('topicNameInput').value = topic.name;
   modal.dataset.topicId = topicId;
   modal.classList.add('show');
-
-  // Render chip bloggers
   renderChipBloggers(topicId);
 }
 
 async function renderChipBloggers(topicId) {
   const wrap = document.getElementById('chipWrap');
   const input = document.getElementById('chipSearch');
-  // Clear existing chips
   wrap.querySelectorAll('.chip').forEach(c => c.remove());
 
-  // Get current bloggers in this topic
   try {
     const r = await api.get(`/api/topics/${topicId}`);
     if (r.bloggers) {
       r.bloggers.forEach(b => {
         const chip = document.createElement('div');
         chip.className = 'chip';
-        chip.innerHTML = `${esc(b.name)} <button class="chip-remove" data-blogger-id="${b.id}">✕</button>`;
+        chip.innerHTML = `${esc(b.name)} <button class="chip-remove" data-blogger-id="${b.id}">&times;</button>`;
         wrap.insertBefore(chip, input);
       });
     }
@@ -534,17 +536,16 @@ document.getElementById('chipWrap').addEventListener('click', function(e) {
 document.getElementById('chipSearch').addEventListener('input', function() {
   const dd = document.getElementById('chipDropdown');
   const val = this.value.toLowerCase();
-  // Show bloggers not already chipped
   const chippedIds = [...document.querySelectorAll('.chip-remove')].map(b => Number(b.dataset.bloggerId));
   const available = state.bloggers.filter(b => !chippedIds.includes(b.id) && b.name.toLowerCase().includes(val));
 
   dd.innerHTML = available.map(b => `
     <div class="chip-dropdown-item" data-blogger-id="${b.id}">
-      <div class="dd-avatar" style="background:${b.avatar_color||'#ccc'};">${b.name.charAt(0)}</div>
+      <div class="dd-avatar" style="background:${b.avatar_color||'#ccc'};">${b.name.charAt(0).toUpperCase()}</div>
       <span class="dd-name">${esc(b.name)}</span>
-      <span class="dd-channels">${esc(b.channel_type)}</span>
+      <span class="dd-channels">${platformCfg(b.channel_type).label}</span>
     </div>
-  `).join('') || '<div class="chip-dropdown-item"><span style="color:#ccc;">无匹配博主</span></div>';
+  `).join('') || '<div class="chip-dropdown-item"><span style="color:#ccc;">无匹配</span></div>';
   dd.classList.add('show');
 });
 
@@ -561,20 +562,19 @@ document.getElementById('chipDropdown').addEventListener('mousedown', function(e
   const input = document.getElementById('chipSearch');
   const chip = document.createElement('div');
   chip.className = 'chip';
-  chip.innerHTML = `${esc(b.name)} <button class="chip-remove" data-blogger-id="${b.id}">✕</button>`;
+  chip.innerHTML = `${esc(b.name)} <button class="chip-remove" data-blogger-id="${b.id}">&times;</button>`;
   wrap.insertBefore(chip, input);
   input.value = '';
   this.classList.remove('show');
 });
 
-// Chip remove delegation
 document.getElementById('chipWrap').addEventListener('click', function(e) {
   if (e.target.classList.contains('chip-remove')) {
     e.target.parentElement.remove();
   }
 });
 
-// Topic modal save (handles create and edit)
+// Topic modal save
 document.querySelector('#topicModal .modal-btn.primary').addEventListener('click', async () => {
   const modal = document.getElementById('topicModal');
   const topicId = modal.dataset.topicId;
@@ -585,7 +585,7 @@ document.querySelector('#topicModal .modal-btn.primary').addEventListener('click
   if (topicId) {
     await api.put('/api/topics/' + topicId, { name, blogger_ids: bloggerIds });
   } else {
-    await api.post('/api/topics', { name, icon: '📌', blogger_ids: bloggerIds });
+    await api.post('/api/topics', { name, icon: '#', blogger_ids: bloggerIds });
   }
   modal.classList.remove('show');
   await loadTopics();
@@ -599,10 +599,9 @@ document.querySelector('#topicModal .modal-close').addEventListener('click', () 
   document.getElementById('topicModal').classList.remove('show');
 });
 
-// ===== Delete topic =====
 function confirmDeleteTopic(e, topicId, name) {
   e.stopPropagation();
-  if (!confirm(`确定删除主题「${name}」？\n博主不会被取消关注。`)) return;
+  if (!confirm(`确定删除分组「${name}」？信息源不会被取消关注。`)) return;
   api.del(`/api/topics/${topicId}`).then(() => {
     loadTopics();
     renderSidebar();
@@ -613,23 +612,74 @@ function confirmDeleteTopic(e, topicId, name) {
 const addModal = document.getElementById('addModal');
 let validChannelId = null;
 let validChannelName = null;
+let currentAddChannel = 'youtube';
 
+// Platform form config
+function getFieldLabel(channel) {
+  const labels = {
+    youtube: '频道链接',
+    'douyin-account': '达人昵称',
+    gongzhonghao: '公众号名称',
+  };
+  return labels[channel] || '关键词';
+}
+
+function getPlaceholder(channel) {
+  const placeholders = {
+    youtube: 'https://www.youtube.com/@频道名',
+    'douyin-account': '输入抖音达人昵称，如"科技狐"',
+    xiaohongshu: '输入关键词，如"AI"、"穿搭"',
+    bilibili: '输入关键词，如"编程"、"科技"',
+    'douyin-hot': '输入分类或关键词，如"科技"、"美食"',
+    gongzhonghao: '输入公众号名称，如"中国青年报"',
+  };
+  return placeholders[channel] || '输入关键词';
+}
+
+function needsValidation(channel) {
+  return channel === 'youtube';
+}
+
+function updateAddForm() {
+  document.getElementById('addFieldLabel').textContent = getFieldLabel(currentAddChannel);
+  document.getElementById('addUrlInput').placeholder = getPlaceholder(currentAddChannel);
+  document.getElementById('addUrlInput').value = '';
+  document.getElementById('validateResult').textContent = '';
+  document.getElementById('validateResult').className = 'validate-result';
+
+  const validateBtn = document.getElementById('validateBtn');
+  validateBtn.style.display = needsValidation(currentAddChannel) ? '' : 'none';
+
+  document.getElementById('confirmAddBtn').disabled = needsValidation(currentAddChannel);
+  validChannelId = null;
+  validChannelName = null;
+}
+
+// Channel selector clicks
+document.getElementById('channelSelect').addEventListener('click', function(e) {
+  const opt = e.target.closest('.channel-option');
+  if (!opt) return;
+
+  this.querySelectorAll('.channel-option').forEach(o => o.classList.remove('active'));
+  opt.classList.add('active');
+  currentAddChannel = opt.dataset.channel;
+  updateAddForm();
+});
+
+// Open modal
 document.getElementById('addBtn').addEventListener('click', () => {
   if (state.dimension === 'topic') {
-    // New topic
-    document.getElementById('modalTitle').textContent = '新建主题';
+    document.getElementById('modalTitle').textContent = '新建分组';
     document.getElementById('topicNameInput').value = '';
     document.getElementById('chipWrap').querySelectorAll('.chip').forEach(c => c.remove());
     delete document.getElementById('topicModal').dataset.topicId;
     document.getElementById('topicModal').classList.add('show');
   } else {
-    // Add blogger
-    validChannelId = null;
-    validChannelName = null;
-    document.getElementById('addUrlInput').value = '';
-    document.getElementById('validateResult').textContent = '';
-    document.getElementById('validateResult').className = '';
-    document.getElementById('confirmAddBtn').disabled = true;
+    currentAddChannel = 'youtube';
+    document.querySelectorAll('#channelSelect .channel-option').forEach(o => o.classList.remove('active'));
+    const ytOpt = document.querySelector('#channelSelect .channel-option[data-channel="youtube"]');
+    if (ytOpt) ytOpt.classList.add('active');
+    updateAddForm();
     addModal.classList.add('show');
   }
 });
@@ -637,45 +687,80 @@ document.getElementById('addBtn').addEventListener('click', () => {
 document.querySelector('#addModal .modal-close').addEventListener('click', () => addModal.classList.remove('show'));
 document.querySelector('#addModal .modal-btn.secondary').addEventListener('click', () => addModal.classList.remove('show'));
 
+// Validate (YouTube only)
 document.getElementById('validateBtn').addEventListener('click', async () => {
   const input = document.getElementById('addUrlInput').value.trim();
   if (!input) return;
   const result = document.getElementById('validateResult');
   result.textContent = '验证中...';
-  result.className = '';
+  result.className = 'validate-result';
 
   try {
     const data = await api.post('/api/fetch/validate', { channel_type: 'youtube', channel_input: input });
     if (data.valid) {
       validChannelId = data.channel_id;
       validChannelName = data.channel_name;
-      result.textContent = `✅ 找到频道：${data.channel_name}`;
-      result.className = 'success';
+      result.textContent = `已找到：${data.channel_name}`;
+      result.className = 'validate-result success';
       document.getElementById('confirmAddBtn').disabled = false;
     }
   } catch (err) {
-    result.textContent = `❌ ${err.message}`;
-    result.className = 'error';
+    result.textContent = err.message;
+    result.className = 'validate-result error';
     document.getElementById('confirmAddBtn').disabled = true;
   }
 });
 
+// Confirm add
 document.getElementById('confirmAddBtn').addEventListener('click', async () => {
-  if (!validChannelId) return;
-  try {
-    const data = await api.post('/api/bloggers', {
-      name: validChannelName,
-      channel_type: 'youtube',
-      channel_id: validChannelId,
-    });
-    addModal.classList.remove('show');
-    // Trigger a fetch for this blogger
-    try { await api.post(`/api/fetch/${data.id}`); } catch {}
-    await loadBloggers();
-    renderSidebar();
-  } catch (err) {
-    document.getElementById('validateResult').textContent = `❌ ${err.message}`;
-    document.getElementById('validateResult').className = 'error';
+  if (currentAddChannel === 'youtube') {
+    if (!validChannelId) return;
+    try {
+      const data = await api.post('/api/bloggers', {
+        name: validChannelName,
+        channel_type: 'youtube',
+        channel_id: validChannelId,
+      });
+      addModal.classList.remove('show');
+      try { await api.post(`/api/fetch/${data.id}`); } catch {}
+      await loadBloggers();
+      renderSidebar();
+    } catch (err) {
+      document.getElementById('validateResult').textContent = err.message;
+      document.getElementById('validateResult').className = 'validate-result error';
+    }
+  } else {
+    const keyword = document.getElementById('addUrlInput').value.trim();
+    if (!keyword) {
+      document.getElementById('validateResult').textContent = '请输入内容';
+      document.getElementById('validateResult').className = 'validate-result error';
+      return;
+    }
+    try {
+      const data = await api.post('/api/bloggers', {
+        name: keyword,
+        channel_type: currentAddChannel,
+        channel_id: keyword,
+      });
+      addModal.classList.remove('show');
+      try { await api.post(`/api/fetch/${data.id}`); } catch {}
+      await loadBloggers();
+      renderSidebar();
+    } catch (err) {
+      document.getElementById('validateResult').textContent = err.message;
+      document.getElementById('validateResult').className = 'validate-result error';
+    }
+  }
+});
+
+// Enter key for add input
+document.getElementById('addUrlInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    if (needsValidation(currentAddChannel)) {
+      document.getElementById('validateBtn').click();
+    } else {
+      document.getElementById('confirmAddBtn').click();
+    }
   }
 });
 
@@ -690,14 +775,12 @@ document.getElementById('summaryOverlay').addEventListener('click', function(e) 
 
 // ===== Global click handlers =====
 document.addEventListener('click', function(e) {
-  // Close unfollow tooltip
   const tip = document.getElementById('unfollowTooltip');
   if (tip.classList.contains('show') && !tip.contains(e.target) && !e.target.classList.contains('del-btn')) {
     tip.classList.remove('show');
     state.pendingBloggerId = null;
   }
 
-  // Close chip dropdown
   const dd = document.getElementById('chipDropdown');
   const chipWrap = document.getElementById('chipWrap');
   if (dd.classList.contains('show') && !chipWrap.contains(e.target) && !dd.contains(e.target)) {
@@ -705,17 +788,11 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// Close modals on overlay click
 document.getElementById('topicModal').addEventListener('click', function(e) {
   if (e.target === this) this.classList.remove('show');
 });
 addModal.addEventListener('click', function(e) {
   if (e.target === this) this.classList.remove('show');
-});
-
-// Enter key for add URL input
-document.getElementById('addUrlInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') document.getElementById('validateBtn').click();
 });
 
 // ===== Helpers =====
@@ -735,9 +812,9 @@ function timeAgo(dateStr) {
   const then = new Date(dateStr);
   const diff = Math.floor((now - then) / 1000);
   if (diff < 60) return '刚刚';
-  if (diff < 3600) return `${Math.floor(diff/60)}分钟前`;
-  if (diff < 86400) return `${Math.floor(diff/3600)}小时前`;
-  if (diff < 604800) return `${Math.floor(diff/86400)}天前`;
+  if (diff < 3600) return `${Math.floor(diff/60)} 分钟前`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} 小时前`;
+  if (diff < 604800) return `${Math.floor(diff/86400)} 天前`;
   return then.toLocaleDateString('zh-CN');
 }
 

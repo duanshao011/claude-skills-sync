@@ -12,34 +12,32 @@
   <!-- ===== LEFT SIDEBAR ===== -->
   <div class="sidebar">
     <div class="sidebar-header">
-      <h1>🎯 准星</h1>
+      <h1>准<span>星</span></h1>
       <div class="dimension-tabs">
-        <div class="dim-tab active" data-dim="blogger">博主</div>
-        <div class="dim-tab" data-dim="topic">主题</div>
+        <div class="dim-tab active" data-dim="blogger">信息源</div>
+        <div class="dim-tab" data-dim="topic">分组</div>
       </div>
     </div>
     <div class="sidebar-search">
-      <input type="text" id="sidebarSearch" placeholder="搜索博主 / 主题...">
+      <input type="text" id="sidebarSearch" placeholder="搜索...">
     </div>
-    <div class="sidebar-list" id="sidebarList">
-      <!-- Rendered by JS -->
-    </div>
+    <div class="sidebar-list" id="sidebarList"></div>
     <div class="sidebar-footer">
-      <div class="add-btn" id="addBtn">+ 添加博主</div>
+      <div class="add-btn" id="addBtn">+ 添加信息源</div>
     </div>
   </div>
 
   <!-- ===== MIDDLE ARTICLE LIST ===== -->
   <div class="article-list">
     <div class="article-list-header" id="articleListHeader">
-      <h2>选择一位博主</h2>
+      <h2>选择一个信息源</h2>
     </div>
     <div class="top-bar" id="topBar" style="display:none">
       <div class="top-stats" id="topStats"></div>
       <span class="top-action" id="readAllBtn">全部已读</span>
     </div>
     <div class="article-list-body" id="articleListBody">
-      <div class="empty-hint">👈 在左侧选择博主或主题开始浏览</div>
+      <div class="empty-hint">在左侧选择信息源开始浏览</div>
     </div>
   </div>
 
@@ -47,13 +45,12 @@
   <div class="content-panel">
     <div class="content-header" id="contentHeader" style="display:none">
       <div class="source-info">
-        <span class="source-icon" id="sourceIcon"></span>
+        <span class="source-badge" id="sourceBadge"></span>
         <span class="pub-time" id="pubTime"></span>
       </div>
       <div class="content-actions">
-        <span class="content-action-btn" id="favBtn">⭐ 收藏</span>
-        <a class="content-action-btn" id="originBtn" target="_blank">🔗 原文</a>
-        <span class="content-action-btn" id="summaryBtn">📋 摘要</span>
+        <a class="content-action-btn" id="originBtn" target="_blank">原文</a>
+        <span class="content-action-btn" id="summaryBtn">AI 摘要</span>
       </div>
     </div>
     <div class="content-body" id="contentBody">
@@ -65,7 +62,7 @@
 
 <!-- ===== Tag popover ===== -->
 <div class="tag-popover" id="tagPopover">
-  <div class="tag-popover-header">归入主题（可多选）</div>
+  <div class="tag-popover-header">归入分组</div>
   <div class="tag-popover-list" id="tagPopoverList"></div>
 </div>
 
@@ -74,8 +71,8 @@
   <p>取消关注 <span class="tooltip-name" id="unfollowName"></span>？</p>
   <div class="unfollow-hint">已抓取的历史内容会保留</div>
   <div class="tooltip-btns">
-    <button class="btn-cancel">再想想</button>
-    <button class="btn-confirm">取消关注</button>
+    <button class="btn-cancel">取消</button>
+    <button class="btn-confirm">确认</button>
   </div>
 </div>
 
@@ -83,17 +80,17 @@
 <div class="modal-overlay" id="topicModal">
   <div class="modal">
     <div class="modal-header">
-      <h3 id="modalTitle">编辑主题</h3>
-      <button class="modal-close">✕</button>
+      <h3 id="modalTitle">编辑分组</h3>
+      <button class="modal-close">&times;</button>
     </div>
     <div class="modal-body">
-      <div class="field-label">主题名称</div>
+      <div class="field-label">分组名称</div>
       <div class="topic-name-row">
-        <input type="text" id="topicNameInput" placeholder="输入主题名称">
+        <input type="text" id="topicNameInput" placeholder="输入分组名称">
       </div>
-      <div class="field-label">主题下的博主</div>
+      <div class="field-label">分组内的信息源</div>
       <div class="chip-input-wrap" id="chipWrap">
-        <input class="chip-input" id="chipSearch" placeholder="搜索添加博主...">
+        <input class="chip-input" id="chipSearch" placeholder="搜索添加...">
       </div>
       <div class="chip-dropdown" id="chipDropdown"></div>
     </div>
@@ -106,24 +103,29 @@
 
 <!-- ===== Add blogger modal ===== -->
 <div class="modal-overlay" id="addModal">
-  <div class="modal">
+  <div class="modal" style="width:460px">
     <div class="modal-header">
-      <h3>添加博主</h3>
-      <button class="modal-close">✕</button>
+      <h3>添加信息源</h3>
+      <button class="modal-close">&times;</button>
     </div>
     <div class="modal-body">
-      <div class="field-label">渠道</div>
+      <div class="field-label">平台</div>
       <div class="channel-select" id="channelSelect">
-        <div class="channel-option active" data-channel="youtube">▶️ YouTube</div>
-        <div class="channel-option disabled">📱 公众号（即将支持）</div>
-        <div class="channel-option disabled">📕 小红书（即将支持）</div>
+        <span class="channel-option active" data-channel="youtube">YouTube</span>
+        <span class="channel-option" data-channel="bilibili">B 站</span>
+        <span class="channel-option" data-channel="xiaohongshu">小红书</span>
+        <span class="channel-option" data-channel="douyin-hot">抖音热门</span>
+        <span class="channel-option" data-channel="douyin-account">抖音达人</span>
+        <span class="channel-option" data-channel="gongzhonghao">公众号</span>
       </div>
-      <div class="field-label" style="margin-top:16px">频道链接或ID</div>
-      <div class="topic-name-row">
-        <input type="text" id="addUrlInput" placeholder="例如：https://www.youtube.com/@Fireship">
-        <button class="modal-btn primary" id="validateBtn">验证</button>
+      <div id="addFormArea">
+        <div class="field-label" id="addFieldLabel">频道链接</div>
+        <div class="input-row">
+          <input type="text" id="addUrlInput" placeholder="https://www.youtube.com/@频道名">
+          <button class="modal-btn primary small" id="validateBtn">验证</button>
+        </div>
+        <div class="validate-result" id="validateResult"></div>
       </div>
-      <div id="validateResult" style="margin-top:8px;font-size:12px"></div>
     </div>
     <div class="modal-footer">
       <button class="modal-btn secondary">取消</button>
@@ -137,7 +139,7 @@
   <div class="summary-card">
     <div class="modal-header">
       <h3>AI 摘要</h3>
-      <button class="modal-close" id="summaryClose">✕</button>
+      <button class="modal-close" id="summaryClose">&times;</button>
     </div>
     <div class="summary-card-body" id="summaryContent">
       <div class="loading-spinner">生成中...</div>
