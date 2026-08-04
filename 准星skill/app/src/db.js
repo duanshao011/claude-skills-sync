@@ -163,6 +163,7 @@ database.exec("UPDATE bloggers SET last_fetch_status = 'never' WHERE last_fetch_
 addColumn('articles', 'title_cn TEXT');
 addColumn('articles', 'summary_cn TEXT');
 addColumn('articles', 'external_id TEXT');
+addColumn('articles', 'content TEXT');
 database.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS articles_blogger_external_id_unique
   ON articles(blogger_id, external_id)

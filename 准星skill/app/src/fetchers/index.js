@@ -64,8 +64,13 @@ export async function fetchBlogger(blogger) {
 
   try {
     const rawResult = await fetcher.fetchChannel(blogger.channel_id, { cursor: blogger.fetch_cursor });
-    const { articles, cursor } = normalizeFetchResult(rawResult);
+    const { articles, cursor, channelName } = normalizeFetchResult(rawResult);
     const result = insertArticles(blogger.id, articles);
+
+    // 抓取成功后用数据源返回的真实昵称覆盖显示名（用户输入可能大小写/别名不精确）。
+    if (channelName && channelName !== blogger.name) {
+      db.run('UPDATE bloggers SET name = ? WHERE id = ?', [channelName, blogger.id]);
+    }
 
     if (blogger.channel_type === 'youtube' && translationAvailable() && result.newArticles.length > 0) {
       try {

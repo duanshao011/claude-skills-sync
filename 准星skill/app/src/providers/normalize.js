@@ -21,6 +21,7 @@ export function normalizeFetchResult(result) {
   return {
     articles: (source.articles || []).map(normalizeArticle),
     cursor: nullableString(source.cursor),
+    channelName: nullableString(source.channelName),
   };
 }
 

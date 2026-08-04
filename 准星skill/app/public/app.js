@@ -1,4 +1,4 @@
-import { renderLongExtract } from './summary-renderer.js';
+import { renderSummary } from './summary-renderer.js';
 
 const CHANNELS = {
   youtube: { label: 'YouTube', placeholder: '频道链接、@handle 或 UC… 频道 ID' },
@@ -137,11 +137,33 @@ function renderArticleList(articles, source=getCurrentSource()) {
   document.getElementById('readAllBtn').hidden = source?.type !== 'blogger';
   const body = document.getElementById('articleListBody');
   if (!articles.length) { body.innerHTML='<div class="empty-hint">尚未抓取到内容</div>'; return; }
+  // 主题视图按更新时间分组（今日/昨日/更早）做信息流展示；博主视图保持平铺。
+  const grouped = source?.type === 'topic';
+  let lastBucket = null;
   body.innerHTML = articles.map(article => {
-    const title = article.title_cn || article.title || '无标题';
-    const snippet = String(article.summary_cn || article.summary || article.description || '').slice(0,120);
-    return `<div class="article-item${article.is_read ? '' : ' unread'}${Number(article.id) === Number(state.selectedArticleId) ? ' active' : ''}" data-article-id="${Number(article.id)}" tabindex="0"><div class="article-title">${esc(title)}</div>${snippet ? `<div class="article-snippet">${esc(snippet)}</div>` : ''}<div class="article-meta"><span class="source-dot"></span><span>${esc(channelLabel(article.channel_type))}</span><span>${article.published_at ? esc(timeAgo(article.published_at)) : ''}</span><span>${esc(article.blogger_name || '')}</span></div></div>`;
+    let header = '';
+    if (grouped) {
+      const bucket = dateBucket(article.published_at);
+      if (bucket !== lastBucket) { header = `<div class="article-group-label">${bucket}</div>`; lastBucket = bucket; }
+    }
+    return header + renderArticleItem(article);
   }).join('');
+}
+function renderArticleItem(article) {
+  const title = article.title_cn || article.title || '无标题';
+  const snippet = String(article.summary_cn || article.summary || article.description || '').slice(0,120);
+  const active = Number(article.id) === Number(state.selectedArticleId) ? ' active' : '';
+  return `<div class="article-item${article.is_read ? '' : ' unread'}${active}" data-article-id="${Number(article.id)}" tabindex="0"><div class="article-title">${esc(title)}</div>${snippet ? `<div class="article-snippet">${esc(snippet)}</div>` : ''}<div class="article-meta"><span class="meta-author">${esc(article.blogger_name || '')}</span><span>${esc(channelLabel(article.channel_type))}</span><span>${article.published_at ? esc(timeAgo(article.published_at)) : ''}</span></div></div>`;
+}
+function dateBucket(value) {
+  const date = parseDate(value);
+  if (!date) return '更早';
+  const now = new Date();
+  // 本自然周（周一至周日）：本周一 0 点及之后归“本周更新”，更早的按具体日期分组。
+  const day = now.getDay() || 7;
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (day - 1));
+  if (new Date(date.getFullYear(), date.getMonth(), date.getDate()) >= monday) return '本周更新';
+  return date.toLocaleDateString('zh-CN');
 }
 
 async function selectArticle(id) {
@@ -166,16 +188,88 @@ function renderContent(article) {
   document.getElementById('pubTime').textContent=date ? `${date.toLocaleDateString('zh-CN')} ${date.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}` : '';
   const origin = document.getElementById('originBtn'); const safeUrl=safeHttpUrl(article.url);
   origin.hidden=!safeUrl; if (safeUrl) origin.href=safeUrl; else origin.removeAttribute('href');
-  updateSummaryAvailability();
-  let html=`<h1>${esc(article.title_cn || article.title || '无标题')}</h1>`;
+  const isWechat = normalizeChannel(article.channel_type) === 'wechat';
+  updateSummaryAvailability(!isWechat);
+  const titleText = article.title_cn || article.title || '无标题';
+  const titleSize = titleText.length > 40 ? ' title-sm' : titleText.length > 24 ? ' title-md' : '';
+  let html=`<h1 class="article-title${titleSize}">${esc(titleText)}</h1>`;
   if (article.title_cn && article.title && article.title_cn !== article.title) html += `<div class="original-title">${esc(article.title)}</div>`;
   if (normalizeChannel(article.channel_type) === 'youtube' && safeUrl) {
     const videoId=extractVideoId(safeUrl); if (videoId) html += `<div class="video-wrap"><iframe src="https://www.youtube.com/embed/${escAttr(videoId)}" title="YouTube 视频" loading="lazy" allowfullscreen></iframe></div>`;
   }
-  const description=article.summary_cn || article.summary || article.description || article.content;
-  if (description) html += `<div class="desc">${esc(description)}</div>`;
-  else html += '<div class="desc">暂无文字摘要，请查看原文。</div>';
-  document.getElementById('contentBody').innerHTML=html;
+  if (isWechat) {
+    html += '<details class="detail-block" open><summary>AI 摘要</summary><div class="block-body"><div id="inlineSummary"><div class="loading-spinner">正在生成摘要…</div></div></div></details>';
+    html += '<div id="inlineContent" class="inline-content"><div class="loading-spinner">正在加载正文…</div></div>';
+    document.getElementById('contentBody').innerHTML=html;
+    loadWechatDetail(article);
+  } else {
+    const description=article.summary_cn || article.summary || article.description || article.content;
+    if (description) html += `<div class="desc">${esc(description)}</div>`;
+    else html += '<div class="desc">暂无文字摘要，请查看原文。</div>';
+    document.getElementById('contentBody').innerHTML=html;
+  }
+}
+async function loadWechatDetail(article) {
+  const articleId = Number(article.id);
+  const serial = state.listRequest;
+  const contentPromise = api.post(`/api/articles/${articleId}/content`).then(r => r.data).catch(err => ({ error: err.message }));
+  const summaryPromise = state.summaryAvailable
+    ? api.post(`/api/articles/${articleId}/summary`).then(r => r.data).catch(err => ({ error: err.message }))
+    : Promise.resolve({ error: '摘要服务未配置' });
+  contentPromise.then(result => {
+    if (serial !== state.listRequest || Number(state.selectedArticleId) !== articleId) return;
+    const container = document.getElementById('inlineContent');
+    if (!container) return;
+    const wrapBody = (bodyHtml, open) => `<details class="detail-block"${open ? ' open' : ''}><summary>原文正文</summary><div class="block-body">${bodyHtml}</div></details>`;
+    if (result.error) {
+      const desc = article.summary_cn || article.summary || article.description || '';
+      container.innerHTML = wrapBody(`${desc ? `<div class="desc">${esc(desc)}</div>` : ''}<div class="content-fallback">正文加载失败：${esc(result.error)}</div>`, true);
+    } else if (result.content) {
+      const chars = result.content.replace(/\s/g, '').length;
+      const minutes = Math.max(1, Math.round(chars / 400));
+      const meta = `<div class="content-meta">全文共 ${chars} 字 · 阅读约 ${minutes} 分钟</div>`;
+      const end = '<div class="content-end">— 全文完 —</div>';
+      container.innerHTML = wrapBody(`${meta}<div class="article-content">${formatContent(result.content)}</div>${end}`, false);
+    } else {
+      const desc = article.summary_cn || article.summary || article.description || '';
+      container.innerHTML = wrapBody(desc ? `<div class="desc">${esc(desc)}</div>` : '<div class="desc">暂无正文内容</div>', true);
+    }
+  });
+  summaryPromise.then(result => {
+    if (serial !== state.listRequest || Number(state.selectedArticleId) !== articleId) return;
+    const container = document.getElementById('inlineSummary');
+    if (!container) return;
+    if (result.error) {
+      container.innerHTML = `<div class="summary-fallback">摘要生成失败：${esc(result.error)}</div>`;
+    } else if (result.summary) {
+      renderSummary(container, result.summary);
+    } else {
+      container.innerHTML = '<div class="summary-fallback">摘要为空</div>';
+    }
+  });
+}
+function formatContent(text) {
+  return String(text || '')
+    .split(/\n{2,}|\s{3,}|　{2,}/)
+    .map(para => para.trim())
+    .filter(Boolean)
+    .flatMap(splitLongParagraph)
+    .map(para => `<p>${esc(para)}</p>`)
+    .join('');
+}
+// 微信正文里作者常把多句话用逗号连成一大段。对超长段落在句末标点（。！？）后切分，
+// 提高可读性；单个长句（内部只有逗号）不强行拆开。
+function splitLongParagraph(para) {
+  if (para.length <= 100) return [para];
+  const sentences = para.match(/[^。！？]*[。！？]+|[^。！？]+$/g) || [para];
+  const chunks = [];
+  let buffer = '';
+  for (const sentence of sentences) {
+    buffer += sentence;
+    if (buffer.length >= 60) { chunks.push(buffer); buffer = ''; }
+  }
+  if (buffer) chunks.push(buffer);
+  return chunks.length ? chunks : [para];
 }
 function clearContent() {
   document.getElementById('contentHeader').hidden=true;
@@ -209,7 +303,7 @@ async function generateSummary() {
   try {
     const {data}=await api.post(`/api/articles/${articleId}/summary`);
     if (requestId!==state.summaryRequest || !overlay.classList.contains('show')) return;
-    renderLongExtract(content,data.summary || '');
+    renderSummary(content,data.summary || '');
   } catch(error) {
     if (requestId!==state.summaryRequest || !overlay.classList.contains('show')) return;
     content.replaceChildren(createStatusNode('summary-error',`生成失败：${error.message}`));
@@ -219,8 +313,11 @@ async function generateSummary() {
   }
 }
 function createStatusNode(className,text) { const node=document.createElement('div'); node.className=className; node.textContent=text; return node; }
-function updateSummaryAvailability() {
-  const button=document.getElementById('summaryBtn'); const disabled=!state.summaryAvailable || state.summaryGenerating;
+function updateSummaryAvailability(showButton=true) {
+  const button=document.getElementById('summaryBtn');
+  button.hidden=!showButton;
+  if (!showButton) return;
+  const disabled=!state.summaryAvailable || state.summaryGenerating;
   button.classList.toggle('disabled',disabled); button.disabled=disabled;
   button.textContent=state.summaryGenerating?'萃取中…':'生成摘要';
   button.title=state.summaryAvailable?'采用长文萃取规则生成':'需要配置摘要服务';

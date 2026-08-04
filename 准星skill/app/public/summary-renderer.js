@@ -1,184 +1,77 @@
-export function parseLongExtract(markdown) {
-  const result = { warning: '', sections: [] };
-  let section = null;
-  let insight = null;
+// 三段式摘要渲染：把 DeepSeek 输出的 Markdown（## 核心摘要 / ## 要点论述 / ## 洞见启发）
+// 渲染成可折叠区块。每个 ## 小节是一个 <details>，默认展开。
 
-  for (const rawLine of String(markdown || '').split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || /^-{3,}$/.test(line)) continue;
-
-    if (line.startsWith('>')) {
-      result.warning = cleanInline(line.replace(/^>\s*/, ''));
-      continue;
-    }
-
-    const heading = cleanInline(line).match(/^【(.+?)】$/);
-    if (heading) {
-      section = {
-        kind: sectionKind(heading[1]),
-        title: heading[1],
-        blocks: [],
-      };
-      result.sections.push(section);
-      insight = null;
-      continue;
-    }
-
-    if (!section) {
-      section = { kind: 'plain', title: '萃取结果', blocks: [] };
-      result.sections.push(section);
-    }
-
-    const insightMatch = line.match(/^[-*]\s+\*\*(洞见\d+)\*\*\s*[:：]\s*(.+)$/);
-    if (insightMatch) {
-      insight = {
-        type: 'insight',
-        label: insightMatch[1],
-        text: cleanInline(insightMatch[2]),
-        evidence: '',
-        questions: '',
-        notes: [],
-      };
-      section.blocks.push(insight);
-      continue;
-    }
-
-    const evidenceMatch = line.match(/^[-*]\s+\*\*证据等级\*\*\s*[:：]\s*([ABC])\b/i);
-    if (evidenceMatch && insight) {
-      insight.evidence = evidenceMatch[1].toUpperCase();
-      continue;
-    }
-
-    const questionMatch = line.match(/^[-*]\s+\*\*启发性追问\*\*\s*[:：]\s*(.+)$/);
-    if (questionMatch && insight) {
-      insight.questions = cleanInline(questionMatch[1]);
-      continue;
-    }
-
-    const fieldMatch = line.match(/^(?:\d+\.\s*)?\*\*(.+?)\*\*\s*[:：]\s*(.*)$/);
-    if (fieldMatch) {
-      section.blocks.push({
-        type: 'field',
-        label: cleanInline(fieldMatch[1]),
-        text: cleanInline(fieldMatch[2]),
-      });
-      insight = null;
-      continue;
-    }
-
-    const bulletMatch = line.match(/^[-*]\s+(.*)$/);
-    if (bulletMatch) {
-      const text = cleanInline(bulletMatch[1]);
-      if (insight && /^\s{2,}/.test(rawLine)) insight.notes.push(text);
-      else section.blocks.push({ type: 'bullet', text });
-      continue;
-    }
-
-    const numberedMatch = line.match(/^\d+[.、]\s*(.+)$/);
-    if (numberedMatch) {
-      section.blocks.push({ type: 'bullet', text: cleanInline(numberedMatch[1]), ordered: true });
-      continue;
-    }
-
-    section.blocks.push({ type: 'paragraph', text: cleanInline(line) });
-  }
-
-  return result;
-}
-
-export function renderLongExtract(container, markdown) {
-  const parsed = parseLongExtract(markdown);
-  container.replaceChildren();
-
-  if (parsed.warning) {
-    const warning = createElement('div', 'summary-source-warning', parsed.warning);
-    warning.setAttribute('role', 'note');
-    container.append(warning);
-  }
-
-  if (!parsed.sections.length) {
-    container.append(createElement('div', 'summary-empty', '暂无萃取结果'));
+export function renderSummary(container, markdown) {
+  container.innerHTML = '';
+  const sections = parseSections(markdown);
+  if (!sections.length) {
+    container.innerHTML = `<div class="summary-fallback">${escapeHtml(String(markdown || '').slice(0, 600))}</div>`;
     return;
   }
+  for (const sec of sections) {
+    const part = document.createElement('div');
+    part.className = 'sum-part';
+    part.innerHTML = `<h4 class="sum-part-title">${escapeHtml(sec.title)}</h4><div class="sum-part-body">${sec.html}</div>`;
+    container.appendChild(part);
+  }
+}
 
-  for (const section of parsed.sections) {
-    const sectionEl = createElement('section', `summary-section summary-section-${section.kind}`);
-    sectionEl.append(createElement('h4', 'summary-section-title', section.title));
-    const body = createElement('div', 'summary-section-body');
+// 兼容旧调用名
+export const renderLongExtract = renderSummary;
 
-    for (const block of section.blocks) {
-      body.append(renderBlock(block));
+function parseSections(md) {
+  const text = String(md || '').replace(/\r/g, '');
+  const parts = text.split(/^#{2,}\s+/m).map(s => s.trim()).filter(Boolean);
+  return parts.map(part => {
+    const nl = part.indexOf('\n');
+    const title = (nl === -1 ? part : part.slice(0, nl)).replace(/[#*]/g, '').trim();
+    const body = nl === -1 ? '' : part.slice(nl + 1).trim();
+    return { title, html: renderBody(body) };
+  }).filter(sec => sec.title);
+}
+
+function renderBody(body) {
+  const lines = body.split('\n').map(l => l.trim());
+  let html = '';
+  let listType = null;
+  let items = [];
+  const flush = () => {
+    if (items.length) {
+      html += `<${listType}>` + items.map(i => `<li>${inline(i)}</li>`).join('') + `</${listType}>`;
+      items = [];
+      listType = null;
     }
-
-    sectionEl.append(body);
-    container.append(sectionEl);
-  }
-}
-
-function renderBlock(block) {
-  if (block.type === 'insight') {
-    const card = createElement('article', 'insight-card');
-    const header = createElement('div', 'insight-header');
-    header.append(createElement('span', 'insight-label', block.label));
-    if (block.evidence) {
-      const badge = createElement('span', `evidence-badge evidence-${block.evidence.toLowerCase()}`, `${block.evidence} 级证据`);
-      badge.title = evidenceDescription(block.evidence);
-      header.append(badge);
+  };
+  for (const line of lines) {
+    if (!line) { flush(); continue; }
+    const ol = line.match(/^\d+[.、)]\s*(.+)/);
+    const ul = line.match(/^[-*·]\s+(.+)/);
+    if (ol) {
+      if (listType !== 'ol') flush();
+      listType = 'ol';
+      items.push(ol[1]);
+    } else if (ul) {
+      if (listType !== 'ul') flush();
+      listType = 'ul';
+      items.push(ul[1]);
+    } else {
+      flush();
+      html += `<p>${inline(line)}</p>`;
     }
-    card.append(header, createElement('p', 'insight-text', block.text));
-    for (const note of block.notes) card.append(createElement('blockquote', 'insight-quote', note));
-    if (block.questions) {
-      const question = createElement('div', 'insight-question');
-      question.append(createElement('strong', '', '启发性追问'), createElement('p', '', block.questions));
-      card.append(question);
-    }
-    return card;
   }
-
-  if (block.type === 'field') {
-    const field = createElement('div', 'summary-field');
-    field.append(createElement('strong', 'summary-field-label', block.label));
-    if (block.text) field.append(createElement('p', 'summary-field-text', block.text));
-    return field;
-  }
-
-  if (block.type === 'bullet') {
-    const item = createElement('div', `summary-bullet${block.ordered ? ' ordered' : ''}`);
-    item.append(createElement('span', 'summary-bullet-mark', block.ordered ? '·' : '—'));
-    item.append(createElement('p', '', block.text));
-    return item;
-  }
-
-  return createElement('p', 'summary-paragraph', block.text);
+  flush();
+  return html;
 }
 
-function createElement(tag, className = '', text = '') {
-  const element = document.createElement(tag);
-  if (className) element.className = className;
-  if (text) element.textContent = text;
-  return element;
+function inline(text) {
+  return escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 }
 
-function cleanInline(value) {
-  return String(value || '')
-    .replace(/^\*\*(.*?)\*\*$/, '$1')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .trim();
-}
-
-function sectionKind(title) {
-  if (title.startsWith('第一部分')) return 'overview';
-  if (title.startsWith('第二部分')) return 'insights';
-  if (title.startsWith('第三部分')) return 'personal';
-  if (title.startsWith('额外提炼')) return 'extra';
-  return 'plain';
-}
-
-function evidenceDescription(level) {
-  return {
-    A: '强实证、严谨研究或公认理论支撑',
-    B: '合理逻辑链、部分证据或可信规律观察',
-    C: '推测、外推或作者个人观点',
-  }[level] || '';
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

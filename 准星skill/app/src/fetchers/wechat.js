@@ -2,13 +2,18 @@ import { createRedfoxClient } from '../clients/redfox.js';
 
 const PAGE_SIZE = 20;
 const MAX_PAGES = 5;
+// 首次关注（无 cursor）只抓取近 30 篇，避免一次拉太多；后续更新走增量 cursor 不受此限。
+const FIRST_FETCH_LIMIT = 30;
 
 export async function fetchChannel(channelId, options = {}) {
   const client = createRedfoxClient();
   const isWechatId = /^[a-zA-Z][a-zA-Z0-9_-]{5,}$/.test(channelId);
   const account = isWechatId ? channelId : '';
   const accountName = channelId;
+  const isFirstFetch = !options.cursor;
+  const limit = isFirstFetch ? FIRST_FETCH_LIMIT : Infinity;
   const articles = [];
+  let channelName = null;
   for (let page = 0; page < MAX_PAGES; page++) {
     const data = await client.queryWechatWorkList({
       account,
@@ -17,12 +22,14 @@ export async function fetchChannel(channelId, options = {}) {
       publishTimeStart: options.cursor || undefined,
     });
     const rows = extractRows(data);
+    if (!channelName && rows[0]) channelName = rows[0].author || rows[0].accountName || null;
     articles.push(...rows.map(normalizeWork));
-    if (rows.length < PAGE_SIZE) break;
+    if (rows.length < PAGE_SIZE || articles.length >= limit) break;
   }
   return {
-    articles,
+    articles: articles.slice(0, limit),
     cursor: newestPublishTime(articles),
+    channelName,
   };
 }
 

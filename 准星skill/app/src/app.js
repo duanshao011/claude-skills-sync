@@ -31,7 +31,7 @@ export function createApp() {
   app.get('/api/config', (req, res) => {
     const redfoxAvailable = Boolean(process.env.REDFOX_API_KEY);
     res.json({
-      summaryAvailable: Boolean(process.env.ANTHROPIC_API_KEY),
+      summaryAvailable: Boolean(process.env.DEEPSEEK_API_KEY),
       providers: {
         youtube: { available: true },
         douyin: { available: redfoxAvailable },

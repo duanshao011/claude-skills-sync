@@ -1,17 +1,18 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { fetchTranscript } from 'youtube-transcript';
+import { createRedfoxClient } from './clients/redfox.js';
+import db from './db.js';
 import {
-  LONG_EXTRACT_SYSTEM_PROMPT,
-  buildLongExtractInput,
-  validateLongExtractOutput,
-} from './prompts/long-extract.js';
+  SUMMARY_SYSTEM_PROMPT,
+  buildSummaryInput,
+  validateSummaryOutput,
+} from './prompts/summary.js';
 
-export const SUMMARY_MODEL = 'claude-opus-4-8';
+export const SUMMARY_MODEL = 'deepseek-v4-flash';
 export const MAX_SOURCE_CHARS = 300_000;
-export const SUMMARY_REQUEST_TIMEOUT_MS = 120_000;
+export const SUMMARY_REQUEST_TIMEOUT_MS = 90_000;
 export const SUMMARY_MAX_RETRIES = 1;
 
-let client = null;
+const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 
 export class SummaryGenerationError extends Error {
   constructor(code, message, options = {}) {
@@ -23,65 +24,77 @@ export class SummaryGenerationError extends Error {
 }
 
 export function isAvailable() {
-  return !!process.env.ANTHROPIC_API_KEY;
-}
-
-function getClient() {
-  if (!client && process.env.ANTHROPIC_API_KEY) {
-    client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  }
-  return client;
+  return !!process.env.DEEPSEEK_API_KEY;
 }
 
 export async function generateSummary(article, options = {}) {
-  const anthropicClient = options.client || getClient();
-  const transcriptFetcher = options.transcriptFetcher || fetchTranscript;
-  if (!anthropicClient) {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) {
     throw new SummaryGenerationError('NOT_CONFIGURED', '摘要服务尚未配置');
   }
 
-  const { sourceText, sourceBasis } = await collectSourceText(article, transcriptFetcher);
+  const { sourceText, sourceBasis } = await collectSourceText(article);
   if (sourceText.length > MAX_SOURCE_CHARS) {
     throw new SummaryGenerationError('SOURCE_TOO_LONG', '内容过长，当前版本暂不能处理');
   }
 
+  const userMessage = buildSummaryInput(article, sourceText, sourceBasis);
   let response;
   try {
-    const stream = anthropicClient.messages.stream({
-      model: SUMMARY_MODEL,
-      max_tokens: 16_000,
-      thinking: { type: 'adaptive' },
-      output_config: { effort: 'high' },
-      system: LONG_EXTRACT_SYSTEM_PROMPT,
-      messages: [{
-        role: 'user',
-        content: buildLongExtractInput(article, sourceText, sourceBasis),
-      }],
-    }, {
-      timeout: SUMMARY_REQUEST_TIMEOUT_MS,
-      maxRetries: SUMMARY_MAX_RETRIES,
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), SUMMARY_REQUEST_TIMEOUT_MS);
+    response = await fetch(`${DEEPSEEK_BASE_URL}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: SUMMARY_MODEL,
+        max_tokens: 4_000,
+        messages: [
+          { role: 'system', content: SUMMARY_SYSTEM_PROMPT },
+          { role: 'user', content: userMessage },
+        ],
+      }),
+      signal: controller.signal,
     });
-    response = await stream.finalMessage();
+    clearTimeout(timeout);
   } catch (error) {
-    throw normalizeAnthropicError(error);
+    if (error.name === 'AbortError') {
+      throw new SummaryGenerationError('TIMEOUT', '摘要生成超时，请稍后重试', { cause: error });
+    }
+    throw new SummaryGenerationError('CONNECTION', '暂时无法连接摘要服务', { cause: error });
   }
 
-  if (response.stop_reason === 'max_tokens') {
+  if (!response.ok) {
+    const status = response.status;
+    if (status === 401 || status === 403) {
+      throw new SummaryGenerationError('AUTH', '摘要服务配置不可用');
+    }
+    if (status === 429) {
+      throw new SummaryGenerationError('RATE_LIMIT', '摘要请求较多，请稍后重试');
+    }
+    throw new SummaryGenerationError('UPSTREAM', `摘要服务返回 ${status}，请稍后重试`);
+  }
+
+  let body;
+  try {
+    body = await response.json();
+  } catch (error) {
+    throw new SummaryGenerationError('UPSTREAM', '摘要服务返回格式异常', { cause: error });
+  }
+
+  const choice = body.choices?.[0];
+  if (!choice) {
+    throw new SummaryGenerationError('EMPTY_OUTPUT', '摘要服务未返回结果');
+  }
+  if (choice.finish_reason === 'length') {
     throw new SummaryGenerationError('OUTPUT_TRUNCATED', '萃取结果未完整生成，请重试');
   }
-  if (response.stop_reason === 'refusal') {
-    throw new SummaryGenerationError('REFUSAL', '该内容暂时无法生成摘要');
-  }
-  if (response.stop_reason && response.stop_reason !== 'end_turn' && response.stop_reason !== 'stop_sequence') {
-    throw new SummaryGenerationError('UNEXPECTED_STOP', '摘要服务未完成本次萃取，请重试');
-  }
 
-  const summary = validateLongExtractOutput(
-    response.content
-      .filter(block => block.type === 'text')
-      .map(block => block.text)
-      .join('\n')
-  );
+  const rawText = choice.message?.content || '';
+  const summary = validateSummaryOutput(rawText);
 
   return {
     summary,
@@ -90,17 +103,36 @@ export async function generateSummary(article, options = {}) {
   };
 }
 
-async function collectSourceText(article, transcriptFetcher) {
+async function collectSourceText(article) {
   if (article.channel_type === 'youtube') {
     const videoId = extractVideoId(article.url);
     if (videoId) {
       try {
-        const transcript = await transcriptFetcher(videoId);
+        const transcript = await fetchTranscript(videoId);
         const text = transcript.map(item => item.text).join(' ').trim();
         if (text.length >= 50) return { sourceText: text, sourceBasis: 'transcript' };
       } catch {
-        // 字幕不可用时使用来源描述，仍允许用户获得有限信息萃取。
+        // 字幕不可用时降级到描述
       }
+    }
+  }
+
+  if (article.channel_type === 'wechat') {
+    if (article.content) {
+      return { sourceText: article.content, sourceBasis: 'content' };
+    }
+    try {
+      const client = createRedfoxClient();
+      const data = article.external_id
+        ? await client.queryWork({ workUuid: article.external_id })
+        : await client.queryArticleDetail({ url: article.url });
+      if (data?.content && data.content.length >= 50) {
+        db.run('UPDATE articles SET content = ? WHERE id = ?', [data.content, article.id]);
+        db.save();
+        return { sourceText: data.content, sourceBasis: 'content' };
+      }
+    } catch {
+      // 正文获取失败时降级到描述
     }
   }
 
@@ -110,27 +142,6 @@ async function collectSourceText(article, transcriptFetcher) {
     sourceText: `标题：${title}\n\n来源描述：${description}`,
     sourceBasis: 'description',
   };
-}
-
-function normalizeAnthropicError(error) {
-  const requestId = error?.request_id || error?.headers?.get?.('request-id') || null;
-  if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
-    return new SummaryGenerationError('AUTH', '摘要服务配置不可用', { cause: error, requestId });
-  }
-  if (error instanceof Anthropic.RateLimitError) {
-    return new SummaryGenerationError('RATE_LIMIT', '摘要请求较多，请稍后重试', { cause: error, requestId });
-  }
-  if (error instanceof Anthropic.APIConnectionTimeoutError) {
-    return new SummaryGenerationError('TIMEOUT', '摘要生成超时，请稍后重试', { cause: error, requestId });
-  }
-  if (error instanceof Anthropic.APIConnectionError) {
-    return new SummaryGenerationError('CONNECTION', '暂时无法连接摘要服务', { cause: error, requestId });
-  }
-  if (error instanceof Anthropic.InternalServerError || Number(error?.status) >= 500) {
-    return new SummaryGenerationError('UPSTREAM', '摘要服务暂时不可用', { cause: error, requestId });
-  }
-  if (error instanceof SummaryGenerationError) return error;
-  return new SummaryGenerationError('UPSTREAM', '摘要生成失败，请稍后重试', { cause: error, requestId });
 }
 
 function extractVideoId(url = '') {

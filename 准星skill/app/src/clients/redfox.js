@@ -4,6 +4,8 @@ const BASE_URL = 'https://redfox.hk';
 const ENDPOINTS = Object.freeze({
   douyinUserWithWorks: '/story/api/dyData/queryUserWithWorks',
   wechatWorkList: '/story/api/gzhData/queryWorkList',
+  wechatWork: '/story/api/gzhData/queryWork',
+  wechatArticleDetail: '/story/api/gzhData/queryArticleDetail',
   xiaohongshuAccount: '/story/api/xhsUser/queryAccountDetail',
 });
 
@@ -54,6 +56,11 @@ export function createRedfoxClient(config = {}) {
         provider: 'redfox', retryable: true,
       });
     }
+    // 3203：优质库暂未收录该账号最新数据，本次无新增内容。视为空结果而非错误，
+    // 避免每次全量抓取都把「暂无新内容」当成失败挂红色横幅。
+    if (code === 3203) {
+      return { list: [], _noData: true };
+    }
     if (Number.isFinite(code) && code !== 2000 && code !== 200) {
       throw new ProviderError(PROVIDER_ERROR_CODES.FETCH_FAILED, `Redfox returned business code ${code}`, {
         provider: 'redfox', retryable: false,
@@ -77,6 +84,12 @@ export function createRedfoxClient(config = {}) {
         ...(publishTimeEnd ? { publishTimeEnd } : {}),
         source: '准星-WorkBuddy',
       });
+    },
+    queryWork({ workUuid }) {
+      return post(ENDPOINTS.wechatWork, { workUuid, source: '准星-WorkBuddy' });
+    },
+    queryArticleDetail({ url }) {
+      return post(ENDPOINTS.wechatArticleDetail, { url, source: '准星-WorkBuddy' });
     },
     queryXiaohongshuAccount({ accountId, userId }) {
       return post(ENDPOINTS.xiaohongshuAccount, {

@@ -59,7 +59,8 @@ export const LONG_EXTRACT_SYSTEM_PROMPT = `你是内容所涉领域的专家讲�
 export function buildLongExtractInput(article, sourceText, sourceBasis) {
   const title = article.title_cn || article.title || '无标题';
   const channel = article.channel_type || '未知来源';
-  const basis = sourceBasis === 'transcript' ? '视频字幕/正文' : '标题与来源描述（有限信息）';
+  const basisMap = { transcript: '视频字幕/正文', content: '文章正文', description: '标题与来源描述（有限信息）' };
+  const basis = basisMap[sourceBasis] || basisMap.description;
   const safeSource = String(sourceText || '')
     .replaceAll('<article-source>', '＜article-source＞')
     .replaceAll('</article-source>', '＜/article-source＞');
@@ -73,13 +74,14 @@ export function validateLongExtractOutput(value) {
   if (FORBIDDEN_OUTPUT.some(pattern => pattern.test(text))) {
     throw createPromptError('PRIVATE_REASONING_EXPOSED', '萃取结果包含内部分析过程');
   }
-  if (!REQUIRED_SECTIONS.every(section => text.includes(section))) {
+  const sectionPattern = /第一部分.*信息速览|第二部分.*洞见种子|第三部分.*可能有用/;
+  if (!sectionPattern.test(text)) {
     throw createPromptError('INVALID_FORMAT', '萃取结果缺少必要章节');
   }
-  if (!/-\s*\*\*洞见\d+\*\*\s*[:：]/.test(text)) {
+  if (!/洞见\s*\d+/i.test(text)) {
     throw createPromptError('INVALID_FORMAT', '萃取结果缺少洞见条目');
   }
-  if (!/\*\*证据等级\*\*\s*[:：]\s*[ABC]/i.test(text)) {
+  if (!/证据等级\s*[:：]\s*[ABC]/i.test(text)) {
     throw createPromptError('INVALID_FORMAT', '萃取结果缺少证据等级');
   }
   return text;
