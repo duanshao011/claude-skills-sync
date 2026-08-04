@@ -49,3 +49,53 @@ test('/api/fetch/status flattens latest task state', async () => {
   assert.ok(Array.isArray(status.tasks));
   assert.equal(status.task_id, status.tasks[0].id);
 });
+
+test('POST /api/bloggers 持久化 avatar_url 与 channel_account', async () => {
+  const response = await fetch(`${baseUrl}/api/bloggers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: '测试频道', channel_type: 'youtube', channel_id: 'UC_TEST_FAKE_12345',
+      avatar_url: 'https://example.com/avatar.jpg', channel_account: 'test_account_123',
+    }),
+  });
+  assert.equal(response.status, 201);
+  const blogger = await response.json();
+  assert.equal(blogger.avatar_url, 'https://example.com/avatar.jpg');
+  assert.equal(blogger.channel_account, 'test_account_123');
+});
+
+test('POST /api/bloggers 按 channel_account 查重返回 already_exists', async () => {
+  const response = await fetch(`${baseUrl}/api/bloggers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: '另一个名字', channel_type: 'youtube', channel_id: 'UC_ANOTHER_999',
+      channel_account: 'test_account_123',
+    }),
+  });
+  assert.equal(response.status, 200);
+  const blogger = await response.json();
+  assert.equal(blogger.already_exists, true);
+  assert.equal(blogger.channel_account, 'test_account_123');
+});
+
+test('POST /api/fetch/search 缺 keyword 返回 400', async () => {
+  const response = await fetch(`${baseUrl}/api/fetch/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel_type: 'wechat' }),
+  });
+  assert.equal(response.status, 400);
+});
+
+test('POST /api/fetch/search 不支持的渠道返回错误', async () => {
+  const response = await fetch(`${baseUrl}/api/fetch/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel_type: 'youtube', keyword: 'test' }),
+  });
+  assert.equal(response.status, 503);
+  const body = await response.json();
+  assert.match(body.error, /暂不支持账号搜索/);
+});

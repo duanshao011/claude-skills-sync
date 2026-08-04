@@ -111,6 +111,8 @@ database.exec(`
     channel_id TEXT NOT NULL,
     avatar_color TEXT,
     avatar_url TEXT,
+    channel_account TEXT,
+    profile_synced_at TEXT,
     created_at TEXT DEFAULT (datetime('now','localtime')),
     last_fetched_at TEXT,
     last_fetch_attempted_at TEXT,
@@ -155,6 +157,8 @@ database.exec(`
 `);
 
 addColumn('bloggers', 'avatar_url TEXT');
+addColumn('bloggers', 'channel_account TEXT');
+addColumn('bloggers', 'profile_synced_at TEXT');
 addColumn('bloggers', 'last_fetch_attempted_at TEXT');
 addColumn('bloggers', "last_fetch_status TEXT DEFAULT 'never'");
 addColumn('bloggers', 'last_fetch_error TEXT');

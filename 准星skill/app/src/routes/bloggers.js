@@ -40,23 +40,28 @@ router.get('/:id', (req, res) => {
 
 // Add blogger
 router.post('/', (req, res) => {
-  const { name, channel_type, channel_id } = req.body;
+  const { name, channel_type, channel_id, avatar_url, channel_account } = req.body;
   if (!name || !channel_type || !channel_id) {
     return res.status(400).json({ error: 'name, channel_type, channel_id are required' });
   }
 
   const color = randomColor(name);
+  // 头像 URL 来自前端透传，只接受 http(s)，拒绝 javascript: 等危险协议
+  const avatarUrl = /^https?:\/\//i.test(String(avatar_url || '')) ? String(avatar_url) : null;
+  const account = channel_account ? String(channel_account) : null;
 
-  // Check if already exists
+  // Check if already exists — 同一个号可能既被用名称加过、又被用微信号加过
   const existing = db.get(
-    'SELECT * FROM bloggers WHERE channel_type = ? AND channel_id = ?',
-    [channel_type, channel_id]
+    account
+      ? 'SELECT * FROM bloggers WHERE channel_type = ? AND (channel_id = ? OR channel_account = ?)'
+      : 'SELECT * FROM bloggers WHERE channel_type = ? AND channel_id = ?',
+    account ? [channel_type, channel_id, account] : [channel_type, channel_id]
   );
   if (existing) return res.json({ ...existing, already_exists: true });
 
   db.run(
-    'INSERT INTO bloggers (name, channel_type, channel_id, avatar_color) VALUES (?, ?, ?, ?)',
-    [name, channel_type, channel_id, color]
+    'INSERT INTO bloggers (name, channel_type, channel_id, avatar_color, avatar_url, channel_account) VALUES (?, ?, ?, ?, ?, ?)',
+    [name, channel_type, channel_id, color, avatarUrl, account]
   );
 
   const blogger = db.get('SELECT * FROM bloggers WHERE id = last_insert_rowid()');

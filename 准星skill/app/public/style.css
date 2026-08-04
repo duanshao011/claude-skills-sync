@@ -1061,7 +1061,7 @@ img, svg { display: block; max-width: 100%; }
 
 .modal-btn.primary {
   background: var(--orange);
-  border-color: var(--ink);
+  border-color: var(--orange);
   color: #fff;
 }
 
@@ -1277,6 +1277,28 @@ img, svg { display: block; max-width: 100%; }
 .dd-channels {
   color: var(--ink-soft);
   font-size: 10px;
+}
+
+img.dd-avatar { object-fit: cover; }
+
+.dd-main { min-width: 0; }
+
+.dd-name {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dd-sub {
+  display: block;
+  font-size: 10px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ═══════════════════════════════════════════════

@@ -50,6 +50,47 @@ export async function validateChannel(channelType, channelInput) {
   return { valid: true, channel_id: channelId, channel_name: channelName, rss_available: rssAvailable };
 }
 
+export async function searchChannel(channelType, keyword) {
+  const fetcher = getFetcher(channelType);
+  if (!fetcher?.search) {
+    throw new ProviderError(PROVIDER_ERROR_CODES.NOT_SUPPORTED, `${channelType} 暂不支持账号搜索`, {
+      provider: channelType,
+    });
+  }
+  return fetcher.search(keyword);
+}
+
+// ── 公众号资料懒回填 ────────────────────────────────────────────────────
+
+// 老号是按「名称」加进来的，没有头像也没有微信号。抓取前顺手搜一次补齐，
+// 靠 profile_synced_at 保证每个号只搜一次（每次 ¥0.04），搜不到也不再重试。
+async function syncWechatProfile(blogger) {
+  if (blogger.channel_type !== 'wechat') return blogger;
+  if (blogger.profile_synced_at || blogger.channel_account) return blogger;
+
+  const { results } = await wechat.search(blogger.name);
+  const matched = wechat.pickAccountMatch(blogger.name, results);
+
+  db.transaction(() => {
+    // 无论匹配成功与否，先标记已搜，不再重复花钱
+    db.run(`UPDATE bloggers SET profile_synced_at = datetime('now','localtime') WHERE id = ?`, [blogger.id]);
+    if (!matched) return;
+    db.run(`UPDATE bloggers SET name = ?, avatar_url = COALESCE(?, avatar_url), channel_account = ?
+      WHERE id = ?`, [matched.name || blogger.name, matched.avatar_url, matched.account || null, blogger.id]);
+    // channel_id 迁成微信号。撞唯一约束（用户先前已用微信号加过同一个号）时跳过迁移，只留存 channel_account。
+    const clash = matched.account && db.get(
+      'SELECT id FROM bloggers WHERE channel_type = ? AND channel_id = ? AND id <> ?',
+      ['wechat', matched.account, blogger.id]);
+    if (clash) {
+      console.warn(`[Fetcher] 回填头像时发现重复博主：${blogger.name}（id=${blogger.id}）与 ${clash.name}（id=${clash.id}）指向同一微信号 ${matched.account}。头像已写入 id=${blogger.id}，但 channel_id 未迁移以免违反 UNIQUE 约束。建议手动删除重复项。`);
+    } else if (matched.account) {
+      db.run('UPDATE bloggers SET channel_id = ? WHERE id = ?', [matched.account, blogger.id]);
+    }
+  })();
+
+  return db.get('SELECT * FROM bloggers WHERE id = ?', [blogger.id]);
+}
+
 export async function fetchBlogger(blogger) {
   const fetcher = getFetcher(blogger.channel_type);
   if (!fetcher) {
@@ -63,7 +104,16 @@ export async function fetchBlogger(blogger) {
   db.save();
 
   try {
-    const rawResult = await fetcher.fetchChannel(blogger.channel_id, { cursor: blogger.fetch_cursor });
+    // 公众号资料懒回填：老号抓取前自动搜一次补头像和微信号，失败不影响抓取
+    try {
+      blogger = await syncWechatProfile(blogger);
+    } catch (error) {
+      console.error('[Fetcher] 公众号资料回填失败（不影响抓取）:', error.message);
+    }
+    const rawResult = await fetcher.fetchChannel(blogger.channel_id, {
+      cursor: blogger.fetch_cursor,
+      account: blogger.channel_account,
+    });
     const { articles, cursor, channelName } = normalizeFetchResult(rawResult);
     const result = insertArticles(blogger.id, articles);
 

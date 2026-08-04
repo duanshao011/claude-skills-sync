@@ -1,9 +1,20 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { fetchManager, validateChannel } from '../fetchers/index.js';
+import { fetchManager, validateChannel, searchChannel } from '../fetchers/index.js';
 import { ProviderError, serializeProviderError } from '../providers/errors.js';
 
 const router = Router();
+
+function sendProviderError(res, error) {
+  const status = error instanceof ProviderError && error.code !== 'PROVIDER_FETCH_FAILED' ? 503 : 400;
+  const detail = serializeProviderError(error);
+  res.status(status).json({
+    error: detail.message,
+    code: detail.code,
+    provider: detail.provider,
+    retryable: detail.retryable,
+  });
+}
 
 router.post('/', (req, res) => {
   const task = fetchManager.enqueueAll();
@@ -19,14 +30,19 @@ router.post('/validate', async (req, res) => {
   try {
     res.json(await validateChannel(channelType, channelInput));
   } catch (error) {
-    const status = error instanceof ProviderError && error.code !== 'PROVIDER_FETCH_FAILED' ? 503 : 400;
-    const detail = serializeProviderError(error);
-    res.status(status).json({
-      error: detail.message,
-      code: detail.code,
-      provider: detail.provider,
-      retryable: detail.retryable,
-    });
+    sendProviderError(res, error);
+  }
+});
+
+router.post('/search', async (req, res) => {
+  const { channel_type: channelType, keyword } = req.body || {};
+  if (!channelType || !keyword) {
+    return res.status(400).json({ error: 'channel_type and keyword are required' });
+  }
+  try {
+    res.json(await searchChannel(channelType, keyword));
+  } catch (error) {
+    sendProviderError(res, error);
   }
 });
 

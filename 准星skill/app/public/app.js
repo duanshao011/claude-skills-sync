@@ -4,14 +4,17 @@ const CHANNELS = {
   youtube: { label: 'YouTube', placeholder: '频道链接、@handle 或 UC… 频道 ID' },
   xiaohongshu: { label: '小红书', placeholder: '博主主页链接或用户 ID' },
   douyin: { label: '抖音', placeholder: '博主主页链接或抖音号' },
-  wechat: { label: '公众号', placeholder: '公众号名称或微信号' },
+  wechat: { label: '公众号', placeholder: '公众号名称关键词（不支持微信号）' },
 };
 const CHANNEL_ALIASES = { youtube:'youtube', xiaohongshu:'xiaohongshu', xhs:'xiaohongshu', rednote:'xiaohongshu', douyin:'douyin', wechat:'wechat', weixin:'wechat', mp:'wechat', official_account:'wechat' };
+const SEARCHABLE = new Set(['wechat']);
 const state = {
   dimension:'blogger', bloggers:[], topics:[], currentArticles:[], providers:{},
   selectedBloggerId:null, selectedTopicId:null, selectedArticleId:null, selectedArticle:null,
   summaryAvailable:false, pendingBloggerId:null, selectedChannel:'youtube',
-  validChannelId:null, validChannelName:null, listRequest:0, listController:null,
+  validChannelId:null, validChannelName:null, validAvatarUrl:null, validAccount:null,
+  searchResults:[], searchRequest:0, searchCache:new Map(),
+  listRequest:0, listController:null,
   fetchPolling:null, fetchFailures:[], fetchRunning:false, fetchTaskId:null,
   summaryRequest:0, summaryGenerating:false, summaryReturnFocus:null,
 };
@@ -86,7 +89,7 @@ function renderBloggerItem(blogger) {
   const name = String(blogger.name || '未命名');
   const initial = esc(name.charAt(0).toUpperCase());
   const avatar = safeHttpUrl(blogger.avatar_url);
-  const avatarHtml = avatar ? `<img class="list-avatar" src="${escAttr(avatar)}" alt=""><span class="list-avatar avatar-fallback" hidden>${initial}</span>` : `<span class="list-avatar">${initial}</span>`;
+  const avatarHtml = avatar ? `<img class="list-avatar" src="${escAttr(avatar)}" alt="" referrerpolicy="no-referrer"><span class="list-avatar avatar-fallback" hidden>${initial}</span>` : `<span class="list-avatar">${initial}</span>`;
   const badge = Number(blogger.unread_count) > 0 ? `<span class="avatar-badge">${Math.min(Number(blogger.unread_count),999)}</span>` : '';
   return `<div class="list-item" data-blogger-id="${id}" tabindex="0"><div class="avatar-wrap">${avatarHtml}${badge}</div><div class="list-info"><div class="list-name">${esc(name)}</div><div class="list-meta">${esc(channelLabel(blogger.channel_type))}</div></div><div class="hover-actions"><button class="act-btn tag-btn" data-action="tag" title="归入主题" aria-label="归入主题">＋</button><button class="act-btn del-btn" data-action="unfollow" title="取消关注" aria-label="取消关注">×</button></div></div>`;
 }
@@ -402,20 +405,59 @@ function renderChannels() {
   container.innerHTML=Object.entries(CHANNELS).map(([key,channel])=>{ const provider=state.providers[key] || {available:false}; return `<button type="button" class="channel-option${state.selectedChannel===key && provider.available?' active':''}${provider.available?'':' disabled'}" data-channel="${key}" ${provider.available?'':'disabled'}><span>${esc(channel.label)}</span><small>${provider.available?'可用':`待配置${provider.reason?` · ${esc(provider.reason)}`:''}`}</small>${provider.available?'<i class="provider-mark"></i>':''}</button>`; }).join('');
   if (!state.providers[state.selectedChannel]?.available) state.selectedChannel=Object.keys(CHANNELS).find(key=>state.providers[key]?.available) || 'youtube';
   container.querySelectorAll('.channel-option').forEach(option=>option.classList.toggle('active',option.dataset.channel===state.selectedChannel && !option.disabled));
-  updateAddPlaceholder();
+  updateAddMode();
 }
-function updateAddPlaceholder() { const channel=CHANNELS[state.selectedChannel]; document.getElementById('addUrlInput').placeholder=channel?.placeholder || '主页链接或账号 ID'; }
-function resetAddModal() { state.validChannelId=null; state.validChannelName=null; document.getElementById('addUrlInput').value=''; document.getElementById('validateResult').textContent=''; document.getElementById('validateResult').className=''; document.getElementById('confirmAddBtn').disabled=true; renderChannels(); }
+function updateAddMode() {
+  const channel=CHANNELS[state.selectedChannel]; const searchable=SEARCHABLE.has(state.selectedChannel);
+  document.getElementById('addUrlInput').placeholder=channel?.placeholder || '主页链接或账号 ID';
+  document.getElementById('addInputLabel').textContent=searchable?'公众号名称关键词（每次搜索约 ¥0.04）':'主页链接或账号 ID';
+  document.getElementById('validateBtn').textContent=searchable?'搜索':'验证';
+  hideSearchDropdown();
+}
+function resetAddModal() { state.validChannelId=null; state.validChannelName=null; state.validAvatarUrl=null; state.validAccount=null; state.searchResults=[]; document.getElementById('addUrlInput').value=''; document.getElementById('validateResult').textContent=''; document.getElementById('validateResult').className=''; document.getElementById('confirmAddBtn').disabled=true; hideSearchDropdown(); renderChannels(); }
 async function validateChannel() {
   const input=document.getElementById('addUrlInput').value.trim(); if(!input)return;
   const result=document.getElementById('validateResult'); result.textContent='正在验证…'; result.className=''; document.getElementById('confirmAddBtn').disabled=true;
-  try { const {data}=await api.post('/api/fetch/validate',{channel_type:state.selectedChannel,channel_input:input}); if(!data.valid) throw new Error(data.error||'未通过验证'); state.validChannelId=data.channel_id || data.account_id || data.id || input; state.validChannelName=data.channel_name || data.account_name || data.name || input; result.textContent=`已找到：${state.validChannelName}`; result.className='success'; document.getElementById('confirmAddBtn').disabled=false; }
+  try { const {data}=await api.post('/api/fetch/validate',{channel_type:state.selectedChannel,channel_input:input}); if(!data.valid) throw new Error(data.error||'未通过验证'); state.validChannelId=data.channel_id || data.account_id || data.id || input; state.validChannelName=data.channel_name || data.account_name || data.name || input; state.validAvatarUrl=data.avatar_url || null; state.validAccount=null; result.textContent=`已找到：${state.validChannelName}`; result.className='success'; document.getElementById('confirmAddBtn').disabled=false; }
   catch(error){ state.validChannelId=null; result.textContent=error.message; result.className='error'; }
 }
+async function searchAccounts() {
+  const keyword=document.getElementById('addUrlInput').value.trim(); if(!keyword)return;
+  const result=document.getElementById('validateResult'); const serial=++state.searchRequest;
+  result.textContent='正在搜索…'; result.className=''; document.getElementById('confirmAddBtn').disabled=true;
+  try {
+    const cached=state.searchCache.get(keyword);
+    const data=cached || (await api.post('/api/fetch/search',{channel_type:state.selectedChannel,keyword})).data;
+    if(serial!==state.searchRequest)return;
+    state.searchCache.set(keyword,data); state.searchResults=data.results||[];
+    renderSearchDropdown(state.searchResults);
+    result.textContent=state.searchResults.length?`找到 ${data.total} 个结果，从下方选择要关注的号`:`没有搜到和「${keyword}」相关的公众号，换个关键词试试`;
+    result.className=state.searchResults.length?'':'error';
+  }catch(error){ if(serial!==state.searchRequest)return; hideSearchDropdown(); result.textContent=error.message; result.className='error'; }
+}
+function renderSearchDropdown(results) {
+  const dd=document.getElementById('searchDropdown');
+  dd.innerHTML=results.map((item,index)=>{
+    const avatar=safeHttpUrl(item.avatar_url); const initial=esc(String(item.name||'?').charAt(0).toUpperCase());
+    const sub=[item.account,item.verify_info||item.description].filter(Boolean).join(' · ');
+    return `<div class="chip-dropdown-item" data-index="${index}">${avatar?`<img class="dd-avatar" src="${escAttr(avatar)}" alt="" referrerpolicy="no-referrer">`:`<span class="dd-avatar">${initial}</span>`}<span class="dd-main"><span class="dd-name">${esc(item.name)}</span><span class="dd-sub">${esc(sub)}</span></span><span class="dd-channels">${item.last_publish_time?esc(timeAgo(item.last_publish_time)):''}</span></div>`;
+  }).join('')||'<div class="empty-hint">没有匹配的公众号</div>';
+  dd.classList.add('show');
+}
+function pickSearchResult(index) {
+  const item=state.searchResults[index]; if(!item)return;
+  state.validChannelId=item.account || item.name; state.validChannelName=item.name;
+  state.validAvatarUrl=item.avatar_url || null; state.validAccount=item.account || null;
+  document.getElementById('addUrlInput').value=item.name; hideSearchDropdown();
+  const result=document.getElementById('validateResult');
+  result.textContent=`已选中：${item.name}${item.account?`（微信号 ${item.account}）`:''}`; result.className='success';
+  document.getElementById('confirmAddBtn').disabled=false;
+}
+function hideSearchDropdown(){document.getElementById('searchDropdown').classList.remove('show');}
 async function confirmAddBlogger() {
   if(!state.validChannelId)return; const result=document.getElementById('validateResult');
   try {
-    const {data}=await api.post('/api/bloggers',{name:state.validChannelName,channel_type:state.selectedChannel,channel_id:state.validChannelId});
+    const {data}=await api.post('/api/bloggers',{name:state.validChannelName,channel_type:state.selectedChannel,channel_id:state.validChannelId,avatar_url:state.validAvatarUrl,channel_account:state.validAccount});
     document.getElementById('addModal').classList.remove('show'); await loadBloggers(); renderSidebar();
     try { const response=await api.post(`/api/fetch/${encodeURIComponent(data.id)}`,{}); state.fetchTaskId=response.data.task_id||response.data.id||null; if(response.status===202||isFetchPending(response.data)) startFetchPolling(state.fetchTaskId); else await finishFetch(response.data); }
     catch(error){ setFetchMessage(`首次抓取失败：${error.message}`,true); renderFetchFailures([{id:data.id,name:data.name||state.validChannelName,error:error.message}]); showToast(`已添加，但首次抓取失败：${error.message}`,true); }
@@ -464,9 +506,11 @@ function bindEvents() {
   document.getElementById('summaryOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSummary();});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('summaryOverlay').classList.contains('show'))closeSummary();});
   document.getElementById('addBtn').addEventListener('click',()=>{if(state.dimension==='topic')openTopicModal();else{resetAddModal();document.getElementById('addModal').classList.add('show');}});
-  document.getElementById('channelSelect').addEventListener('click',e=>{const option=e.target.closest('[data-channel]');if(!option||option.disabled)return;state.selectedChannel=option.dataset.channel;state.validChannelId=null;document.getElementById('confirmAddBtn').disabled=true;renderChannels();});
-  document.getElementById('validateBtn').addEventListener('click',validateChannel); document.getElementById('confirmAddBtn').addEventListener('click',confirmAddBlogger);
-  document.getElementById('addUrlInput').addEventListener('keydown',e=>{if(e.key==='Enter')validateChannel();});
+  document.getElementById('channelSelect').addEventListener('click',e=>{const option=e.target.closest('[data-channel]');if(!option||option.disabled)return;state.selectedChannel=option.dataset.channel;state.validChannelId=null;state.validAvatarUrl=null;state.validAccount=null;hideSearchDropdown();document.getElementById('validateResult').textContent='';document.getElementById('confirmAddBtn').disabled=true;renderChannels();});
+  const doLookup=()=>SEARCHABLE.has(state.selectedChannel)?searchAccounts():validateChannel();
+  document.getElementById('validateBtn').addEventListener('click',doLookup); document.getElementById('confirmAddBtn').addEventListener('click',confirmAddBlogger);
+  document.getElementById('addUrlInput').addEventListener('keydown',e=>{if(e.key==='Enter')doLookup();});
+  document.getElementById('addUrlInput').addEventListener('input',()=>{state.validChannelId=null;state.validAvatarUrl=null;state.validAccount=null;document.getElementById('confirmAddBtn').disabled=true;});
   document.querySelectorAll('#addModal .modal-close,#addModal .secondary').forEach(button=>button.addEventListener('click',()=>document.getElementById('addModal').classList.remove('show')));
   document.querySelector('#topicModal .primary').addEventListener('click',saveTopic); document.querySelectorAll('#topicModal .modal-close,#topicModal .secondary').forEach(button=>button.addEventListener('click',()=>document.getElementById('topicModal').classList.remove('show')));
   document.getElementById('chipSearch').addEventListener('input',e=>renderChipDropdown(e.target.value)); document.getElementById('chipSearch').addEventListener('focus',e=>renderChipDropdown(e.target.value));
@@ -474,7 +518,8 @@ function bindEvents() {
   document.getElementById('chipDropdown').addEventListener('mousedown',e=>{const item=e.target.closest('[data-blogger-id]');if(!item)return;e.preventDefault();const blogger=state.bloggers.find(b=>Number(b.id)===Number(item.dataset.bloggerId));if(blogger)document.getElementById('chipWrap').insertBefore(createChip(blogger),document.getElementById('chipSearch'));document.getElementById('chipSearch').value='';renderChipDropdown('');});
   document.getElementById('tagPopoverList').addEventListener('click',e=>{const option=e.target.closest('.tag-option');if(option)option.classList.toggle('checked');});
   document.querySelector('#unfollowTooltip .btn-cancel').addEventListener('click',()=>{document.getElementById('unfollowTooltip').classList.remove('show');state.pendingBloggerId=null;}); document.querySelector('#unfollowTooltip .btn-confirm').addEventListener('click',confirmUnfollow);
-  document.addEventListener('click',e=>{closeAndSaveTagPopover(e.target);const tip=document.getElementById('unfollowTooltip');if(tip.classList.contains('show')&&!tip.contains(e.target)&&!e.target.closest?.('.del-btn')){tip.classList.remove('show');state.pendingBloggerId=null;}if(!e.target.closest?.('#chipWrap,#chipDropdown'))document.getElementById('chipDropdown').classList.remove('show');});
+  document.getElementById('searchDropdown').addEventListener('mousedown',e=>{const item=e.target.closest('[data-index]');if(!item)return;e.preventDefault();pickSearchResult(Number(item.dataset.index));});
+  document.addEventListener('click',e=>{closeAndSaveTagPopover(e.target);const tip=document.getElementById('unfollowTooltip');if(tip.classList.contains('show')&&!tip.contains(e.target)&&!e.target.closest?.('.del-btn')){tip.classList.remove('show');state.pendingBloggerId=null;}if(!e.target.closest?.('#chipWrap,#chipDropdown'))document.getElementById('chipDropdown').classList.remove('show');if(!e.target.closest?.('#addUrlInput,#searchDropdown'))hideSearchDropdown();});
   document.querySelectorAll('.modal-overlay').forEach(overlay=>overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.classList.remove('show');}));
   document.addEventListener('error',e=>{const image=e.target;if(image.matches?.('img.list-avatar')){image.hidden=true;image.nextElementSibling.hidden=false;}},true);
 }

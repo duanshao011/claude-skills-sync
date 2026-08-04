@@ -1,4 +1,5 @@
-import { createRedfoxClient } from '../clients/redfox.js';
+import { createRedfoxClient, isNoData } from '../clients/redfox.js';
+import { ProviderError, PROVIDER_ERROR_CODES } from '../providers/errors.js';
 
 export async function fetchChannel(channelId) {
   const identity = parseIdentity(channelId);
@@ -20,6 +21,13 @@ export async function fetchChannel(channelId) {
 export async function validate(channelInput) {
   const identity = parseIdentity(channelInput);
   const data = await createRedfoxClient().queryDouyinUserWithWorks(identity);
+  if (isNoData(data) || !data?.accountId) {
+    throw new ProviderError(
+      PROVIDER_ERROR_CODES.FETCH_FAILED,
+      `红狐优质库暂未收录抖音账号「${channelInput}」，加了也抓不到内容。`,
+      { provider: 'douyin', retryable: false }
+    );
+  }
   return {
     valid: true,
     channel_id: data?.accountId || identity.accountId || identity.accountName,

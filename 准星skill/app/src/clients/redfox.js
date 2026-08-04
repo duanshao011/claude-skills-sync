@@ -6,8 +6,17 @@ const ENDPOINTS = Object.freeze({
   wechatWorkList: '/story/api/gzhData/queryWorkList',
   wechatWork: '/story/api/gzhData/queryWork',
   wechatArticleDetail: '/story/api/gzhData/queryArticleDetail',
+  wechatSearchUser: '/story/api/gzhData/searchUser',
   xiaohongshuAccount: '/story/api/xhsUser/queryAccountDetail',
 });
+
+// 3203：红狐优质库未收录该账号。增量更新时等于「本次无新增」，验证时等于「无法监控」，
+// 两个场景语义不同，由调用方用 isNoData() 自行区分，客户端只负责如实标记。
+const NO_DATA = Object.freeze({ list: [], workList: [], noData: true });
+
+export function isNoData(data) {
+  return data?.noData === true;
+}
 
 export function createRedfoxClient(config = {}) {
   const apiKey = config.apiKey || process.env.REDFOX_API_KEY;
@@ -56,10 +65,8 @@ export function createRedfoxClient(config = {}) {
         provider: 'redfox', retryable: true,
       });
     }
-    // 3203：优质库暂未收录该账号最新数据，本次无新增内容。视为空结果而非错误，
-    // 避免每次全量抓取都把「暂无新内容」当成失败挂红色横幅。
     if (code === 3203) {
-      return { list: [], _noData: true };
+      return NO_DATA;
     }
     if (Number.isFinite(code) && code !== 2000 && code !== 200) {
       throw new ProviderError(PROVIDER_ERROR_CODES.FETCH_FAILED, `Redfox returned business code ${code}`, {
@@ -84,6 +91,9 @@ export function createRedfoxClient(config = {}) {
         ...(publishTimeEnd ? { publishTimeEnd } : {}),
         source: '准星-WorkBuddy',
       });
+    },
+    searchWechatUser({ keyword, offset = 0 }) {
+      return post(ENDPOINTS.wechatSearchUser, { keyword, offset, source: '准星-WorkBuddy' });
     },
     queryWork({ workUuid }) {
       return post(ENDPOINTS.wechatWork, { workUuid, source: '准星-WorkBuddy' });
