@@ -194,7 +194,6 @@ def main():
     pgy_paths = [p for p in (args.pugongying or []) if p and os.path.exists(p)]
     if pgy_paths:
         try:
-            import pandas as pd
             parts = []
             for p in pgy_paths:
                 df = load_pugongying(p, start=args.start, end=args.end)
