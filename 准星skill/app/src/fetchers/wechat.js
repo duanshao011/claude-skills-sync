@@ -5,6 +5,9 @@ const PAGE_SIZE = 20;
 const MAX_PAGES = 5;
 // 首次关注（无 cursor）只抓取近 30 篇，避免一次拉太多；后续更新走增量 cursor 不受此限。
 const FIRST_FETCH_LIMIT = 30;
+// 广域库不支持 publishTimeStart，增量更新只能「拉最新几页 + 本地按 cursor 截断」。
+// 2 页 = 40 篇，覆盖任何正常发文频率；真追不上时下次更新会继续补。
+const UPDATE_PAGES = 2;
 const WECHAT_ID = /^[a-zA-Z][a-zA-Z0-9_-]{5,}$/;
 const SEARCH_LIMIT = 20;
 
@@ -27,8 +30,14 @@ export function buildIdentity(channelId, account) {
 export async function search(keyword) {
   const query = String(keyword || '').trim();
   if (!query) throw new TypeError('keyword is required');
-  const data = await createRedfoxClient().searchWechatUser({ keyword: query });
-  const rows = extractRows(data);
+  const client = createRedfoxClient();
+  let data = await client.searchWechatUser({ keyword: query });
+  let rows = extractRows(data);
+  // 优质库是抽样库，搜不到不代表这个号不存在，用覆盖更全的广域库兜底
+  if (!rows.length) {
+    data = await client.searchWechatUserWide({ keyword: query });
+    rows = extractRows(data);
+  }
   return {
     total: Number(data?.total) || rows.length,
     results: rows.slice(0, SEARCH_LIMIT).map(normalizeAccount),
@@ -62,7 +71,65 @@ export function pickAccountMatch(name, results) {
 
 // ── 抓取 ────────────────────────────────────────────────────────────────
 
+// 增量截断：广域库拿不到「只要 cursor 之后的」，只能整页拉回来本地筛。
+// caughtUp 表示本页已经出现不新于 cursor 的文章，说明追上了，不用再翻页。
+// 日期解析不出来的文章一律当新的保留，宁可重复也不漏（下游 insertArticles 会按 workUuid 去重）。
+export function splitByCursor(articles, cursor) {
+  const cursorTime = cursor ? new Date(cursor).getTime() : NaN;
+  if (Number.isNaN(cursorTime)) return { fresh: articles, caughtUp: false };
+  const fresh = articles.filter(article => {
+    // 注意 new Date(null) 是 1970 而不是 Invalid Date，空值必须先挡掉，否则会被当成最旧的丢弃
+    if (!article.publishedAt) return true;
+    const time = new Date(article.publishedAt).getTime();
+    return Number.isNaN(time) || time > cursorTime;
+  });
+  return { fresh, caughtUp: fresh.length < articles.length };
+}
+
 export async function fetchChannel(channelId, options = {}) {
+  const account = options.account || null;
+  // 广域库覆盖全量（实测是优质库的 6-8 倍，且优质库会对个别账号停止同步），
+  // 但它只认微信号。没有微信号的老号、或广域库不可用时回落优质库。
+  if (account) {
+    try {
+      const wide = await fetchFromWide(account, options);
+      if (!wide.noData) return wide;
+    } catch (error) {
+      console.error('[Wechat] 广域库抓取失败，回落优质库:', error.message);
+    }
+  }
+  return fetchFromCurated(channelId, options);
+}
+
+async function fetchFromWide(account, options) {
+  const client = createRedfoxClient();
+  const isFirstFetch = !options.cursor;
+  const limit = isFirstFetch ? FIRST_FETCH_LIMIT : Infinity;
+  const maxPages = isFirstFetch ? MAX_PAGES : UPDATE_PAGES;
+  const articles = [];
+  let channelName = null;
+
+  for (let page = 0; page < maxPages; page++) {
+    const data = await client.queryWechatWorkListWide({ account, offset: page * PAGE_SIZE });
+    if (page === 0 && isNoData(data)) return { articles: [], cursor: null, channelName: null, noData: true };
+    const rows = extractRows(data);
+    if (!rows.length) break;
+    if (!channelName) channelName = rows[0].author || rows[0].accountName || null;
+
+    const { fresh, caughtUp } = splitByCursor(rows.map(normalizeWork), options.cursor);
+    articles.push(...fresh);
+    if (caughtUp || rows.length < PAGE_SIZE || articles.length >= limit) break;
+  }
+
+  return {
+    articles: articles.slice(0, limit),
+    cursor: newestPublishTime(articles),
+    channelName,
+    noData: false,
+  };
+}
+
+async function fetchFromCurated(channelId, options) {
   const identity = buildIdentity(channelId, options.account || null);
   const isFirstFetch = !options.cursor;
   const limit = isFirstFetch ? FIRST_FETCH_LIMIT : Infinity;

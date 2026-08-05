@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildIdentity, normalizeAccount, pickAccountMatch } from '../src/fetchers/wechat.js';
+import { buildIdentity, normalizeAccount, pickAccountMatch, splitByCursor } from '../src/fetchers/wechat.js';
 
 // ── buildIdentity ────────────────────────────────────────────────────────
 
@@ -91,4 +91,50 @@ test('pickAccountMatch 同名多个 → 返回 null 不猜', () => {
 test('pickAccountMatch 空结果 → 返回 null', () => {
   const match = pickAccountMatch('X', []);
   assert.equal(match, null);
+});
+
+// ── splitByCursor（广域库增量截断） ──────────────────────────────────────
+
+const page = [
+  { publishedAt: '2026-08-04 21:08:10' },
+  { publishedAt: '2026-07-31 11:51:47' },
+  { publishedAt: '2026-07-16 11:45:34' },
+];
+
+test('splitByCursor 无 cursor（首次抓取）→ 全部保留，不算追上', () => {
+  const { fresh, caughtUp } = splitByCursor(page, null);
+  assert.equal(fresh.length, 3);
+  assert.equal(caughtUp, false);
+});
+
+test('splitByCursor 部分新 → 只留 cursor 之后的，并标记追上', () => {
+  const { fresh, caughtUp } = splitByCursor(page, '2026-07-20 00:00:00');
+  assert.equal(fresh.length, 2);
+  assert.equal(caughtUp, true, '本页出现了旧文章说明已追上，应停止翻页');
+});
+
+test('splitByCursor 全是新的 → 全留且未追上（需要继续翻页）', () => {
+  const { fresh, caughtUp } = splitByCursor(page, '2026-01-01 00:00:00');
+  assert.equal(fresh.length, 3);
+  assert.equal(caughtUp, false);
+});
+
+test('splitByCursor 全是旧的 → 一条不留，标记追上', () => {
+  const { fresh, caughtUp } = splitByCursor(page, '2026-12-31 00:00:00');
+  assert.equal(fresh.length, 0);
+  assert.equal(caughtUp, true);
+});
+
+test('splitByCursor cursor 无法解析 → 降级为全部保留，不丢数据', () => {
+  const { fresh, caughtUp } = splitByCursor(page, '不是日期');
+  assert.equal(fresh.length, 3);
+  assert.equal(caughtUp, false);
+});
+
+test('splitByCursor 文章日期无法解析 → 当新的保留，宁可重复不漏', () => {
+  const withBad = [{ publishedAt: null }, { publishedAt: '2026-07-16 11:45:34' }];
+  const { fresh, caughtUp } = splitByCursor(withBad, '2026-07-20 00:00:00');
+  assert.equal(fresh.length, 1);
+  assert.equal(fresh[0].publishedAt, null);
+  assert.equal(caughtUp, true);
 });

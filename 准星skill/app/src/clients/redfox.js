@@ -7,6 +7,9 @@ const ENDPOINTS = Object.freeze({
   wechatWork: '/story/api/gzhData/queryWork',
   wechatArticleDetail: '/story/api/gzhData/queryArticleDetail',
   wechatSearchUser: '/story/api/gzhData/searchUser',
+  // 广域库（限时开放）：覆盖全量，实测是优质库的 6-8 倍。路径规律和参数格式都与优质库不同。
+  wechatWorkListWide: '/story/api/gzh/data/queryWorkList',
+  wechatSearchUserWide: '/story/api/gzh/data/searchUser',
   xiaohongshuAccount: '/story/api/xhsUser/queryAccountDetail',
 });
 
@@ -94,6 +97,18 @@ export function createRedfoxClient(config = {}) {
     },
     searchWechatUser({ keyword, offset = 0 }) {
       return post(ENDPOINTS.wechatSearchUser, { keyword, offset, source: '准星-WorkBuddy' });
+    },
+    // 广域库只认微信号（不认名称），sortType 是 "2" 不是 "_2"，且不支持 publishTimeStart 增量过滤。
+    queryWechatWorkListWide({ account, offset = 0 }) {
+      return post(ENDPOINTS.wechatWorkListWide, {
+        account,
+        offset,
+        sortType: '2',
+        source: '准星-WorkBuddy',
+      });
+    },
+    searchWechatUserWide({ keyword, offset = 0 }) {
+      return post(ENDPOINTS.wechatSearchUserWide, { keyword, offset, source: '准星-WorkBuddy' });
     },
     queryWork({ workUuid }) {
       return post(ENDPOINTS.wechatWork, { workUuid, source: '准星-WorkBuddy' });
