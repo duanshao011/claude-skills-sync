@@ -122,7 +122,9 @@ export function createArticlesRouter(dependencies = {}) {
     }
 
     try {
-      const content = await fetchArticleContent({ externalId: article.external_id, url: article.url });
+      const content = await fetchArticleContent({
+        externalId: article.external_id, url: article.url, title: article.title,
+      });
       if (content) {
         database.run('UPDATE articles SET content = ? WHERE id = ?', [content, article.id]);
         database.save();
@@ -179,7 +181,9 @@ export function createArticlesRouter(dependencies = {}) {
 }
 
 async function createSummary(database, summaryGenerator, article) {
-  const { summary, basedOnDescription } = await summaryGenerator(article);
+  const { summary, basedOnDescription, insufficient } = await summaryGenerator(article);
+  // 内容不全的结果不进缓存：等正文哪天能抓到了，用户再点一次就能拿到真摘要
+  if (insufficient) return summary;
   const fullSummary = basedOnDescription
     ? `${LIMITED_SOURCE_WARNING}\n\n${summary}`
     : summary;

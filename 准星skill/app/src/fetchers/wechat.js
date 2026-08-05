@@ -61,17 +61,30 @@ export function normalizeAccount(row) {
 // 抓取走广域库后，文章的 workUuid 不在优质库的作品索引里，queryWork 会返回 3203。
 // queryArticleDetail 按 URL 直查不受库限制，必须作为兜底，否则摘要只能拿到
 // 标题 + 一句话描述，生成出来的内容看着完整其实是脑补的。
-export async function fetchArticleContent({ externalId, url }) {
+export async function fetchArticleContent({ externalId, url, title }) {
   const client = createRedfoxClient();
   if (externalId) {
     const byUuid = await client.queryWork({ workUuid: externalId });
-    if (byUuid?.content) return byUuid.content;
+    if (byUuid?.content && isSameArticle(byUuid, title)) return byUuid.content;
   }
   if (url) {
     const byUrl = await client.queryArticleDetail({ url });
-    if (byUrl?.content) return byUrl.content;
+    if (byUrl?.content && isSameArticle(byUrl, title)) return byUrl.content;
   }
   return null;
+}
+
+// 红狐的 URL 直查会偶发返回另一篇文章——实测请求「一条千川引流素材」拿回来的是
+// 另一个号的「南北雾霾赛跑」。正文错配比抓不到严重得多：抓不到只是没摘要，
+// 错配会让摘要一本正经地总结别人的文章。所以落库前必须比对标题，对不上宁可不要。
+function isSameArticle(data, expectedTitle) {
+  if (!expectedTitle) return true;
+  const norm = value => String(value || '').replace(/\s+/g, '').trim();
+  const actual = norm(data.title);
+  if (!actual) return true; // 接口没返回标题时无从校验，放行
+  const match = actual === norm(expectedTitle);
+  if (!match) console.warn(`[Wechat] 正文错配已拦截：期望「${expectedTitle}」，红狐返回「${data.title}」`);
+  return match;
 }
 
 // ── 回填匹配规则（纯函数，可测） ────────────────────────────────────────
