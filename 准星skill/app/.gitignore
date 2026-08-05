@@ -1,9 +1,0 @@
-node_modules/
-.env
-.zhunxing.pid
-logs/
-*.log
-data/*.db
-data/*.db-*
-data/*.test.db
-data/test-*.db

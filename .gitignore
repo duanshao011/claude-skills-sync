@@ -6,3 +6,7 @@ Thumbs.db
 # Legacy local directory left behind after 信息源skill was renamed to 准星skill
 /信息源skill/
 
+# 准星已拆成独立项目，代码在 github.com/duanshao011/zhunxing
+# 本地目录保留原位（skill 靠这个路径启动），但由它自己的 git 仓库管理
+/准星skill/
+

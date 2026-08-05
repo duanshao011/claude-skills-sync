@@ -21,6 +21,11 @@ description: >
 |---|---|---|---|
 | 1 | Skill 文件 | `~/.claude/skills` | `duanshao011/claude-skills-sync` |
 | 2 | Skill 面板 | `~/Documents/Skill管理器` | `duanshao011/skill-manager` |
+| 3 | 准星 | `~/.claude/skills/准星skill` | `duanshao011/zhunxing` |
+
+> 准星已从 Skill 文件仓库拆出成独立项目（在 1 的 `.gitignore` 里排除）。本地目录仍在
+> `~/.claude/skills/准星skill`，skill 照常从这个路径启动，只是版本由自己的仓库管理。
+> 它是嵌套在 1 的工作区里的独立 git 仓库，两个仓库各推各的，不会互相干扰。
 
 > 博哥要新增或移除跟踪仓库，直接改这个表。不需要改脚本。
 
