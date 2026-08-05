@@ -56,6 +56,24 @@ export function normalizeAccount(row) {
   };
 }
 
+// ── 正文获取 ────────────────────────────────────────────────────────────
+
+// 抓取走广域库后，文章的 workUuid 不在优质库的作品索引里，queryWork 会返回 3203。
+// queryArticleDetail 按 URL 直查不受库限制，必须作为兜底，否则摘要只能拿到
+// 标题 + 一句话描述，生成出来的内容看着完整其实是脑补的。
+export async function fetchArticleContent({ externalId, url }) {
+  const client = createRedfoxClient();
+  if (externalId) {
+    const byUuid = await client.queryWork({ workUuid: externalId });
+    if (byUuid?.content) return byUuid.content;
+  }
+  if (url) {
+    const byUrl = await client.queryArticleDetail({ url });
+    if (byUrl?.content) return byUrl.content;
+  }
+  return null;
+}
+
 // ── 回填匹配规则（纯函数，可测） ────────────────────────────────────────
 
 // 老号回填时绝不能猜：候选必须和已存名称精确且唯一对应。宁可放弃头像，

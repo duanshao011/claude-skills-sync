@@ -1,5 +1,5 @@
 import { fetchTranscript } from 'youtube-transcript';
-import { createRedfoxClient } from './clients/redfox.js';
+import { fetchArticleContent } from './fetchers/wechat.js';
 import db from './db.js';
 import {
   SUMMARY_SYSTEM_PROMPT,
@@ -122,14 +122,11 @@ async function collectSourceText(article) {
       return { sourceText: article.content, sourceBasis: 'content' };
     }
     try {
-      const client = createRedfoxClient();
-      const data = article.external_id
-        ? await client.queryWork({ workUuid: article.external_id })
-        : await client.queryArticleDetail({ url: article.url });
-      if (data?.content && data.content.length >= 50) {
-        db.run('UPDATE articles SET content = ? WHERE id = ?', [data.content, article.id]);
+      const content = await fetchArticleContent({ externalId: article.external_id, url: article.url });
+      if (content && content.length >= 50) {
+        db.run('UPDATE articles SET content = ? WHERE id = ?', [content, article.id]);
         db.save();
-        return { sourceText: data.content, sourceBasis: 'content' };
+        return { sourceText: content, sourceBasis: 'content' };
       }
     } catch {
       // 正文获取失败时降级到描述

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { generateSummary, isAvailable } from '../summarizer.js';
 import { decodeSummaryCache, encodeSummaryCache } from '../prompts/summary.js';
-import { createRedfoxClient } from '../clients/redfox.js';
+import { fetchArticleContent } from '../fetchers/wechat.js';
 
 const LIMITED_SOURCE_WARNING = '> 内容完整度提示：当前只能获取标题与来源描述，以下是基于有限信息生成的萃取，不等同于全文分析。';
 
@@ -122,11 +122,7 @@ export function createArticlesRouter(dependencies = {}) {
     }
 
     try {
-      const client = createRedfoxClient();
-      const data = article.external_id
-        ? await client.queryWork({ workUuid: article.external_id })
-        : await client.queryArticleDetail({ url: article.url });
-      const content = data?.content || null;
+      const content = await fetchArticleContent({ externalId: article.external_id, url: article.url });
       if (content) {
         database.run('UPDATE articles SET content = ? WHERE id = ?', [content, article.id]);
         database.save();
