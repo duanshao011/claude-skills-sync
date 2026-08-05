@@ -14,10 +14,20 @@ export function createArticlesRouter(dependencies = {}) {
   const router = Router();
 
   router.get('/', (req, res) => {
-    const { blogger_id, topic_id } = req.query;
+    const { blogger_id, topic_id, starred } = req.query;
 
     let articles;
-    if (topic_id) {
+    if (starred === '1' || starred === 'true') {
+      // 星标合集跨博主，按标记时间倒序——最近标的排最前，符合「待处理」的语义
+      articles = database.all(`
+        SELECT a.*, b.name as blogger_name, b.channel_type, b.avatar_color
+        FROM articles a
+        JOIN bloggers b ON b.id = a.blogger_id
+        WHERE a.is_starred = 1
+        ORDER BY a.starred_at DESC, a.published_at DESC
+        LIMIT 200
+      `);
+    } else if (topic_id) {
       articles = database.all(`
         SELECT a.*, b.name as blogger_name, b.channel_type, b.avatar_color
         FROM articles a
@@ -58,6 +68,25 @@ export function createArticlesRouter(dependencies = {}) {
     `, [req.params.id]);
     if (!article) return res.status(404).json({ error: 'Article not found' });
     res.json(article);
+  });
+
+  // 星标与已读是两回事：标一篇待会儿细看的文章不应该把它标成已读
+  router.put('/:id/star', (req, res) => {
+    const article = database.get('SELECT is_starred FROM articles WHERE id = ?', [req.params.id]);
+    if (!article) return res.status(404).json({ error: 'Article not found' });
+
+    const next = Number(article.is_starred) ? 0 : 1;
+    database.run(
+      `UPDATE articles SET is_starred = ?, starred_at = ${next ? "datetime('now','localtime')" : 'NULL'} WHERE id = ?`,
+      [next, req.params.id]
+    );
+    database.save();
+    res.json({ id: Number(req.params.id), is_starred: next });
+  });
+
+  router.get('/starred/count', (req, res) => {
+    const row = database.get('SELECT COUNT(*) AS total FROM articles WHERE is_starred = 1');
+    res.json({ total: row?.total || 0 });
   });
 
   router.put('/:id/read', (req, res) => {

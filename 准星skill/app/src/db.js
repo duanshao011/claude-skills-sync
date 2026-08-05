@@ -136,6 +136,8 @@ database.exec(`
     published_at TEXT,
     fetched_at TEXT DEFAULT (datetime('now','localtime')),
     is_read INTEGER DEFAULT 0,
+    is_starred INTEGER DEFAULT 0,
+    starred_at TEXT,
     FOREIGN KEY (blogger_id) REFERENCES bloggers(id) ON DELETE CASCADE,
     UNIQUE(blogger_id, url)
   );
@@ -168,6 +170,8 @@ addColumn('articles', 'title_cn TEXT');
 addColumn('articles', 'summary_cn TEXT');
 addColumn('articles', 'external_id TEXT');
 addColumn('articles', 'content TEXT');
+addColumn('articles', 'is_starred INTEGER DEFAULT 0');
+addColumn('articles', 'starred_at TEXT');
 database.exec(`
   CREATE UNIQUE INDEX IF NOT EXISTS articles_blogger_external_id_unique
   ON articles(blogger_id, external_id)

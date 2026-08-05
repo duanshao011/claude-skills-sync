@@ -11,11 +11,12 @@ const SEARCHABLE = new Set(['wechat']);
 const state = {
   dimension:'blogger', bloggers:[], topics:[], currentArticles:[], providers:{},
   selectedBloggerId:null, selectedTopicId:null, selectedArticleId:null, selectedArticle:null,
+  selectedView:null, starredCount:0,
   summaryAvailable:false, pendingBloggerId:null, selectedChannel:'youtube',
   validChannelId:null, validChannelName:null, validAvatarUrl:null, validAccount:null,
   searchResults:[], searchRequest:0, searchCache:new Map(),
   listRequest:0, listController:null,
-  fetchPolling:null, fetchFailures:[], fetchRunning:false, fetchTaskId:null,
+  fetchPolling:null, fetchFailures:[], fetchRunning:false, fetchTaskId:null, fetchErrorsOpen:false,
   summaryRequest:0, summaryGenerating:false, summaryReturnFocus:null,
 };
 
@@ -45,7 +46,7 @@ async function init() {
   renderChannels();
   updateSummaryAvailability();
   try {
-    await Promise.all([loadBloggers(), loadTopics(), loadFetchStatus()]);
+    await Promise.all([loadBloggers(), loadTopics(), loadFetchStatus(), loadStarredCount()]);
     renderSidebar();
   } catch (error) { showToast(`加载失败：${error.message}`, true); }
 }
@@ -72,16 +73,21 @@ function renderSidebar() {
   const container = document.getElementById('sidebarList');
   const query = document.getElementById('sidebarSearch').value.trim().toLowerCase();
   if (state.dimension === 'blogger') {
+    // 未读角标已经说明了「有没有新内容」，不再额外分 NEW / CLEAR 两组。
+    // 排序仍由后端 ORDER BY unread_count DESC 保证有新内容的在前。
     const list = state.bloggers.filter(b => !query || String(b.name || '').toLowerCase().includes(query));
-    const fresh = list.filter(b => Number(b.unread_count) > 0);
-    const read = list.filter(b => Number(b.unread_count) <= 0);
-    container.innerHTML = `${fresh.length ? '<div class="list-group-label">NEW / 有新内容</div>' : ''}${fresh.map(renderBloggerItem).join('')}${read.length ? '<div class="list-group-label">CLEAR / 已读完</div>' : ''}${read.map(renderBloggerItem).join('')}${list.length ? '' : '<div class="empty-hint">没有匹配的博主</div>'}`;
+    container.innerHTML = `${renderStarEntry()}${list.map(renderBloggerItem).join('')}${list.length ? '' : '<div class="empty-hint">没有匹配的博主</div>'}`;
   } else {
     const list = state.topics.filter(t => !query || String(t.name || '').toLowerCase().includes(query));
     container.innerHTML = `<div class="list-group-label">TOPICS / 我的主题</div>${list.map(renderTopicItem).join('')}${list.length ? '' : '<div class="empty-hint">暂无主题</div>'}`;
   }
+  if (state.selectedView === 'starred') { container.querySelector('[data-view="starred"]')?.classList.add('active'); return; }
   const selected = state.dimension === 'blogger' ? `[data-blogger-id="${state.selectedBloggerId}"]` : `[data-topic-id="${state.selectedTopicId}"]`;
   if ((state.selectedBloggerId || state.selectedTopicId) && container.querySelector(selected)) container.querySelector(selected).classList.add('active');
+}
+function renderStarEntry() {
+  const count = Number(state.starredCount) || 0;
+  return `<div class="list-item star-entry" data-view="starred" tabindex="0"><div class="avatar-wrap"><span class="list-avatar star-avatar">★</span></div><div class="list-info"><div class="list-name">星标内容</div><div class="list-meta">待看 / 待入库</div></div>${count ? `<span class="star-count">${count}</span>` : ''}</div>`;
 }
 
 function renderBloggerItem(blogger) {
@@ -99,10 +105,21 @@ function renderTopicItem(topic) {
   return `<div class="list-item" data-topic-id="${id}" tabindex="0"><div class="topic-icon-wrap"><span class="list-topic-icon">T</span>${badge}</div><div class="list-info"><div class="list-name">${esc(topic.name)}</div><div class="list-meta">${Number(topic.blogger_count)||0} 位博主</div></div><div class="hover-actions"><button class="act-btn" data-action="edit-topic" title="编辑主题">/</button><button class="act-btn del-btn" data-action="delete-topic" title="删除主题">×</button></div></div>`;
 }
 
+async function selectStarred() {
+  setDimension('blogger', false);
+  state.selectedView = 'starred'; state.selectedBloggerId = null; state.selectedTopicId = null;
+  resetArticleSelection(); renderSidebar();
+  await loadArticleSelection('/api/articles?starred=1', { name:'星标内容', type:'starred' });
+}
+async function loadStarredCount() {
+  try { const data = await api.get('/api/articles/starred/count'); state.starredCount = Number(data.total) || 0; }
+  catch { state.starredCount = 0; }
+}
 async function selectBlogger(id) {
   const blogger = state.bloggers.find(item => Number(item.id) === Number(id));
   if (!blogger) return;
   setDimension('blogger', false);
+  state.selectedView = null;
   state.selectedBloggerId = Number(id); state.selectedTopicId = null; resetArticleSelection(); renderSidebar();
   await loadArticleSelection(`/api/articles?blogger_id=${encodeURIComponent(id)}`, { name:blogger.name, type:'blogger', channelType:blogger.channel_type });
 }
@@ -110,6 +127,7 @@ async function selectTopic(id) {
   const topic = state.topics.find(item => Number(item.id) === Number(id));
   if (!topic) return;
   setDimension('topic', false);
+  state.selectedView = null;
   state.selectedTopicId = Number(id); state.selectedBloggerId = null; resetArticleSelection(); renderSidebar();
   await loadArticleSelection(`/api/articles?topic_id=${encodeURIComponent(id)}`, { name:topic.name, type:'topic' });
 }
@@ -129,17 +147,34 @@ async function loadArticleSelection(path, source) {
   }
 }
 function resetArticleSelection() { state.selectedArticleId=null; state.selectedArticle=null; state.currentArticles=[]; clearContent(); }
+function renderStarButton(article) {
+  const button=document.getElementById('starBtn'); const on=Number(article?.is_starred);
+  button.textContent=on?'★ 已星标':'☆ 星标'; button.classList.toggle('active',Boolean(on));
+}
+async function toggleStar(id) {
+  const article=state.currentArticles.find(item=>Number(item.id)===Number(id)); if(!article)return;
+  try {
+    const data=await api.put(`/api/articles/${encodeURIComponent(id)}/star`);
+    article.is_starred=data.is_starred;
+    if(Number(state.selectedArticleId)===Number(id)){ state.selectedArticle.is_starred=data.is_starred; renderStarButton(article); }
+    // 星标合集里取消星标要把这条移出列表，其他视图只更新图标
+    if(state.selectedView==='starred' && !data.is_starred){ state.currentArticles=state.currentArticles.filter(item=>Number(item.id)!==Number(id)); renderArticleList(state.currentArticles); if(Number(state.selectedArticleId)===Number(id)) resetArticleSelection(); }
+    else { const el=document.querySelector(`[data-star-id="${Number(id)}"]`); if(el){ el.classList.toggle('starred',Boolean(data.is_starred)); el.textContent=data.is_starred?'★':'☆'; } }
+    await loadStarredCount(); renderSidebar();
+  } catch(error){ showToast(`星标失败：${error.message}`,true); }
+}
 
 function renderArticleList(articles, source=getCurrentSource()) {
   const header = document.getElementById('articleListHeader');
-  header.innerHTML = source ? `<div><span class="eyebrow">${source.type === 'topic' ? 'TOPIC' : 'TARGET'}</span><h2>${esc(source.name)}</h2></div>${source.channelType ? `<span class="channel-tag">${esc(channelLabel(source.channelType))}</span>` : ''}` : '<div><span class="eyebrow">FOCUS</span><h2>选择一位博主</h2></div>';
+  const eyebrow = source?.type === 'topic' ? 'TOPIC' : source?.type === 'starred' ? 'STARRED' : 'TARGET';
+  header.innerHTML = source ? `<div><span class="eyebrow">${eyebrow}</span><h2>${esc(source.name)}</h2></div>${source.channelType ? `<span class="channel-tag">${esc(channelLabel(source.channelType))}</span>` : ''}` : '<div><span class="eyebrow">FOCUS</span><h2>选择一位博主</h2></div>';
   const topBar = document.getElementById('topBar');
   const unread = articles.filter(a => !a.is_read).length;
   document.getElementById('topStats').innerHTML = articles.length ? `<span><b class="stat-num">${unread}</b> 条未读</span>${articles[0]?.published_at ? `<span>最近 ${esc(timeAgo(articles[0].published_at))}</span>` : ''}` : '';
   topBar.hidden = !articles.length;
   document.getElementById('readAllBtn').hidden = source?.type !== 'blogger';
   const body = document.getElementById('articleListBody');
-  if (!articles.length) { body.innerHTML='<div class="empty-hint">尚未抓取到内容</div>'; return; }
+  if (!articles.length) { body.innerHTML=`<div class="empty-hint">${source?.type === 'starred' ? '还没有星标内容，在文章上点 ☆ 标记' : '尚未抓取到内容'}</div>`; return; }
   // 主题视图按更新时间分组（今日/昨日/更早）做信息流展示；博主视图保持平铺。
   const grouped = source?.type === 'topic';
   let lastBucket = null;
@@ -156,7 +191,8 @@ function renderArticleItem(article) {
   const title = article.title_cn || article.title || '无标题';
   const snippet = String(article.summary_cn || article.summary || article.description || '').slice(0,120);
   const active = Number(article.id) === Number(state.selectedArticleId) ? ' active' : '';
-  return `<div class="article-item${article.is_read ? '' : ' unread'}${active}" data-article-id="${Number(article.id)}" tabindex="0"><div class="article-title">${esc(title)}</div>${snippet ? `<div class="article-snippet">${esc(snippet)}</div>` : ''}<div class="article-meta"><span class="meta-author">${esc(article.blogger_name || '')}</span><span>${esc(channelLabel(article.channel_type))}</span><span>${article.published_at ? esc(timeAgo(article.published_at)) : ''}</span></div></div>`;
+  const starred = Number(article.is_starred) ? ' starred' : '';
+  return `<div class="article-item${article.is_read ? '' : ' unread'}${active}" data-article-id="${Number(article.id)}" tabindex="0"><button class="star-toggle${starred}" data-star-id="${Number(article.id)}" type="button" title="星标" aria-label="星标">${starred ? '★' : '☆'}</button><div class="article-title">${esc(title)}</div>${snippet ? `<div class="article-snippet">${esc(snippet)}</div>` : ''}<div class="article-meta"><span class="meta-author">${esc(article.blogger_name || '')}</span><span>${esc(channelLabel(article.channel_type))}</span><span>${article.published_at ? esc(timeAgo(article.published_at)) : ''}</span></div></div>`;
 }
 function dateBucket(value) {
   const date = parseDate(value);
@@ -191,6 +227,7 @@ function renderContent(article) {
   document.getElementById('pubTime').textContent=date ? `${date.toLocaleDateString('zh-CN')} ${date.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}` : '';
   const origin = document.getElementById('originBtn'); const safeUrl=safeHttpUrl(article.url);
   origin.hidden=!safeUrl; if (safeUrl) origin.href=safeUrl; else origin.removeAttribute('href');
+  renderStarButton(article);
   const isWechat = normalizeChannel(article.channel_type) === 'wechat';
   updateSummaryAvailability(!isWechat);
   const titleText = article.title_cn || article.title || '无标题';
@@ -385,9 +422,15 @@ function extractFailures(payload={}) {
   return combined.map(item => ({ id:item.blogger_id ?? item.id, name:item.blogger_name || item.blogger || item.name || item.channel || '未知来源', error:errorMessage(item.last_fetch_error || item.error || item.message || item.reason) || '更新失败' })).filter(item=>{const key=`${item.id}:${item.error}`;if(seen.has(key))return false;seen.add(key);return true;});
 }
 function renderFetchFailures(failures) {
-  const box=document.getElementById('fetchErrors'); box.hidden=!failures.length;
+  // 失败详情平时收起，只留一行细条；重试成功后细条自动消失
+  const toggle=document.getElementById('fetchErrorToggle'); const box=document.getElementById('fetchErrors');
+  toggle.hidden=!failures.length;
+  if(!failures.length){ box.hidden=true; box.innerHTML=''; state.fetchErrorsOpen=false; return; }
+  toggle.textContent=`${failures.length} 个没更新成功 ${state.fetchErrorsOpen?'▴':'▾'}`;
+  box.hidden=!state.fetchErrorsOpen;
   box.innerHTML=failures.map((item,index)=>`<div class="fetch-error-row"><span>${esc(item.name)}：${esc(item.error)}</span><button class="retry-btn" data-retry-index="${index}">重试</button></div>`).join('');
 }
+function toggleFetchErrors() { state.fetchErrorsOpen=!state.fetchErrorsOpen; renderFetchFailures(state.fetchFailures); }
 async function retryFetch(index) {
   const failure=state.fetchFailures[index]; if (!failure) return;
   if (!failure.id) return startGlobalFetch();
@@ -396,7 +439,7 @@ async function retryFetch(index) {
   catch(error){ setFetchRunning(false); setFetchMessage(`重试失败：${error.message}`,true); }
 }
 function isFetchPending(payload={}) { const value=String((payload.job||payload.task||payload).status || '').toLowerCase(); return ['queued','pending','running','processing','fetching','in_progress'].includes(value) || payload.running===true; }
-function setFetchRunning(running) { state.fetchRunning=running; const button=document.getElementById('fetchAllBtn'); button.disabled=running; button.textContent=running?'更新中…':'更新全部'; document.getElementById('fetchProgress').hidden=!running; if(!running) document.getElementById('fetchProgressBar').style.width='100%'; }
+function setFetchRunning(running) { state.fetchRunning=running; const button=document.getElementById('fetchAllBtn'); button.disabled=running; button.title=running?'更新中…':'更新全部关注'; document.getElementById('fetchProgress').hidden=!running; if(!running) document.getElementById('fetchProgressBar').style.width='100%'; }
 function setFetchMessage(message,isError=false) { const el=document.getElementById('fetchStatus'); el.textContent=message; el.style.color=isError?'var(--red)':''; }
 async function refreshAfterFetch() { await Promise.all([loadBloggers(),loadTopics()]); renderSidebar(); if(state.selectedBloggerId) await selectBlogger(state.selectedBloggerId); else if(state.selectedTopicId) await selectTopic(state.selectedTopicId); }
 
@@ -414,7 +457,7 @@ function updateAddMode() {
   document.getElementById('validateBtn').textContent=searchable?'搜索':'验证';
   hideSearchDropdown();
 }
-function resetAddModal() { state.validChannelId=null; state.validChannelName=null; state.validAvatarUrl=null; state.validAccount=null; state.searchResults=[]; document.getElementById('addUrlInput').value=''; document.getElementById('validateResult').textContent=''; document.getElementById('validateResult').className=''; document.getElementById('confirmAddBtn').disabled=true; hideSearchDropdown(); renderChannels(); }
+function resetAddModal() { state.validChannelId=null; state.validChannelName=null; state.validAvatarUrl=null; state.validAccount=null; state.searchResults=[]; document.getElementById('addUrlInput').value=''; document.getElementById('validateResult').textContent=''; document.getElementById('validateResult').className=''; const confirm=document.getElementById('confirmAddBtn'); confirm.disabled=true; confirm.textContent='添加'; hideSearchDropdown(); renderChannels(); }
 async function validateChannel() {
   const input=document.getElementById('addUrlInput').value.trim(); if(!input)return;
   const result=document.getElementById('validateResult'); result.textContent='正在验证…'; result.className=''; document.getElementById('confirmAddBtn').disabled=true;
@@ -455,13 +498,23 @@ function pickSearchResult(index) {
 }
 function hideSearchDropdown(){document.getElementById('searchDropdown').classList.remove('show');}
 async function confirmAddBlogger() {
-  if(!state.validChannelId)return; const result=document.getElementById('validateResult');
+  if(!state.validChannelId)return;
+  const result=document.getElementById('validateResult'); const button=document.getElementById('confirmAddBtn');
+  const restore=()=>{ button.disabled=false; button.textContent='添加'; };
+  button.disabled=true; button.textContent='添加中…';
+  let data;
   try {
-    const {data}=await api.post('/api/bloggers',{name:state.validChannelName,channel_type:state.selectedChannel,channel_id:state.validChannelId,avatar_url:state.validAvatarUrl,channel_account:state.validAccount});
-    document.getElementById('addModal').classList.remove('show'); await loadBloggers(); renderSidebar();
-    try { const response=await api.post(`/api/fetch/${encodeURIComponent(data.id)}`,{}); state.fetchTaskId=response.data.task_id||response.data.id||null; if(response.status===202||isFetchPending(response.data)) startFetchPolling(state.fetchTaskId); else await finishFetch(response.data); }
-    catch(error){ setFetchMessage(`首次抓取失败：${error.message}`,true); renderFetchFailures([{id:data.id,name:data.name||state.validChannelName,error:error.message}]); showToast(`已添加，但首次抓取失败：${error.message}`,true); }
-  } catch(error){ result.textContent=error.message; result.className='error'; }
+    ({data}=await api.post('/api/bloggers',{name:state.validChannelName,channel_type:state.selectedChannel,channel_id:state.validChannelId,avatar_url:state.validAvatarUrl,channel_account:state.validAccount}));
+  } catch(error){ result.textContent=error.message; result.className='error'; restore(); return; }
+  document.getElementById('addModal').classList.remove('show'); restore();
+  await loadBloggers();
+  // 立刻选中新博主并占位「抓取中」，让用户看见内容会出现在哪，而不是回到主页干等。
+  // 抓完由 finishFetch → refreshAfterFetch → selectBlogger 自动刷出文章。
+  state.selectedBloggerId=Number(data.id); state.selectedTopicId=null; resetArticleSelection(); renderSidebar();
+  renderArticleList([],{name:data.name||state.validChannelName,type:'blogger',channelType:state.selectedChannel});
+  document.getElementById('articleListBody').innerHTML='<div class="empty-hint loading-hint"><span class="loading-dot"></span>正在抓取最新内容，第一次可能要十几秒…</div>';
+  try { const response=await api.post(`/api/fetch/${encodeURIComponent(data.id)}`,{}); state.fetchTaskId=response.data.task_id||response.data.id||null; if(response.status===202||isFetchPending(response.data)) startFetchPolling(state.fetchTaskId); else await finishFetch(response.data); }
+  catch(error){ setFetchMessage(`首次抓取失败：${error.message}`,true); renderFetchFailures([{id:data.id,name:data.name||state.validChannelName,error:error.message}]); showToast(`已添加，但首次抓取失败：${error.message}`,true); document.getElementById('articleListBody').innerHTML=`<div class="empty-hint">首次抓取失败：${esc(error.message)}</div>`; }
 }
 
 async function showTagPopover(button,bloggerId) {
@@ -496,11 +549,14 @@ function bindEvents() {
   document.getElementById('sidebarSearch').addEventListener('input',renderSidebar);
   document.getElementById('sidebarList').addEventListener('click',e=>handleSidebarAction(e));
   document.getElementById('sidebarList').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handleSidebarAction(e);}});
-  document.getElementById('articleListBody').addEventListener('click',e=>{const item=e.target.closest('.article-item');if(item)selectArticle(item.dataset.articleId);});
+  document.getElementById('articleListBody').addEventListener('click',e=>{const star=e.target.closest('[data-star-id]');if(star){e.stopPropagation();toggleStar(Number(star.dataset.starId));return;}const item=e.target.closest('.article-item');if(item)selectArticle(item.dataset.articleId);});
+  document.getElementById('starBtn').addEventListener('click',()=>{if(state.selectedArticleId)toggleStar(state.selectedArticleId);});
+  document.addEventListener('keydown',e=>{if((e.key==='s'||e.key==='S')&&state.selectedArticleId&&!/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName)&&!e.metaKey&&!e.ctrlKey){e.preventDefault();toggleStar(state.selectedArticleId);}});
   document.getElementById('articleListBody').addEventListener('keydown',e=>{const item=e.target.closest('.article-item');if(item&&(e.key==='Enter'||e.key===' ')){e.preventDefault();selectArticle(item.dataset.articleId);}});
   document.getElementById('readAllBtn').addEventListener('click',async()=>{if(!state.selectedBloggerId)return;try{await api.put(`/api/articles/read-all?blogger_id=${state.selectedBloggerId}`);state.currentArticles.forEach(a=>a.is_read=1);await Promise.all([loadBloggers(),loadTopics()]);renderSidebar();renderArticleList(state.currentArticles,getCurrentSource());}catch(error){showToast(error.message,true);}});
   document.getElementById('fetchAllBtn').addEventListener('click',startGlobalFetch);
   document.getElementById('fetchErrors').addEventListener('click',e=>{const button=e.target.closest('[data-retry-index]');if(button)retryFetch(Number(button.dataset.retryIndex));});
+  document.getElementById('fetchErrorToggle').addEventListener('click',toggleFetchErrors);
   document.getElementById('summaryBtn').addEventListener('click',generateSummary);
   document.getElementById('summaryClose').addEventListener('click',closeSummary);
   document.getElementById('summaryOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSummary();});
@@ -523,7 +579,7 @@ function bindEvents() {
   document.querySelectorAll('.modal-overlay').forEach(overlay=>overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.classList.remove('show');}));
   document.addEventListener('error',e=>{const image=e.target;if(image.matches?.('img.list-avatar')){image.hidden=true;image.nextElementSibling.hidden=false;}},true);
 }
-function handleSidebarAction(event) { const item=event.target.closest('.list-item');if(!item)return;const action=event.target.closest('[data-action]')?.dataset.action;if(action){event.stopPropagation();if(action==='tag')showTagPopover(event.target,Number(item.dataset.bloggerId));if(action==='unfollow')showUnfollow(event.target,Number(item.dataset.bloggerId),item.querySelector('.list-name').textContent);if(action==='edit-topic')openTopicModal(Number(item.dataset.topicId));if(action==='delete-topic')deleteTopic(Number(item.dataset.topicId),item.querySelector('.list-name').textContent);return;}if(item.dataset.bloggerId)selectBlogger(item.dataset.bloggerId);else selectTopic(item.dataset.topicId); }
+function handleSidebarAction(event) { const item=event.target.closest('.list-item');if(!item)return;if(item.dataset.view==='starred')return selectStarred();const action=event.target.closest('[data-action]')?.dataset.action;if(action){event.stopPropagation();if(action==='tag')showTagPopover(event.target,Number(item.dataset.bloggerId));if(action==='unfollow')showUnfollow(event.target,Number(item.dataset.bloggerId),item.querySelector('.list-name').textContent);if(action==='edit-topic')openTopicModal(Number(item.dataset.topicId));if(action==='delete-topic')deleteTopic(Number(item.dataset.topicId),item.querySelector('.list-name').textContent);return;}if(item.dataset.bloggerId)selectBlogger(item.dataset.bloggerId);else selectTopic(item.dataset.topicId); }
 function closeSummary(){const overlay=document.getElementById('summaryOverlay');overlay.classList.remove('show');overlay.hidden=true;state.summaryRequest++;state.summaryGenerating=false;updateSummaryAvailability();const focusTarget=state.summaryReturnFocus;state.summaryReturnFocus=null;if(focusTarget?.isConnected&&!focusTarget.disabled)focusTarget.focus();}
 
 function normalizeChannel(type){return CHANNEL_ALIASES[String(type||'').toLowerCase()]||String(type||'').toLowerCase();}

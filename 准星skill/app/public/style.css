@@ -18,6 +18,11 @@
   --orange-press:  #b71c1c;
   --orange-light:  #fef5f4;
   --orange-tint:   #fef9f9;
+
+  /* 星标专用琥珀色。主题色 --orange 实为红色，选中态红底会把红星吃掉，
+     琥珀既能压住红底又是通用的「收藏」语义色。 */
+  --star:          #f5a623;
+  --star-light:    #fff7e6;
   --orange-soft:   rgba(232,55,44,.06);
   --orange-glow:   rgba(232,55,44,.12);
   --orange-deep:   #8b1a14;
@@ -130,6 +135,72 @@ img, svg { display: block; max-width: 100%; }
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* 更新全部是全局动作，收成 Logo 旁的图标按钮，不占内容栏 */
+.refresh-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: var(--canvas);
+  color: var(--ink-mute);
+  cursor: pointer;
+  transition: all .15s var(--ease);
+}
+
+.refresh-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: #fff;
+  box-shadow: var(--shadow-orange);
+}
+
+.refresh-btn:disabled {
+  cursor: progress;
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.refresh-btn:disabled svg {
+  animation: spin .9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 首次抓取要十几秒，用一个转圈告诉用户在跑，别让人以为卡住了 */
+.loading-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.loading-dot {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 2px solid var(--orange-light);
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
 }
 
 .brand-row h1 {
@@ -473,28 +544,39 @@ img, svg { display: block; max-width: 100%; }
    UPDATE CONSOLE
    ═══════════════════════════════════════════════ */
 .update-console {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--hairline-soft);
-  background: var(--canvas-soft);
+  margin-top: 10px;
 }
 
-.update-head {
-  display: grid;
-  grid-template-columns: 104px 1fr;
-  align-items: center;
-  gap: 10px;
-}
-
-.update-head .fetch-btn {
-  padding: 8px 12px;
-  font-size: 12px;
-}
-
-.update-head > span {
+.update-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   font-size: 11px;
   color: var(--ink-soft);
-  text-align: right;
 }
+
+.update-line > span:last-child {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* 失败提示平时收成一行细条，点开才展开详情，不长期占地方 */
+.fetch-error-toggle {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  transition: opacity .15s var(--ease);
+}
+
+.fetch-error-toggle:hover { opacity: .7; }
 
 .progress-track {
   height: 3px;
@@ -514,16 +596,17 @@ img, svg { display: block; max-width: 100%; }
 }
 
 .fetch-status {
-  font-size: 11px;
   line-height: 1.5;
-  margin-top: 6px;
   color: var(--ink-mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fetch-status:empty { display: none; }
 
 .fetch-errors {
-  margin-top: 10px;
+  margin-top: 8px;
   padding: 10px 12px;
   background: var(--danger-light);
   border-radius: var(--r);
@@ -600,15 +683,82 @@ img, svg { display: block; max-width: 100%; }
 
 .top-action:hover,
 .content-action-btn:hover {
-  border-color: var(--ink);
+  border-color: var(--orange);
   background: var(--orange);
   color: #fff;
+  box-shadow: var(--shadow-orange);
+  transform: translateY(-1px);
 }
 
 .article-list-body {
   flex: 1;
   overflow: auto;
   padding: 4px 0;
+}
+
+/* 星标：未标时只在 hover 显形，已标常亮橙色，一眼扫出标过哪些 */
+.star-toggle {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink-soft);
+  opacity: 0;
+  transition: all .15s var(--ease);
+}
+
+.article-item:hover .star-toggle { opacity: 1; }
+
+.star-toggle:hover { color: var(--star); transform: scale(1.2); }
+
+.star-toggle.starred {
+  opacity: 1;
+  color: var(--star);
+}
+
+/* 选中态是红底，星标改用白色描边金星，保证在红底上依然清晰 */
+.article-item.active .star-toggle,
+.article-item.active .star-toggle.starred {
+  opacity: 1;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0,0,0,.25);
+}
+
+.star-avatar {
+  background: var(--star);
+  color: #fff;
+}
+
+.star-count {
+  align-self: center;
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--star-light);
+  color: #b8760c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.star-entry .list-meta { color: var(--ink-soft); }
+
+.content-action-btn.active {
+  border-color: var(--star);
+  background: var(--star-light);
+  color: #b8760c;
+}
+
+.content-action-btn.active:hover {
+  border-color: var(--star);
+  background: var(--star);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(245,166,35,.25);
 }
 
 .article-item {
@@ -1023,6 +1173,7 @@ img, svg { display: block; max-width: 100%; }
 .modal-close:hover {
   background: var(--orange);
   color: #fff;
+  box-shadow: var(--shadow-orange);
 }
 
 .modal-body { padding: 24px; position: relative; }
@@ -1065,10 +1216,11 @@ img, svg { display: block; max-width: 100%; }
   color: #fff;
 }
 
-.modal-btn.primary:hover {
+.modal-btn.primary:hover:not(:disabled) {
   background: var(--orange);
   border-color: var(--orange);
   box-shadow: var(--shadow-orange);
+  transform: translateY(-1px);
 }
 
 .modal-btn:disabled {
