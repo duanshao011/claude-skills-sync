@@ -794,6 +794,9 @@ img, svg { display: block; max-width: 100%; }
 }
 
 .article-title {
+  /* 星标是绝对定位浮在右上角，标题必须常驻留出这块位置，
+     否则长标题会被压住；留白常驻也避免 hover 出星标时文字重排。 */
+  padding-right: 22px;
   font-size: 13px;
   line-height: 1.4;
   font-weight: 600;
