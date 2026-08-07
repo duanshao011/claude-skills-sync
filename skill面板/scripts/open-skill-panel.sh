@@ -2,7 +2,7 @@
 set -e
 
 URL="http://localhost:4174"
-PROJECT_DIR="$HOME/Documents/Skill管理器"
+PROJECT_DIR="/d/Project/skill-manager"
 
 # Check if server is already running
 if curl -s -o /dev/null --connect-timeout 2 "$URL" 2>/dev/null; then

@@ -9,7 +9,7 @@ description: "打开本地 Skill 管理器面板；当用户说 skill面板、�
 
 ## 项目
 
-本地项目位于 `~/Documents/Skill管理器`，对应 GitHub 仓库 `duanshao011/skill-manager`。
+本地项目位于 `D:\Project\skill-manager`，对应 GitHub 仓库 `duanshao011/skill-manager`。
 
 - 开发启动：`npm run dev`（`node server/dev.js`，先检查端口再 spawn）
 - 直接启动：`node server/index.js`
@@ -20,7 +20,7 @@ description: "打开本地 Skill 管理器面板；当用户说 skill面板、�
 
 1. 运行 `scripts/open-skill-panel.sh`（macOS/Linux）或 `scripts/open-skill-panel.ps1`（Windows）。
 2. 脚本检查 `http://localhost:4174` 是否可访问。
-3. 如果服务未启动，从 `~/Documents/Skill管理器` 启动 `node server/index.js`。
+3. 如果服务未启动，从 `D:\Project\skill-manager` 启动 `node server/index.js`。
 4. 用默认浏览器打开 `http://localhost:4174`。
 
 不要编辑 skill 文件，不要扫描或修改用户其他 skills；这个 skill 只负责打开面板。

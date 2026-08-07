@@ -1,8 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $url = "http://localhost:4174"
-$workspaceName = "Skill" + [char]0x7BA1 + [char]0x7406 + [char]0x5668
-$workspace = [System.IO.Path]::Combine($env:USERPROFILE, "Documents", $workspaceName)
+$workspace = "D:\Project\skill-manager"
 
 function Test-SkillPanel {
   try {
