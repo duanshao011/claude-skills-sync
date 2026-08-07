@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>准星</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== LEFT SIDEBAR ===== -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>准<span>星</span></h1>
+      <div class="dimension-tabs">
+        <div class="dim-tab active" data-dim="blogger">信息源</div>
+        <div class="dim-tab" data-dim="topic">分组</div>
+      </div>
+    </div>
+    <div class="sidebar-search">
+      <input type="text" id="sidebarSearch" placeholder="搜索...">
+    </div>
+    <div class="sidebar-list" id="sidebarList"></div>
+    <div class="sidebar-footer">
+      <div class="add-btn" id="addBtn">+ 添加信息源</div>
+    </div>
+  </div>
+
+  <!-- ===== MIDDLE ARTICLE LIST ===== -->
+  <div class="article-list">
+    <div class="article-list-header" id="articleListHeader">
+      <h2>选择一个信息源</h2>
+    </div>
+    <div class="top-bar" id="topBar" style="display:none">
+      <div class="top-stats" id="topStats"></div>
+      <span class="top-action" id="readAllBtn">全部已读</span>
+    </div>
+    <div class="article-list-body" id="articleListBody">
+      <div class="empty-hint">在左侧选择信息源开始浏览</div>
+    </div>
+  </div>
+
+  <!-- ===== RIGHT CONTENT PANEL ===== -->
+  <div class="content-panel">
+    <div class="content-header" id="contentHeader" style="display:none">
+      <div class="source-info">
+        <span class="source-badge" id="sourceBadge"></span>
+        <span class="pub-time" id="pubTime"></span>
+      </div>
+      <div class="content-actions">
+        <a class="content-action-btn" id="originBtn" target="_blank">原文</a>
+      </div>
+    </div>
+    <div class="content-body" id="contentBody">
+      <div class="empty-hint">选择一篇文章阅读</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== Tag popover ===== -->
+<div class="tag-popover" id="tagPopover">
+  <div class="tag-popover-header">归入分组</div>
+  <div class="tag-popover-list" id="tagPopoverList"></div>
+</div>
+
+<!-- ===== Unfollow tooltip ===== -->
+<div class="unfollow-tooltip" id="unfollowTooltip">
+  <p>取消关注 <span class="tooltip-name" id="unfollowName"></span>？</p>
+  <div class="unfollow-hint">已抓取的历史内容会保留</div>
+  <div class="tooltip-btns">
+    <button class="btn-cancel">取消</button>
+    <button class="btn-confirm">确认</button>
+  </div>
+</div>
+
+<!-- ===== Topic modal ===== -->
+<div class="modal-overlay" id="topicModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">编辑分组</h3>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-label">分组名称</div>
+      <div class="topic-name-row">
+        <input type="text" id="topicNameInput" placeholder="输入分组名称">
+      </div>
+      <div class="field-label">分组内的信息源</div>
+      <div class="chip-input-wrap" id="chipWrap">
+        <input class="chip-input" id="chipSearch" placeholder="搜索添加...">
+      </div>
+      <div class="chip-dropdown" id="chipDropdown"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary">取消</button>
+      <button class="modal-btn primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Add blogger modal ===== -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal" style="width:460px">
+    <div class="modal-header">
+      <h3>添加信息源</h3>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-label">平台</div>
+      <div class="channel-select" id="channelSelect">
+        <span class="channel-option active" data-channel="youtube">YouTube</span>
+        <span class="channel-option" data-channel="bilibili">B 站</span>
+        <span class="channel-option" data-channel="xiaohongshu">小红书</span>
+        <span class="channel-option" data-channel="douyin-hot">抖音热门</span>
+        <span class="channel-option" data-channel="douyin-account">抖音达人</span>
+        <span class="channel-option" data-channel="gongzhonghao">公众号</span>
+      </div>
+      <div id="addFormArea">
+        <div class="field-label" id="addFieldLabel">频道链接</div>
+        <div class="input-row">
+          <input type="text" id="addUrlInput" placeholder="https://www.youtube.com/@频道名">
+          <button class="modal-btn primary small" id="validateBtn">验证</button>
+        </div>
+        <div class="validate-result" id="validateResult"></div>
+        <div class="gzh-account-list" id="gzhAccountList"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn secondary">取消</button>
+      <button class="modal-btn primary" id="confirmAddBtn" disabled>添加</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
