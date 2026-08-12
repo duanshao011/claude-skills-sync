@@ -42,7 +42,7 @@ lsof -ti:3000 | xargs -I{} kill {}
 | 公众号 | ✅ 完整 | 红狐数据 API（广域库） |
 | YouTube | ✅ 完整 | 官方公开 RSS |
 | 抖音 | ⚠️ 可添加 | 红狐数据 API（作品列表返回为空，待查） |
-| 小红书 | ❌ 仅验证 | 缺少按博主取作品列表的接口契约 |
+| 小红书 | ✅ 完整 | Rnote API（搜索/验证/作品抓取） |
 
 ## 配置
 
@@ -51,7 +51,7 @@ lsof -ti:3000 | xargs -I{} kill {}
 - `PORT=3000` — 端口
 - `DEEPSEEK_API_KEY` — AI 摘要（DeepSeek V4 Flash）
 - `REDFOX_API_KEY` — 公众号/抖音数据（红狐数据）
-- `XHS_API_KEY` — 小红书（SocialDataX / Apify，未启用）
+- `XHS_API_KEY` — 小红书（Rnote API）
 - `ALIYUN_AK_ID` / `ALIYUN_AK_SECRET` / `TINGWU_APP_KEY` — 通义听悟视频转写（抖音/YouTube 视频文案，未启用）
 - `ANTHROPIC_API_KEY` — 可选 YouTube 标题翻译
 
