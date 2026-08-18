@@ -115,14 +115,14 @@
     function getFiltered() {
       const kw = self.keyword;
       const candidates = cfg.candidates || [];
-      if (!kw) return candidates.slice(0, 500);
+      if (!kw) return candidates.slice(0, 200);
       const low = kw.toLowerCase();
       return candidates.filter(n => {
         for (const k of (cfg.filterKeys || ["note_id", "creator"])) {
           if ((n[k] || "").toLowerCase().includes(low)) return true;
         }
         return false;
-      }).slice(0, 500);
+      }).slice(0, 200);
     }
 
     function fmtPubDate(d) {
@@ -140,6 +140,7 @@
         list.innerHTML = '<li class="combo-empty">无匹配笔记</li>';
         return;
       }
+      // 下拉选项保持规范统一：日期 | 笔记ID | 达人，不加任何状态标注（无数据提示在选中后的详情页占位展示）
       list.innerHTML = items.map((n, i) =>
         `<li class="combo-item ${i === self.hi ? "hi" : ""}" data-id="${n.note_id}">
           <span class="combo-line"><span class="pub-date">${fmtPubDate(n.pub_date)}</span><span class="sep">|</span><span class="id">${n.note_id}</span><span class="sep">|</span><span class="creator">${escapeHtml(n.creator || "—")}</span></span>
@@ -606,7 +607,7 @@
     const trends = DATA.trends || {};
     const trendsAll = DATA.trends_all || [];
     const candidates = DATA.notes
-      .filter(n => trends[n.note_id])
+      .filter(n => n.pub_date || n.creator)                     // 全量蒲公英笔记（排除灵犀空壳），无数据的在选中后详情页提示
       .sort((a, b) => (String(b.pub_date || "0").replace(/-/g, "") | 0) - (String(a.pub_date || "0").replace(/-/g, "") | 0));
 
     trendCombo = makeCombo({
@@ -697,6 +698,22 @@
     if (trendModSub2) trendModSub2.textContent = "逐日转化趋势 · hover 看进店率 / 加购率 / 转化率";
     const rows = (DATA.trends || {})[noteId] || [];
     const note = DATA.notes.find(n => n.note_id === noteId) || {};
+
+    // 无趋势数据：详情页结构化占位（状态/原因/解决），避免误以为系统未加载
+    if (!rows.length) {
+      if (trendChart) { try { trendChart.dispose(); } catch (ignore) {} trendChart = null; }
+      document.getElementById("trendChart").innerHTML =
+        '<div class="nodata-card">' +
+          '<div class="nodata-head"><span class="nodata-icon">⚠️</span><span class="nodata-title">该笔记暂无星河趋势数据</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-ok">已加载</span><span class="nodata-text">笔记已加载，可在「全链路数据」表格中查看</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-info">原因</span><span class="nodata-text">星河表尚未覆盖此笔记：新笔记归因数据未出，或星河表未更新到该日期</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-act">解决</span><span class="nodata-text">星河表更新后重新生成看板，数据将自动补全</span></div>' +
+        '</div>';
+      document.getElementById("trendKpis").innerHTML = "";
+      var modSubEmpty = document.querySelector("#modTrend .mod-sub");
+      if (modSubEmpty) modSubEmpty.textContent = "该笔记暂无趋势数据";
+      return;
+    }
 
     const period = rows.length
       ? fmtDate(rows[0][0]) + " ~ " + fmtDate(rows[rows.length - 1][0])
@@ -851,7 +868,30 @@
       }
       var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(' + summaryItems.length + ',auto);gap:8px 18px;padding:9px 10px;background:#F7F7F8;border:1px solid #ECEDEF">'
         + summaryItems.map(function(item){ return '<div style="display:grid;gap:2px">' + item + "</div>"; }).join("") + "</div>";
-      var metricCards = trendData.metrics.map(function(metric){
+      var isMultiMetric = trendData.metrics.length > 1;
+      var metricContent;
+      if (isMultiMetric) {
+        var metricRows = trendData.metrics.map(function(metric){
+          var conf = COST_METRICS[metric];
+          var values = trendData.byMetric[metric];
+          return '<tr>'
+            + '<th style="padding:6px 8px;text-align:left;border-top:1px solid #ECEDEF;color:' + conf.color + ';font-weight:700;white-space:nowrap">'
+            + '<span style="display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:2px;background:' + conf.color + ';vertical-align:1px"></span>' + conf.label + "</th>"
+            + '<td style="padding:6px 8px;text-align:right;border-top:1px solid #ECEDEF;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap">' + formatCostValue(values.daily[index]) + "</td>"
+            + '<td style="padding:6px 8px;text-align:right;border-top:1px solid #ECEDEF;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap">' + formatCostValue(values.rolling[index]) + "</td>"
+            + '<td style="padding:6px 8px;text-align:right;border-top:1px solid #ECEDEF;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap">' + formatCostValue(values.cumulative[index]) + "</td>"
+            + "</tr>";
+        }).join("");
+        metricContent = '<div style="margin-top:6px;border:1px solid #ECEDEF;background:#fff;overflow:hidden">'
+          + '<table style="width:100%;border-collapse:collapse;font-size:11px">'
+          + '<thead><tr style="background:#F7F7F8;color:#6B7280">'
+          + '<th style="padding:6px 8px;text-align:left;font-weight:600;white-space:nowrap">成本指标</th>'
+          + '<th style="padding:6px 8px;text-align:right;font-weight:600;white-space:nowrap">当日成本</th>'
+          + '<th style="padding:6px 8px;text-align:right;font-weight:600;white-space:nowrap">3日滚动</th>'
+          + '<th style="padding:6px 8px;text-align:right;font-weight:600;white-space:nowrap">累计基线</th>'
+          + "</tr></thead><tbody>" + metricRows + "</tbody></table></div>";
+      } else {
+        var metric = trendData.metrics[0];
         var conf = COST_METRICS[metric];
         var values = trendData.byMetric[metric];
         var rows = [
@@ -859,20 +899,19 @@
           ["3日滚动", values.rolling[index]],
           ["累计基线", values.cumulative[index]],
         ];
-        return '<div style="min-width:168px;padding:9px 10px;border:1px solid #ECEDEF;border-left:3px solid ' + conf.color + ';background:#fff">'
+        metricContent = '<div style="margin-top:8px;min-width:168px;padding:9px 10px;border:1px solid #ECEDEF;border-left:3px solid ' + conf.color + ';background:#fff">'
           + '<div style="margin-bottom:6px;color:' + conf.color + ';font-size:12px;font-weight:700">' + conf.label + "</div>"
           + rows.map(function(item){
               return '<div style="display:flex;justify-content:space-between;gap:18px;line-height:1.8">'
                 + '<span style="color:#6B7280;white-space:nowrap">' + item[0] + "</span>"
                 + '<b style="font-variant-numeric:tabular-nums;white-space:nowrap">' + formatCostValue(item[1]) + "</b></div>";
             }).join("") + "</div>";
-      }).join("");
-      var columns = trendData.metrics.length > 1 ? 2 : 1;
+      }
       var clickHint = isSummary ? '<div style="margin-top:8px;font-size:10px;color:#9CA3AF;text-align:center">点击每日实付柱查看当天投放明细</div>' : "";
-      return '<div style="min-width:230px;max-width:460px">'
+      return '<div style="' + (isMultiMetric ? 'width:400px;max-width:calc(100vw - 32px)' : 'min-width:230px;max-width:460px') + '">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px;font-weight:700">'
         + '<span>' + dateText + "</span>" + pubTag + "</div>" + summaryHtml
-        + '<div style="display:grid;grid-template-columns:repeat(' + columns + ',minmax(168px,1fr));gap:8px;margin-top:8px">' + metricCards + "</div>"
+        + metricContent
         + clickHint + "</div>";
     };
   }
@@ -1006,7 +1045,7 @@
     const costData = DATA.cost || {};
     const costAll = DATA.cost_all;
     const candidates = DATA.notes
-      .filter(n => costData[n.note_id])
+      .filter(n => n.pub_date || n.creator)                     // 全量蒲公英笔记（排除灵犀空壳），无数据的在选中后详情页提示
       .sort((a, b) => (String(b.pub_date || "0").replace(/-/g, "") | 0) - (String(a.pub_date || "0").replace(/-/g, "") | 0));
 
     costCombo = makeCombo({
@@ -1104,9 +1143,16 @@
     if (!entry) {
       if (costChart) { try { costChart.dispose(); } catch (ignore) {} costChart = null; }
       document.getElementById("costChart").innerHTML =
-        '<div style="padding:80px;text-align:center;color:#9CA3AF">该笔记无成本数据</div>';
+        '<div class="nodata-card">' +
+          '<div class="nodata-head"><span class="nodata-icon">⚠️</span><span class="nodata-title">该笔记暂无成本数据</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-ok">已加载</span><span class="nodata-text">笔记已加载，可在「全链路数据」表格中查看</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-info">原因</span><span class="nodata-text">薯条表尚未覆盖此笔记：未投放、订单未完成，或薯条表未更新到该笔记</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-act">解决</span><span class="nodata-text">薯条表更新后重新生成看板，数据将自动补全</span></div>' +
+        '</div>';
       // 清空指标卡，避免残留汇总数据
       document.getElementById("costKpis").innerHTML = "";
+      var modSubCost = document.querySelector("#modCost .mod-sub");
+      if (modSubCost) modSubCost.textContent = "该笔记暂无成本数据";
       return;
     }
     const s = entry.summary || {};

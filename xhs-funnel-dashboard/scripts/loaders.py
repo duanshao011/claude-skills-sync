@@ -18,6 +18,19 @@ def _to_num(series):
     return pd.to_numeric(series, errors="coerce").fillna(0)
 
 
+def _safe_dates(series):
+    """统一解析日期列，规避 pandas 3.x 的混合格式推断坑。
+
+    pandas 3.x 对 object Series 会先推断单一 strptime format 再整体解析；
+    同一列混着 'YYYY-MM-DD HH:MM:SS'（19字符）与 'YYYY-MM-DD'（10字符）时，
+    短格式行会整体变 NaT（蒲公英 7 月数据即此坑）。
+    统一提取 YYYY-MM-DD 前缀后再解析，格式独立、互不干扰。
+    """
+    s = series.astype(str).str.strip()
+    m = s.str.extract(r"(\d{4}-\d{2}-\d{2})", expand=False)
+    return pd.to_datetime(m, errors="coerce")
+
+
 def _to_ratio(series):
     """统一解析为 0~1 比例。带%的字符串去%后/100；裸数值>1.5 视为百分数(/100)。"""
     def conv(x):
@@ -82,7 +95,7 @@ def load_pugongying(path, start=None, end=None):
             df[c] = _to_ratio(df[c])
 
     if "pub_date" in df:
-        df["pub_date"] = pd.to_datetime(df["pub_date"], errors="coerce")
+        df["pub_date"] = _safe_dates(df["pub_date"])
         if start:
             df = df[df["pub_date"] >= pd.to_datetime(str(start))]
         if end:
@@ -252,7 +265,7 @@ def load_chili(path):
         "dedup_rows": int(before_dedup - after_dedup),
     }
     if "launch_time" in df:
-        lt = pd.to_datetime(df["launch_time"], errors="coerce")
+        lt = _safe_dates(df["launch_time"])
         df["launch_date"] = lt.dt.strftime("%Y%m%d").astype("Int64")
         df = df[df["launch_date"].notna()]
         if lt.notna().any():

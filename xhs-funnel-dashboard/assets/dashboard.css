@@ -968,3 +968,14 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:32px}
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+/* ===== 无数据占位卡片（结构化：状态/原因/解决 分块，2026-08-13） ===== */
+.nodata-card{margin:24px auto;max-width:560px;padding:24px 28px;background:#F7F7F8;border-radius:14px}
+.nodata-head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.nodata-icon{font-size:18px}
+.nodata-title{font-size:15px;font-weight:600;color:#333}
+.nodata-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;font-size:13px;line-height:1.6;border-top:1px solid #EDEDF0}
+.nodata-tag{flex:none;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;margin-top:2px}
+.tag-ok{background:#E8F5EE;color:#10B981}
+.tag-info{background:#FFF4E5;color:#F59E0B}
+.tag-act{background:#FEE8EA;color:#FF2442}
+.nodata-text{color:#6B7280}
