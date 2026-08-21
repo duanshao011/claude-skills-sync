@@ -335,3 +335,54 @@ def load_lingxi(path):
 
     df = df.drop_duplicates(subset="note_id", keep="first").set_index("note_id")
     return df
+
+
+# ---------- B站 ----------
+BILI_COL_MAP = {
+    "note_id": ["内容ID"],
+    "date": ["日期"],
+    "creator": ["达人昵称"],
+    "url": ["内容链接"],
+    "play_uv": ["阅读/播放UV"],
+    "visit_uv": ["进店UV"],
+    "cart_uv": ["商品加购UV"],
+    "deal_uv": ["成交UV"],
+    "gmv": ["商家GMV"],
+    "new_visit_uv": ["新客进店uv"],
+    "search_visit_uv": ["搜索进店UV"],
+}
+BILI_REQUIRED = ["note_id", "date", "visit_uv"]
+
+
+def load_bilibili(path):
+    """B站商家后台导出明细表 → 标准列 DataFrame（内容ID×日期粒度）。
+
+    单表全链路字段：播放/进店/加购/成交/GMV 都在这张表里。
+    日期兼容 "20260817" / "2026-08-17" 两种写法，统一转 int YYYYMMDD。
+    """
+    raw = pd.read_csv(path, encoding="utf-8-sig") if path.lower().endswith(".csv") \
+        else pd.read_excel(path)
+    mapped = {}
+    for key, names in BILI_COL_MAP.items():
+        col = next((c for c in raw.columns if str(c).strip() in names), None)
+        if col is not None:
+            mapped[key] = col
+    missing = [k for k in BILI_REQUIRED if k not in mapped]
+    if missing:
+        raise ValueError(
+            f"[B站] 缺少关键字段 {missing}；已识别到的列：{list(raw.columns)[:30]} ..."
+        )
+    df = pd.DataFrame({k: raw[mapped[k]] for k in mapped})
+    date_s = df["date"].astype(str).str.strip()
+    m = date_s.str.extract(r"(\d{4})[-/]?(\d{1,2})[-/]?(\d{1,2})")
+    df["date"] = pd.to_numeric(m[0] + m[1].str.zfill(2) + m[2].str.zfill(2), errors="coerce")
+    df = df.dropna(subset=["date"]).copy()
+    df["date"] = df["date"].astype("int64")
+    for key in ["play_uv", "visit_uv", "cart_uv", "deal_uv", "gmv",
+                "new_visit_uv", "search_visit_uv"]:
+        if key in df.columns:
+            df[key] = _to_num(df[key])
+    df["note_id"] = df["note_id"].astype(str).str.strip()
+    df["creator"] = df.get("creator", pd.Series("", index=df.index)).fillna("").astype(str)
+    df["url"] = df.get("url", pd.Series("", index=df.index)).fillna("").astype(str)
+    return df

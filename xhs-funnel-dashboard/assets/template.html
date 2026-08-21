@@ -3,211 +3,320 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>全链路投放数据看板</title>
+<title>投放数据看板 · 多平台</title>
 <style>/*__CSS__*/</style>
 </head>
 <body>
 <div class="app-layout">
 <nav class="toc" id="toc">
-  <div class="toc-head">
-    <span class="toc-title">目录</span>
-    <button class="toc-toggle" id="tocToggle" title="收起目录">◀</button>
+  <div class="platform-group active" data-platform="xhs" style="--pc:#FF2442;--pc-soft:#FFF1F3;--pc-strong:#E11D48">
+    <button class="platform-group-toggle" data-page="page-xhs" aria-expanded="true" aria-controls="tocSub-xhs">
+      <span>小红书</span><span class="platform-chevron" aria-hidden="true">⌃</span>
+    </button>
+    <div class="toc-sub active" id="tocSub-xhs">
+      <a class="toc-item active" data-target="sourceStrip">数据源</a>
+      <a class="toc-item" data-target="modDailyOverview">进店汇总</a>
+      <a class="toc-item" data-target="modTrend">进店趋势</a>
+      <a class="toc-item" data-target="modCost">成本分析</a>
+      <a class="toc-item" data-target="modTable">全链路数据</a>
+    </div>
   </div>
-  <a class="toc-item active" data-target="sourceStrip">数据源</a>
-  <a class="toc-item" data-target="modDailyOverview">进店汇总</a>
-  <a class="toc-item" data-target="modTrend">进店趋势</a>
-  <a class="toc-item" data-target="modCost">成本分析</a>
-  <a class="toc-item" data-target="modTable">全链路数据</a>
+  <div class="platform-group" data-platform="dy" style="--pc:#00B8A9;--pc-soft:#E6FAF7;--pc-strong:#00857A">
+    <button class="platform-group-toggle" data-page="page-dy" aria-expanded="false" aria-controls="tocSub-dy">
+      <span>抖音</span><span class="platform-chevron" aria-hidden="true">⌄</span>
+    </button>
+    <div class="toc-sub" id="tocSub-dy" hidden>
+      <a class="toc-item" data-target="modDouyinTrend">单篇趋势</a>
+    </div>
+  </div>
+  <div class="platform-group" data-platform="bili" style="--pc:#FB7299;--pc-soft:#FFF0F5;--pc-strong:#E9567C">
+    <button class="platform-group-toggle" data-page="page-bili" aria-expanded="false" aria-controls="tocSub-bili">
+      <span>B站</span><span class="platform-chevron" aria-hidden="true">⌄</span>
+    </button>
+    <div class="toc-sub" id="tocSub-bili" hidden>
+      <a class="toc-item" data-target="modBiliTrend">单篇趋势</a>
+    </div>
+  </div>
 </nav>
-<div class="toc-expand" id="tocExpand" hidden><button class="toc-expand-btn" title="展开目录">▶</button></div>
 <div class="page">
 
-  <header class="page-head">
-    <div class="page-title">
-      <div class="title-cn">全链路投放数据看板</div>
-      <div class="title-en">Full-Funnel Delivery Analytics</div>
-    </div>
-    <div class="page-meta">
-      <span class="meta-item" id="metaPeriod">数据周期：—</span>
-      <span class="meta-dot">·</span>
-      <span class="meta-item" id="metaFlow">口径：—</span>
-      <span class="meta-dot">·</span>
-      <span class="meta-item" id="metaGen">—</span>
-    </div>
-  </header>
+  <!-- ============ 平台页 · 小红书 ============ -->
+  <div class="platform-page active" id="page-xhs">
+    <header class="page-head">
+      <div class="page-title">
+        <div class="title-cn">小红书投放数据看板</div>
+        <div class="title-en">Xiaohongshu Delivery Analytics</div>
+      </div>
+      <div class="page-meta">
+        <span class="meta-item" id="metaPeriod">数据周期：—</span>
+        <span class="meta-dot">·</span>
+        <span class="meta-item" id="metaFlow">口径：—</span>
+        <span class="meta-dot">·</span>
+        <span class="meta-item" id="metaGen">—</span>
+      </div>
+    </header>
 
-  <section class="kpi-row" id="kpiRow"></section>
+    <section class="kpi-row" id="kpiRow"></section>
 
-  <section class="source-strip" id="sourceStrip"></section>
+    <section class="source-strip" id="sourceStrip"></section>
 
-  <!-- 图表一 · 日维度进店趋势 -->
-  <section class="module" id="modDailyOverview">
-    <div class="module-head">
-      <div class="module-title">
-        <span class="mod-idx">图表一</span>
-        <span class="mod-name">日维度进店趋势</span>
-        <span class="mod-sub">分组柱状图 · 悬停看笔记明细 · 点击柱子展开全部</span>
-      </div>
-    </div>
-    <div class="daily-body">
-      <div class="trend-kpis" id="dailyOverviewKpis"></div>
-      <div class="chart-toggles" id="dailyToggles">
-        <button class="metric-toggle-card" data-metric="read" style="--mc:#CC3300"><div class="mtc-label">阅读UV</div><div class="mtc-val" data-slot="val">—</div></button>
-        <button class="metric-toggle-card" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店UV</div><div class="mtc-val" data-slot="val">—</div></button>
-        <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购UV</div><div class="mtc-val" data-slot="val">—</div></button>
-        <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交UV</div><div class="mtc-val" data-slot="val">—</div></button>
-      </div>
-      <div class="chart-stage">
-        <div class="chart-pan-hint" id="dailyPanHint" role="note">
-          <span class="chart-pan-hint-icon">↔</span>
-          <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
-          <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
-        </div>
-        <div class="trend-chart" id="dailyOverviewChart"></div>
-      </div>
-      <div class="daily-detail-panel" id="dailyDetailPanel" hidden>
-        <div class="daily-detail-head">
-          <span class="daily-detail-title" id="dailyDetailTitle"></span>
-          <button class="daily-detail-close" id="dailyDetailClose">折叠 ↑</button>
-        </div>
-        <div class="daily-detail-table-wrap">
-          <table class="funnel-table" id="dailyDetailTable">
-            <thead id="dailyDetailHead"></thead>
-            <tbody id="dailyDetailBody"></tbody>
-          </table>
+    <!-- 图表一 · 日维度进店趋势 -->
+    <section class="module" id="modDailyOverview">
+      <div class="module-head">
+        <div class="module-title">
+          <span class="mod-idx">图表一</span>
+          <span class="mod-name">日维度进店趋势</span>
+          <span class="mod-sub">分组柱状图 · 悬停看笔记明细 · 点击柱子展开全部</span>
         </div>
       </div>
-    </div>
-  </section>
+      <div class="daily-body">
+        <div class="trend-kpis" id="dailyOverviewKpis"></div>
+        <div class="chart-toggles" id="dailyToggles">
+          <button class="metric-toggle-card" data-metric="read" style="--mc:#CC3300"><div class="mtc-label">阅读UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        </div>
+        <div class="chart-stage">
+          <div class="chart-pan-hint" id="dailyPanHint" role="note">
+            <span class="chart-pan-hint-icon">↔</span>
+            <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+            <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+          </div>
+          <div class="trend-chart" id="dailyOverviewChart"></div>
+        </div>
+        <div class="daily-detail-panel" id="dailyDetailPanel" hidden>
+          <div class="daily-detail-head">
+            <span class="daily-detail-title" id="dailyDetailTitle"></span>
+            <button class="daily-detail-close" id="dailyDetailClose">折叠 ↑</button>
+          </div>
+          <div class="daily-detail-table-wrap">
+            <table class="funnel-table" id="dailyDetailTable">
+              <thead id="dailyDetailHead"></thead>
+              <tbody id="dailyDetailBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <!-- 图表二 · 单篇趋势分析 -->
-  <section class="module" id="modTrend">
-    <div class="module-head">
-      <div class="module-title">
-        <span class="mod-idx">图表二</span>
-        <span class="mod-name">单篇趋势分析</span>
-        <span class="mod-sub">选一篇笔记看其逐日进店 / 加购 / 成交 UV 走势</span>
-      </div>
-      <div class="module-tools">
-        <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink1" autocomplete="off" checked></label>
-        <div class="combo" id="trendCombo">
-          <input type="text" id="trendSearch" class="ctrl-input combo-input" placeholder="搜索笔记ID 或 达人昵称" autocomplete="off">
-          <ul class="combo-list" id="trendList" hidden></ul>
+    <!-- 图表二 · 单篇趋势分析 -->
+    <section class="module" id="modTrend">
+      <div class="module-head">
+        <div class="module-title">
+          <span class="mod-idx">图表二</span>
+          <span class="mod-name">单篇趋势分析</span>
+          <span class="mod-sub">选一篇笔记看其逐日进店 / 加购 / 成交 UV 走势</span>
+        </div>
+        <div class="module-tools">
+          <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink1" autocomplete="off" checked></label>
+          <div class="combo" id="trendCombo">
+            <input type="text" id="trendSearch" class="ctrl-input combo-input" placeholder="搜索笔记ID 或 达人昵称" autocomplete="off">
+            <ul class="combo-list" id="trendList" hidden></ul>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="trend-body">
-      <div class="trend-kpis" id="trendKpis"></div>
-      <div class="chart-toggles" id="trendToggles">
-        <button class="metric-toggle-card" data-metric="read" style="--mc:#CC3300"><div class="mtc-label">阅读UV</div><div class="mtc-val" data-slot="val">—</div></button>
-        <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店UV</div><div class="mtc-val" data-slot="val">—</div></button>
-        <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购UV</div><div class="mtc-val" data-slot="val">—</div></button>
-        <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交UV</div><div class="mtc-val" data-slot="val">—</div></button>
-      </div>
-      <div class="chart-stage">
-        <div class="chart-pan-hint" id="trendPanHint" role="note">
-          <span class="chart-pan-hint-icon">↔</span>
-          <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
-          <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+      <div class="trend-body">
+        <div class="trend-kpis" id="trendKpis"></div>
+        <div class="chart-toggles" id="trendToggles">
+          <button class="metric-toggle-card" data-metric="read" style="--mc:#CC3300"><div class="mtc-label">阅读UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交UV</div><div class="mtc-val" data-slot="val">—</div></button>
         </div>
-        <div class="trend-chart" id="trendChart"></div>
+        <div class="chart-stage">
+          <div class="chart-pan-hint" id="trendPanHint" role="note">
+            <span class="chart-pan-hint-icon">↔</span>
+            <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+            <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+          </div>
+          <div class="trend-chart" id="trendChart"></div>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- 图表二 · 单篇成本分析 -->
-  <section class="module" id="modCost">
-    <div class="module-head">
-      <div class="module-title">
-        <span class="mod-idx">图表三</span>
-        <span class="mod-name">单篇成本分析</span>
-        <span class="mod-sub">笔记粒度的投放消耗与成本效率 · 近7天进店成本趋势判断</span>
-      </div>
-      <div class="module-tools">
-        <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink2" autocomplete="off" checked></label>
-        <div class="combo" id="costCombo">
-          <input type="text" id="costSearch" class="ctrl-input combo-input" placeholder="搜索笔记ID 或 达人昵称（仅已投放笔记）" autocomplete="off">
-          <ul class="combo-list" id="costList" hidden></ul>
+    <!-- 图表三 · 单篇成本分析 -->
+    <section class="module" id="modCost">
+      <div class="module-head">
+        <div class="module-title">
+          <span class="mod-idx">图表三</span>
+          <span class="mod-name">单篇成本分析</span>
+          <span class="mod-sub">笔记粒度的投放消耗与成本效率 · 近7天进店成本趋势判断</span>
+        </div>
+        <div class="module-tools">
+          <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink2" autocomplete="off" checked></label>
+          <div class="combo" id="costCombo">
+            <input type="text" id="costSearch" class="ctrl-input combo-input" placeholder="搜索笔记ID 或 达人昵称（仅已投放笔记）" autocomplete="off">
+            <ul class="combo-list" id="costList" hidden></ul>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="cost-body">
-      <div class="cost-kpis" id="costKpis"></div>
-      <div class="chart-toggles" id="costToggles">
-        <button class="metric-toggle-card" data-metric="read" style="--mc:#CC3300"><div class="mtc-label">阅读成本</div><div class="mtc-val" data-slot="val">—</div></button>
-        <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店成本</div><div class="mtc-val" data-slot="val">—</div></button>
-        <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购成本</div><div class="mtc-val" data-slot="val">—</div></button>
-        <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交成本</div><div class="mtc-val" data-slot="val">—</div></button>
-      </div>
-      <div class="chart-stage">
-        <div class="chart-pan-hint" id="costPanHint" role="note">
-          <span class="chart-pan-hint-icon">↔</span>
-          <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
-          <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+      <div class="cost-body">
+        <div class="cost-kpis" id="costKpis"></div>
+        <div class="chart-toggles" id="costToggles">
+          <button class="metric-toggle-card" data-metric="read" style="--mc:#CC3300"><div class="mtc-label">阅读成本</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店成本</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购成本</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交成本</div><div class="mtc-val" data-slot="val">—</div></button>
         </div>
-        <div class="cost-chart" id="costChart"></div>
-      </div>
-      <div class="cost-note cost-legend" aria-label="成本趋势图例">
-        <span class="cost-legend-item"><i class="cost-legend-bar"></i>每日实付</span>
-        <span class="cost-legend-item"><i class="cost-legend-solid"></i>3日滚动</span>
-        <span class="cost-legend-item"><i class="cost-legend-dashed"></i>累计基线</span>
-        <span class="cost-legend-note">汇总成本按薯条与星河同样本计算</span>
-      </div>
-      <div class="daily-detail-panel" id="costDetailPanel" hidden>
-        <div class="daily-detail-head">
-          <span class="daily-detail-title" id="costDetailTitle"></span>
-          <button class="daily-detail-close" id="costDetailClose">折叠 ↑</button>
+        <div class="chart-stage">
+          <div class="chart-pan-hint" id="costPanHint" role="note">
+            <span class="chart-pan-hint-icon">↔</span>
+            <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+            <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+          </div>
+          <div class="cost-chart" id="costChart"></div>
         </div>
-        <div class="daily-detail-table-wrap">
-          <table class="funnel-table" id="costDetailTable">
-            <thead id="costDetailHead"></thead>
-            <tbody id="costDetailBody"></tbody>
-          </table>
+        <div class="cost-note cost-legend" aria-label="成本趋势图例">
+          <span class="cost-legend-item"><i class="cost-legend-bar"></i>每日实付</span>
+          <span class="cost-legend-item"><i class="cost-legend-solid"></i>3日滚动</span>
+          <span class="cost-legend-item"><i class="cost-legend-dashed"></i>累计基线</span>
+          <span class="cost-legend-note">汇总成本按薯条与星河同样本计算</span>
         </div>
-        <div class="cost-detail-note">数据来源于薯条推广明细表；曝光量、阅读量为薯条官方统计，仅供参考。</div>
+        <div class="daily-detail-panel" id="costDetailPanel" hidden>
+          <div class="daily-detail-head">
+            <span class="daily-detail-title" id="costDetailTitle"></span>
+            <button class="daily-detail-close" id="costDetailClose">折叠 ↑</button>
+          </div>
+          <div class="daily-detail-table-wrap">
+            <table class="funnel-table" id="costDetailTable">
+              <thead id="costDetailHead"></thead>
+              <tbody id="costDetailBody"></tbody>
+            </table>
+          </div>
+          <div class="cost-detail-note">数据来源于薯条推广明细表；曝光量、阅读量为薯条官方统计，仅供参考。</div>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- 图表三 · 全链路数据 -->
-  <section class="module" id="modTable">
-    <div class="module-head">
-      <div class="module-title">
-        <span class="mod-idx">图表四</span>
-        <span class="mod-name">全链路数据</span>
-        <span class="mod-sub">四表打通的笔记级明细 · 字段名悬停看口径 / 点击排序 / 右上角自定义列</span>
-      </div>
-      <div class="module-tools">
-        <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink3" autocomplete="off" checked></label>
-        <div class="combo" id="tableCombo">
-          <input type="text" id="tableSearch" class="ctrl-input combo-input" placeholder="搜 达人昵称 / 笔记ID" autocomplete="off">
-          <ul class="combo-list" id="tableList" hidden></ul>
+    <!-- 图表四 · 全链路数据 -->
+    <section class="module" id="modTable">
+      <div class="module-head">
+        <div class="module-title">
+          <span class="mod-idx">图表四</span>
+          <span class="mod-name">全链路数据</span>
+          <span class="mod-sub">四表打通的笔记级明细 · 字段名悬停看口径 / 点击排序 / 右上角自定义列</span>
         </div>
-        <button class="ctrl-btn" id="btnCustom">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
-          自定义列
-        </button>
+        <div class="module-tools">
+          <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink3" autocomplete="off" checked></label>
+          <div class="combo" id="tableCombo">
+            <input type="text" id="tableSearch" class="ctrl-input combo-input" placeholder="搜 达人昵称 / 笔记ID" autocomplete="off">
+            <ul class="combo-list" id="tableList" hidden></ul>
+          </div>
+          <button class="ctrl-btn" id="btnCustom">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+            自定义列
+          </button>
+        </div>
       </div>
-    </div>
-    <div class="table-wrap">
-      <table class="funnel-table">
-        <thead id="tableHead"></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-    <div class="table-foot" id="tableFoot"></div>
-    <div class="table-legend">
-      <span class="lg-item"><i class="lg-sw good"></i>优秀（本期前 25%）</span>
-      <span class="lg-item"><i class="lg-sw warn"></i>偏弱（本期后 25%）</span>
-      <span class="lg-item"><i class="lg-sw mid"></i>达标（中间 50%）</span>
-      <span class="lg-item"><i class="lg-sw na"></i>— 无数据</span>
-      <span class="lg-note">颜色按指标「越高越好 / 越低越好」自动判向，<b>绿=好、橙=差</b>（如成本类越低越绿）；均为本期这批笔记的相对比较</span>
-    </div>
-  </section>
+      <div class="table-wrap">
+        <table class="funnel-table">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="table-foot" id="tableFoot"></div>
+      <div class="table-legend">
+        <span class="lg-item"><i class="lg-sw good"></i>优秀（本期前 25%）</span>
+        <span class="lg-item"><i class="lg-sw warn"></i>偏弱（本期后 25%）</span>
+        <span class="lg-item"><i class="lg-sw mid"></i>达标（中间 50%）</span>
+        <span class="lg-item"><i class="lg-sw na"></i>— 无数据</span>
+        <span class="lg-note">颜色按指标「越高越好 / 越低越好」自动判向，<b>绿=好、橙=差</b>（如成本类越低越绿）；均为本期这批笔记的相对比较</span>
+      </div>
+    </section>
 
-  <footer class="page-foot">
-    <span id="footAlign">—</span>
-  </footer>
+    <footer class="page-foot">
+      <span id="footAlign">—</span>
+    </footer>
+  </div>
+
+  <!-- ============ 平台页 · 抖音（占位，数据接入后启用） ============ -->
+  <div class="platform-page" id="page-dy" data-platform="dy" hidden>
+    <header class="page-head">
+      <div class="page-title">
+        <div class="title-cn">抖音投放数据看板</div>
+        <div class="title-en">Douyin Delivery Analytics</div>
+      </div>
+      <div class="page-meta">
+        <span class="meta-item" id="dyPeriod">数据周期：—</span>
+        <span class="meta-dot">·</span>
+        <span class="meta-item" id="dyFlow">口径：—</span>
+        <span class="meta-dot">·</span>
+        <span class="meta-item" id="dyGen">—</span>
+      </div>
+    </header>
+
+    <section class="module" id="modDouyinTrend">
+      <div class="module-head">
+        <div class="module-title">
+          <span class="mod-idx">单篇趋势</span>
+          <span class="mod-name">单篇趋势分析</span>
+          <span class="mod-sub">播放 / 进店 / 加购 / 成交 UV 逐日走势</span>
+        </div>
+      </div>
+      <div class="nodata-card">
+        <div class="nodata-head"><span class="nodata-icon">🚧</span><span class="nodata-title">抖音数据待接入</span></div>
+        <div class="nodata-row"><span class="nodata-tag tag-info">做法</span><span class="nodata-text">把抖音数据表（文件名带「抖音」）放入 02-抖音 目录</span></div>
+        <div class="nodata-row"><span class="nodata-tag tag-act">下一步</span><span class="nodata-text">重新生成看板后，本模块自动显示抖音单篇趋势</span></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 平台页 · B站 ============ -->
+  <div class="platform-page" id="page-bili" data-platform="bili" hidden>
+    <header class="page-head">
+      <div class="page-title">
+        <div class="title-cn">B站投放数据看板</div>
+        <div class="title-en">Bilibili Delivery Analytics</div>
+      </div>
+      <div class="page-meta">
+        <span class="meta-item" id="biliPeriod">数据周期：—</span>
+        <span class="meta-dot">·</span>
+        <span class="meta-item" id="biliFlow">口径：—</span>
+        <span class="meta-dot">·</span>
+        <span class="meta-item" id="biliGen">—</span>
+      </div>
+    </header>
+
+    <section class="kpi-row" id="biliKpiRow"></section>
+
+    <section class="source-strip" id="biliSourceStrip"></section>
+
+    <!-- 单篇趋势分析 -->
+    <section class="module" id="modBiliTrend">
+      <div class="module-head">
+        <div class="module-title">
+          <span class="mod-idx">图表一</span>
+          <span class="mod-name">单篇趋势分析</span>
+          <span class="mod-sub">选一条视频看其逐日播放 / 进店 / 加购 / 成交 UV 走势</span>
+        </div>
+        <div class="module-tools">
+          <div class="combo" id="biliTrendCombo">
+            <input type="text" id="biliTrendSearch" class="ctrl-input combo-input" placeholder="搜索内容ID（BV号） 或 达人昵称" autocomplete="off">
+            <ul class="combo-list" id="biliTrendList" hidden></ul>
+          </div>
+        </div>
+      </div>
+      <div class="trend-body">
+        <div class="trend-kpis" id="biliTrendKpis"></div>
+        <div class="chart-toggles" id="biliToggles">
+          <button class="metric-toggle-card" data-metric="play" style="--mc:#00AEEC"><div class="mtc-label">播放UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FB7299"><div class="mtc-label">进店UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        </div>
+        <div class="chart-stage">
+          <div class="chart-pan-hint" id="biliTrendPanHint" role="note">
+            <span class="chart-pan-hint-icon">↔</span>
+            <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+            <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+          </div>
+          <div class="trend-chart" id="biliTrendChart"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
 </div>
 </div><!-- .app-layout -->
 

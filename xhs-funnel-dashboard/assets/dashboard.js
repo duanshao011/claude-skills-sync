@@ -263,9 +263,10 @@
   }
 
   // ===== 数据源状态条 =====
-  function renderSources() {
+  /** 数据源状态条（平台化）：keys = 该平台的数据表键；containerId = 平台页内容器 */
+  function renderSources(keys, containerId) {
     const src = DATA.meta.sources || {};
-    const cards = ["pgy", "star", "chili", "lx"].map(k => {
+    const cards = keys.map(k => {
       const s = src[k] || { name: k, loaded: false, rows: 0 };
       const ok = s.loaded;
       const path = (s.path || "").split(/[\\/]/).pop() || "";
@@ -283,17 +284,21 @@
         </div>
       </div>`;
     }).join("");
-    const quality = [];
-    if ((DATA.summary.funnel_violation_count || 0) > 0) {
-      quality.push(DATA.summary.funnel_violation_count + "篇成交UV高于加购UV，请结合星河归因链路判断");
+    // 数据质量提示仅小红书（四表口径）
+    let qualityHtml = "";
+    if (containerId === "sourceStrip") {
+      const quality = [];
+      if ((DATA.summary.funnel_violation_count || 0) > 0) {
+        quality.push(DATA.summary.funnel_violation_count + "篇成交UV高于加购UV，请结合星河归因链路判断");
+      }
+      if ((DATA.meta.latest_data_gap_days || 0) > 0) {
+        quality.push("薯条最新日期比星河晚" + DATA.meta.latest_data_gap_days + "天，末端成本仍在等待归因回补");
+      }
+      qualityHtml = quality.length
+        ? '<div class="data-quality-note"><strong>数据质量提示</strong><span>' + quality.join("；") + "</span></div>"
+        : "";
     }
-    if ((DATA.meta.latest_data_gap_days || 0) > 0) {
-      quality.push("薯条最新日期比星河晚" + DATA.meta.latest_data_gap_days + "天，末端成本仍在等待归因回补");
-    }
-    const qualityHtml = quality.length
-      ? '<div class="data-quality-note"><strong>数据质量提示</strong><span>' + quality.join("；") + "</span></div>"
-      : "";
-    document.getElementById("sourceStrip").innerHTML = cards + qualityHtml;
+    document.getElementById(containerId).innerHTML = cards + qualityHtml;
   }
 
   // ===== 图表一 · 单篇趋势分析 =====
@@ -479,62 +484,96 @@
     hints.forEach(function (hint) { observer.observe(hint); });
   }
 
+  // ===== 平台页切换（小红书 / 抖音 / B站） =====
+  const PLATFORMS = {
+    xhs:  { pageId: "page-xhs",  tocId: "tocSub-xhs",  charts: ["dailyOverviewChart", "trendChart", "costChart"], title: "小红书投放数据看板" },
+    dy:   { pageId: "page-dy",   tocId: "tocSub-dy",   charts: [], title: "抖音投放数据看板" },
+    bili: { pageId: "page-bili", tocId: "tocSub-bili", charts: ["biliTrendChart"], title: "B站投放数据看板" },
+  };
+  let currentPlatform = "xhs";
+
+  function chartInstance(id) {
+    if (id === "dailyOverviewChart") return dailyOverviewChart;
+    if (id === "trendChart") return trendChart;
+    if (id === "costChart") return costChart;
+    if (id === "biliTrendChart") return biliTrendChart;
+    return null;
+  }
+
+  function switchPlatform(p) {
+    if (!PLATFORMS[p]) return;
+    currentPlatform = p;
+    const cfg = PLATFORMS[p];
+    Object.keys(PLATFORMS).forEach(function (k) {
+      const c = PLATFORMS[k];
+      const group = document.querySelector('.platform-group[data-platform="' + k + '"]');
+      const button = group && group.querySelector(".platform-group-toggle");
+      const isActive = k === p;
+      document.getElementById(c.pageId).hidden = (k !== p);
+      document.getElementById(c.tocId).hidden = !isActive;
+      if (group) group.classList.toggle("active", isActive);
+      if (button) {
+        button.setAttribute("aria-expanded", String(isActive));
+        const chevron = button.querySelector(".platform-chevron");
+        if (chevron) chevron.textContent = isActive ? "⌃" : "⌄";
+      }
+    });
+    document.title = cfg.title + " · 投放数据看板";
+    // 图表在 hidden 容器里初始化为 0 尺寸，切回后必须 resize
+    setTimeout(function () {
+      cfg.charts.forEach(function (id) {
+        const c = chartInstance(id);
+        if (c && c.resize) c.resize();
+      });
+    }, 80);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function initToc() {
     var toc = document.getElementById("toc");
-    var items = Array.from(toc.querySelectorAll(".toc-item"));
-    var targets = items.map(function (item) {
-      return document.getElementById(item.dataset.target);
-    }).filter(Boolean);
-    var toggleBtn = document.getElementById("tocToggle");
-    var expandWrap = document.getElementById("tocExpand");
-    var expandBtn = expandWrap && expandWrap.querySelector(".toc-expand-btn");
-    if (!items.length || !targets.length) return;
+    if (!toc.querySelectorAll(".toc-item").length) return;
 
-    // ---- toggle ----
-    function resizeCharts() {
-      if (trendChart) trendChart.resize();
-      if (costChart) costChart.resize();
-      if (dailyOverviewChart) dailyOverviewChart.resize();
+    // 当前平台的子目录项/目标（hidden 平台不参与）
+    function currentItems() {
+      return Array.from(toc.querySelectorAll(".toc-sub:not([hidden]) .toc-item"));
     }
-    function collapse() {
-      toc.classList.add("collapsed");
-      if (expandWrap) expandWrap.hidden = false;
-      localStorage.setItem("toc_collapsed", "1");
-      setTimeout(resizeCharts, 300);
+    function currentTargets() {
+      return currentItems().map(function (item) {
+        return document.getElementById(item.dataset.target);
+      }).filter(Boolean);
     }
-    function expand() {
-      toc.classList.remove("collapsed");
-      if (expandWrap) expandWrap.hidden = true;
-      localStorage.setItem("toc_collapsed", "0");
-      setTimeout(resizeCharts, 300);
-    }
-    if (toggleBtn) toggleBtn.addEventListener("click", collapse);
-    if (expandBtn) expandBtn.addEventListener("click", expand);
-    // restore state
-    if (localStorage.getItem("toc_collapsed") === "1") collapse();
-
-    // ---- click to scroll ----
-    var scrollLock = 0;
-    items.forEach(function (item) {
-      item.addEventListener("click", function (e) {
-        e.preventDefault();
-        var target = document.getElementById(item.dataset.target);
-        if (!target) return;
-        // Highlight immediately on click
-        items.forEach(function (it) { it.classList.remove("active"); });
-        item.classList.add("active");
-        scrollLock = Date.now();
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        setTimeout(function () { scrollLock = 0; }, 900);
+    // ---- 平台分组切换 ----
+    document.querySelectorAll(".platform-group-toggle").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const p = Object.keys(PLATFORMS).find(function (k) { return PLATFORMS[k].pageId === btn.dataset.page; });
+        if (p) switchPlatform(p);
       });
     });
 
-    // ---- scroll spy ----
+    // ---- click to scroll（委托，动态取当前平台 items）----
+    var scrollLock = 0;
+    toc.addEventListener("click", function (e) {
+      const item = e.target.closest(".toc-item");
+      if (!item) return;
+      e.preventDefault();
+      const target = document.getElementById(item.dataset.target);
+      if (!target) return;
+      // Highlight immediately on click
+      currentItems().forEach(function (it) { it.classList.remove("active"); });
+      item.classList.add("active");
+      scrollLock = Date.now();
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(function () { scrollLock = 0; }, 900);
+    });
+
+    // ---- scroll spy（只 spy 当前平台的模块）----
     function syncActive() {
       if (scrollLock && Date.now() - scrollLock < 900) return;
+      const items = currentItems(), targets = currentTargets();
+      if (!targets.length) return;
       var bestId = null, closest = Infinity;
       for (var i = 0; i < targets.length; i++) {
-        var top = targets[i].getBoundingClientRect().top;
+        const top = targets[i].getBoundingClientRect().top;
         // section whose top is closest to viewport top (but still in or below viewport)
         if (top >= -50 && top < closest) { closest = top; bestId = targets[i].id; }
       }
@@ -731,18 +770,37 @@
     const dealRate = visitUv > 0 ? (dealUv / visitUv * 100) : null;
     const uvValue = visitUv > 0 ? (gmv / visitUv) : null;
 
+    // 与本期所有有效笔记的算术平均转化率比较，避免无分母笔记稀释均值。
+    function averageRate(key) {
+      const values = (DATA.notes || [])
+        .map(n => n[key])
+        .filter(v => typeof v === "number" && Number.isFinite(v));
+      return values.length ? values.reduce((sum, v) => sum + v, 0) / values.length * 100 : null;
+    }
+    function rateCompare(current, average) {
+      if (current == null) return { rate: null, average: average };
+      if (average == null) return { rate: current, average: null, rateClass: "is-neutral" };
+      const diff = current - average;
+      const rateClass = Math.abs(diff) < 0.005 ? "is-neutral" : (diff > 0 ? "is-good" : "is-bad");
+      return { rate: current, average: average, rateClass: rateClass };
+    }
+
+    const visitComp = rateCompare(visitRate, averageRate("visit_rate"));
+    const cartComp = rateCompare(cartRate, averageRate("cart_rate"));
+    const dealComp = rateCompare(dealRate, averageRate("deal_rate"));
+
     const kpis = [
       { l: "总阅读UV", v: fmt.int(readUv), rate: null, tip: "", u: "" },
-      { l: "总进店UV", v: fmt.int(visitUv), rate: visitRate != null ? visitRate.toFixed(2) + "%" : null, tip: "进店率 = 进店UV ÷ 阅读UV", u: "" },
-      { l: "总加购UV", v: fmt.int(cartUv), rate: cartRate != null ? cartRate.toFixed(2) + "%" : null, tip: "进店加购率 = 加购UV ÷ 进店UV", u: "" },
-      { l: "总成交UV", v: fmt.int(dealUv), rate: dealRate != null ? dealRate.toFixed(2) + "%" : null, tip: "进店转化率 = 成交UV ÷ 进店UV", u: "" },
+      { l: "总进店UV", v: fmt.int(visitUv), rate: visitComp.rate, average: visitComp.average, rateClass: visitComp.rateClass, tip: "进店率 = 进店UV ÷ 阅读UV；平均率 = 本期有效笔记进店率的算术平均", u: "" },
+      { l: "总加购UV", v: fmt.int(cartUv), rate: cartComp.rate, average: cartComp.average, rateClass: cartComp.rateClass, tip: "进店加购率 = 加购UV ÷ 进店UV；平均率 = 本期有效笔记加购率的算术平均", u: "" },
+      { l: "总成交UV", v: fmt.int(dealUv), rate: dealComp.rate, average: dealComp.average, rateClass: dealComp.rateClass, tip: "进店转化率 = 成交UV ÷ 进店UV；平均率 = 本期有效笔记成交率的算术平均", u: "" },
       { l: '总GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(gmv), rate: null, tip: "⚠ 多内容归因下含重复计算，非精确值", u: "元", approx: true },
       { l: 'UV价值 <span class="gmv-approx" data-tip="UV价值 = GMV ÷ 进店UV，因GMV含多内容归因重复，该值为近似参考。">≈ 参考值</span>', v: uvValue != null ? "¥" + uvValue.toFixed(2) : "—", rate: null, tip: "UV价值 = 总GMV ÷ 进店UV（GMV含归因重复）", u: "", approx: true },
     ];
     document.getElementById("trendKpis").innerHTML = kpis.map(k =>
       `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
         <div class="trend-kpi-label">${k.l}</div>
-        <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
+        <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate != null ? '<span class="trend-kpi-rate ' + (k.rateClass || "") + '"> ' + k.rate.toFixed(2) + '%</span>' : ""}${k.average != null ? '<span class="trend-kpi-average">平均 ' + k.average.toFixed(2) + '%</span>' : ""}</div>
       </div>`
     ).join("");
 
@@ -781,6 +839,291 @@
       series: opt.series,
     }, true);
     bindChartPanInteractions(trendChart, "trendPanHint");
+  }
+
+  // ===== B站 · 单篇趋势分析（独立模块，B站粉蓝配色；不参与小红书四表联动） =====
+  let biliTrendChart = null, biliTrendCombo = null;
+
+  const BILI_TREND_METRICS = {
+    play:  { label: "播放UV", col: 5, color: "#00AEEC", avg: true },
+    visit: { label: "进店UV", col: 1, color: "#FB7299", avg: true },
+    cart:  { label: "加购UV", col: 2, color: "#F97316", avg: true },
+    deal:  { label: "成交UV", col: 3, color: "#EAB308", avg: true },
+  };
+  function biliActiveMetrics() {
+    var a = [];
+    document.querySelectorAll("#biliToggles .metric-toggle-card.active").forEach(function(b){ a.push(b.dataset.metric); });
+    if (!a.length) a = ["visit"];
+    return ["play", "visit", "cart", "deal"].filter(function(m){ return a.indexOf(m) >= 0; });
+  }
+  function buildBiliTrendOption(rows, suffix) {
+    var active = biliActiveMetrics();
+    var useDual = active.indexOf("play") >= 0 && active.length > 1;
+    var series = active.map(function(m){
+      var mm = BILI_TREND_METRICS[m];
+      var s = {
+        name: mm.label + suffix, type: "line",
+        data: rows.map(function(r){ return r[mm.col]; }),
+        smooth: true, symbol: "circle", symbolSize: 5,
+        yAxisIndex: (m === "play" && useDual) ? 1 : 0,
+        lineStyle: { color: mm.color, width: 2 }, itemStyle: { color: mm.color },
+      };
+      if (mm.avg) s.markLine = buildAvgMarkLine(mm.color, mm.label);
+      return s;
+    });
+    var yAxis = [
+      { type: "value", name: useDual ? "进店/加购/成交 UV" : "UV", position: "left",
+        axisLine: { show: false }, axisTick: { show: false },
+        splitLine: { lineStyle: { color: C.grid } },
+        axisLabel: { color: C.muted, fontSize: 11 }, nameTextStyle: { color: C.dim } },
+      { type: "value", name: "播放UV", position: "right", show: useDual,
+        axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false },
+        axisLabel: { show: useDual, color: "#00AEEC", fontSize: 11,
+          formatter: function(v){ return v >= 1000 ? (v/1000).toFixed(1)+"k" : v; } },
+        nameTextStyle: { color: "#00AEEC", fontWeight: 600 } },
+    ];
+    return { series: series, yAxis: yAxis };
+  }
+  function initBiliToggles() {
+    document.querySelectorAll("#biliToggles .metric-toggle-card").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        this.classList.toggle("active");
+        if (!document.querySelectorAll("#biliToggles .metric-toggle-card.active").length) {
+          this.classList.add("active"); return;
+        }
+        renderBiliTrend(biliTrendCombo ? biliTrendCombo.currentId : null);
+      });
+    });
+  }
+  // ===== B站 页头 meta + 顶部 KPI（B站表无投放消耗字段，不做投入/ROI） =====
+  function renderBiliMeta() {
+    const b = DATA.bilibili || {};
+    const m = b.meta || {};
+    document.getElementById("biliPeriod").textContent = "数据周期：" + (m.period || "—");
+    document.getElementById("biliFlow").textContent =
+      "口径：" + (m.flow_type || "全部流量") + " / 归因 " + (m.attr_period || 15) + " 天";
+    document.getElementById("biliGen").textContent = "生成于 " + (DATA.meta.generated || "");
+  }
+
+  function renderBiliKpis() {
+    const b = DATA.bilibili || {};
+    const rows = b.trends_all || [];
+    if (!rows.length) return;
+    const totalPlay = rows.reduce((s, r) => s + (r[5] || 0), 0);
+    const totalVisit = rows.reduce((s, r) => s + (r[1] || 0), 0);
+    const totalCart = rows.reduce((s, r) => s + (r[2] || 0), 0);
+    const totalDeal = rows.reduce((s, r) => s + (r[3] || 0), 0);
+    const totalGmv = rows.reduce((s, r) => s + (r[4] || 0), 0);
+    const kpi = [
+      { l: "总播放UV", v: fmt.int(totalPlay), u: "", sub: "全部内容 · 播放口径", range: (b.meta && b.meta.period) || "", rangeTip: "数据周期" },
+      { l: "总进店UV", v: fmt.int(totalVisit), u: "", sub: "播放 → 进店" },
+      { l: "总加购UV", v: fmt.int(totalCart), u: "", sub: "进店 → 加购" },
+      { l: '总 GMV <span class="gmv-approx" data-tip="B站按内容维度统计GMV，同一笔订单如果有多条内容共同贡献，该订单GMV会被重复计入每条内容，因此加总后的GMV高于实际成交额。">≈ 参考值</span>', v: fmt.money(totalGmv), u: "元", sub: "⚠ 多内容归因存在重复计算", approx: true },
+    ];
+    document.getElementById("biliKpiRow").innerHTML = kpi.map(k =>
+      `<div class="kpi${k.approx ? " kpi-approx" : ""}">
+        <div class="kpi-label">${k.l}${k.range ? `<span class="kpi-range" title="${k.rangeTip || ""}">${k.range}</span>` : ""}</div>
+        <div class="kpi-val">${k.v}<span class="kpi-unit">${k.u}</span></div>
+        ${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ""}
+      </div>`
+    ).join("");
+  }
+
+  function renderBiliTrendModule() {
+    const bili = DATA.bilibili;
+    const trendsAll = (bili && bili.trends_all) || [];
+    const notes = (bili && bili.notes) || [];
+    // 候选列表：内容ID/达人 可搜；pub_date 用最早出现日期近似（B站表无发布日字段）
+    const candidates = notes
+      .map(n => ({ note_id: n.note_id, creator: n.creator, pub_date: String(n.first_date || "") }))
+      .sort((a, b) => (String(b.pub_date || "0") | 0) - (String(a.pub_date || "0") | 0));
+
+    biliTrendCombo = makeCombo({
+      inputId: "biliTrendSearch", listId: "biliTrendList", candidates,
+      filterKeys: ["note_id", "creator"],
+      emptyPlaceholder: "（无趋势明细数据）",
+      onSelect: function (noteId) { renderBiliTrend(noteId); },
+      onClear: function () { renderBiliTrend(null); },
+    });
+
+    // 默认：无选中 → 展示全部内容汇总趋势
+    if (trendsAll.length || candidates.length) {
+      renderBiliTrend(null);
+    } else {
+      document.getElementById("biliTrendChart").innerHTML =
+        '<div style="padding:80px;text-align:center;color:#9CA3AF">B站表未加载或无按日明细，无法绘制趋势</div>';
+    }
+  }
+
+  /** renderBiliTrend(null) = 全部内容汇总；renderBiliTrend(noteId) = 单篇 */
+  function renderBiliTrend(noteId) {
+    if (biliTrendCombo) biliTrendCombo.currentId = noteId || null;
+    const bili = DATA.bilibili || {};
+    const trendsAll = bili.trends_all || [];
+
+    if (!noteId) {
+      // ===== B站 全部内容汇总模式 =====
+      const rows = trendsAll;
+      if (!rows.length) {
+        if (biliTrendChart) { try { biliTrendChart.dispose(); } catch (ignore) {} biliTrendChart = null; }
+        document.getElementById("biliTrendChart").innerHTML =
+          '<div style="padding:80px;text-align:center;color:#9CA3AF">暂无汇总趋势数据</div>';
+        return;
+      }
+      var biliModSub = document.querySelector("#modBiliTrend .mod-sub");
+      if (biliModSub) biliModSub.textContent = "全部内容逐日汇总 · 播放 / 进店 / 加购 / 成交 UV 趋势";
+      const totalVisit = rows.reduce((s, r) => s + (r[1] || 0), 0);
+      const totalCart = rows.reduce((s, r) => s + (r[2] || 0), 0);
+      const totalDeal = rows.reduce((s, r) => s + (r[3] || 0), 0);
+      const totalGmv = rows.reduce((s, r) => s + (r[4] || 0), 0);
+      const totalPlay = rows.reduce((s, r) => s + (r[5] || 0), 0);
+      const kpis = [
+        { l: "总进店UV（全部）", v: fmt.int(totalVisit), u: "" },
+        { l: "总加购UV（全部）", v: fmt.int(totalCart), u: "" },
+        { l: "总成交UV（全部）", v: fmt.int(totalDeal), u: "" },
+        { l: '总GMV（全部）<span class="gmv-approx" data-tip="B站按内容维度统计GMV，同一笔订单被多条内容共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(totalGmv), u: "元", approx: true },
+        { l: "内容数", v: fmt.int((bili.notes || []).length), u: "条" },
+      ];
+      document.getElementById("biliTrendKpis").innerHTML = kpis.map(k =>
+        `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
+          <div class="trend-kpi-label">${k.l}</div>
+          <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span></div>
+        </div>`
+      ).join("");
+
+      updateToggleCards("biliToggles", {
+        play: fmt.int(totalPlay),
+        visit: fmt.int(totalVisit),
+        cart: fmt.int(totalCart),
+        deal: fmt.int(totalDeal)
+      });
+
+      if (!biliTrendChart) biliTrendChart = echarts.init(document.getElementById("biliTrendChart"));
+      const dates = rows.map(r => fmtDate(r[0]));
+      const opt = buildBiliTrendOption(rows, "（全部）");
+      biliTrendChart.setOption({
+        backgroundColor: "transparent",
+        tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
+        legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
+        grid: { top: 40, left: 60, right: 60, bottom: 40 },
+        dataZoom: buildInsideZoom(),
+        xAxis: {
+          type: "category", data: dates,
+          axisLine: { lineStyle: { color: C.border } },
+          axisLabel: { fontSize: 11, color: C.muted, rotate: dates.length > 40 ? 45 : 0 },
+        },
+        yAxis: opt.yAxis,
+        series: opt.series,
+      }, true);
+      bindChartPanInteractions(biliTrendChart, "biliTrendPanHint");
+      return;
+    }
+
+    // ===== B站 单篇模式 =====
+    var biliModSub2 = document.querySelector("#modBiliTrend .mod-sub");
+    if (biliModSub2) biliModSub2.textContent = "逐日转化趋势 · hover 看进店率 / 加购率 / 转化率";
+    const rows = (bili.trends || {})[noteId] || [];
+    const note = (bili.notes || []).find(n => n.note_id === noteId) || {};
+
+    // 无趋势数据：结构化占位
+    if (!rows.length) {
+      if (biliTrendChart) { try { biliTrendChart.dispose(); } catch (ignore) {} biliTrendChart = null; }
+      document.getElementById("biliTrendChart").innerHTML =
+        '<div class="nodata-card">' +
+          '<div class="nodata-head"><span class="nodata-icon">⚠️</span><span class="nodata-title">该内容暂无趋势数据</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-ok">已加载</span><span class="nodata-text">内容已加载，可在数据源状态条确认</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-info">原因</span><span class="nodata-text">B站表尚未覆盖此内容：新内容归因数据未出，或 B站表未更新到该日期</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-act">解决</span><span class="nodata-text">B站表更新后重新生成看板，数据将自动补全</span></div>' +
+        '</div>';
+      document.getElementById("biliTrendKpis").innerHTML = "";
+      var biliModSubEmpty = document.querySelector("#modBiliTrend .mod-sub");
+      if (biliModSubEmpty) biliModSubEmpty.textContent = "该内容暂无趋势数据";
+      return;
+    }
+
+    // 复合指标（漏斗口径：播放 → 进店 → 加购 → 成交，统一采用 B站 表 UV）
+    const playUv = note.play_uv || 0;
+    const visitUv = note.visit_uv || 0;
+    const cartUv = note.cart_uv || 0;
+    const dealUv = note.deal_uv || 0;
+    const gmv = note.gmv || 0;
+    const visitRate = playUv > 0 ? (visitUv / playUv * 100) : null;
+    const cartRate = visitUv > 0 ? (cartUv / visitUv * 100) : null;
+    const dealRate = visitUv > 0 ? (dealUv / visitUv * 100) : null;
+    const uvValue = visitUv > 0 ? (gmv / visitUv) : null;
+
+    // 与本期所有有效内容的算术平均转化率比较，避免无分母内容稀释均值。
+    function biliAverageRate(fn) {
+      const values = (bili.notes || [])
+        .map(fn)
+        .filter(v => typeof v === "number" && Number.isFinite(v));
+      return values.length ? values.reduce((sum, v) => sum + v, 0) / values.length * 100 : null;
+    }
+    const bVisitAvg = biliAverageRate(n => (n.play_uv || 0) > 0 ? (n.visit_uv || 0) / (n.play_uv || 0) : null);
+    const bCartAvg = biliAverageRate(n => (n.visit_uv || 0) > 0 ? (n.cart_uv || 0) / (n.visit_uv || 0) : null);
+    const bDealAvg = biliAverageRate(n => (n.visit_uv || 0) > 0 ? (n.deal_uv || 0) / (n.visit_uv || 0) : null);
+
+    function biliRateCompare(current, average) {
+      if (current == null) return { rate: null, average: average };
+      if (average == null) return { rate: current, average: null, rateClass: "is-neutral" };
+      const diff = current - average;
+      const rateClass = Math.abs(diff) < 0.005 ? "is-neutral" : (diff > 0 ? "is-good" : "is-bad");
+      return { rate: current, average: average, rateClass: rateClass };
+    }
+    const bVisitComp = biliRateCompare(visitRate, bVisitAvg);
+    const bCartComp = biliRateCompare(cartRate, bCartAvg);
+    const bDealComp = biliRateCompare(dealRate, bDealAvg);
+
+    const kpis = [
+      { l: "总播放UV", v: fmt.int(playUv), rate: null, tip: "", u: "" },
+      { l: "总进店UV", v: fmt.int(visitUv), rate: bVisitComp.rate, average: bVisitComp.average, rateClass: bVisitComp.rateClass, tip: "进店率 = 进店UV ÷ 播放UV；平均率 = 本期有效内容进店率的算术平均", u: "" },
+      { l: "总加购UV", v: fmt.int(cartUv), rate: bCartComp.rate, average: bCartComp.average, rateClass: bCartComp.rateClass, tip: "进店加购率 = 加购UV ÷ 进店UV；平均率 = 本期有效内容加购率的算术平均", u: "" },
+      { l: "总成交UV", v: fmt.int(dealUv), rate: bDealComp.rate, average: bDealComp.average, rateClass: bDealComp.rateClass, tip: "进店转化率 = 成交UV ÷ 进店UV；平均率 = 本期有效内容成交率的算术平均", u: "" },
+      { l: '总GMV <span class="gmv-approx" data-tip="B站按内容维度统计GMV，同一笔订单被多条内容共同贡献时会重复计入，数值高于实际成交额。">≈ 参考值</span>', v: fmt.money(gmv), rate: null, tip: "⚠ 多内容归因下含重复计算，非精确值", u: "元", approx: true },
+      { l: 'UV价值 <span class="gmv-approx" data-tip="UV价值 = GMV ÷ 进店UV，因GMV含多内容归因重复，该值为近似参考。">≈ 参考值</span>', v: uvValue != null ? "¥" + uvValue.toFixed(2) : "—", rate: null, tip: "UV价值 = 总GMV ÷ 进店UV（GMV含归因重复）", u: "", approx: true },
+    ];
+    document.getElementById("biliTrendKpis").innerHTML = kpis.map(k =>
+      `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
+        <div class="trend-kpi-label">${k.l}</div>
+        <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate != null ? '<span class="trend-kpi-rate ' + (k.rateClass || "") + '"> ' + k.rate.toFixed(2) + '%</span>' : ""}${k.average != null ? '<span class="trend-kpi-average">平均 ' + k.average.toFixed(2) + '%</span>' : ""}</div>
+      </div>`
+    ).join("");
+
+    updateToggleCards("biliToggles", {
+      play: fmt.int(playUv),
+      visit: fmt.int(visitUv),
+      cart: fmt.int(cartUv),
+      deal: fmt.int(dealUv)
+    });
+
+    // 内容首次出现日期（x 轴粉字标注；B站表无发布日字段，用最早数据日期近似）
+    const bFirstDateRaw = note.first_date ? note.first_date : null;
+    const bFirstDateStr = bFirstDateRaw ? fmtDate(String(bFirstDateRaw)) : null;
+
+    if (!biliTrendChart) biliTrendChart = echarts.init(document.getElementById("biliTrendChart"));
+    const dates = rows.map(r => fmtDate(r[0]));
+    const opt = buildBiliTrendOption(rows, "");
+    biliTrendChart.setOption({
+      backgroundColor: "transparent",
+      tooltip: { trigger: "axis", axisPointer: { type: "cross" }, backgroundColor: "#fff", borderColor: C.border, textStyle: { color: C.text } },
+      legend: { top: 0, textStyle: { color: C.muted, fontSize: 12 }, itemWidth: 12, itemHeight: 2 },
+      grid: { top: 40, left: 60, right: 60, bottom: 40 },
+      dataZoom: buildInsideZoom(),
+      xAxis: {
+        type: "category", data: dates,
+        axisLine: { lineStyle: { color: C.border } },
+        axisLabel: {
+          fontSize: 11, fontWeight: 600,
+          color: function (value) {
+            return bFirstDateStr && value === bFirstDateStr ? "#E9567C" : C.muted;
+          },
+          rotate: dates.length > 40 ? 45 : 0,
+        },
+      },
+      yAxis: opt.yAxis,
+      series: opt.series,
+    }, true);
+    bindChartPanInteractions(biliTrendChart, "biliTrendPanHint");
   }
 
   // ===== 图表二 · 单篇成本分析 =====
@@ -2283,6 +2626,7 @@
     if (trendChart) trendChart.resize();
     if (costChart) costChart.resize();
     if (dailyOverviewChart) dailyOverviewChart.resize();
+    if (biliTrendChart) biliTrendChart.resize();
   });
 
   // ===== 全局 GMV tooltip（避免被 overflow 裁剪） =====
@@ -2319,7 +2663,10 @@
   bindLinks();
   renderMeta();
   renderKpis();
-  renderSources();
+  renderSources(["pgy", "star", "chili", "lx"], "sourceStrip");
+  renderBiliMeta();
+  renderBiliKpis();
+  renderSources(["bili"], "biliSourceStrip");
   initTableCols();
   initQueryPanel();
   renderTable();
@@ -2332,6 +2679,8 @@
   renderDailyOverview();
   renderTrendModule();
   renderCostModule();
+  initBiliToggles();
+  renderBiliTrendModule();
   initChartPanHints();
   initToc();
 })();

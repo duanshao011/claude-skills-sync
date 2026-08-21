@@ -23,7 +23,7 @@ import pandas as pd
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from loaders import load_pugongying, load_star, load_chili, load_lingxi
+from loaders import load_pugongying, load_star, load_chili, load_lingxi, load_bilibili
 from metrics import compute
 from render import build_payload, render_html
 
@@ -38,43 +38,51 @@ DEF_LX = ""
 
 
 def scan_data_dir(root):
-    """扫描目录，按文件名关键字自动识别四张表。
-    返回 dict：{pgy, star(list), chili, lx}
-    - 蒲公英：文件名含"蒲公英"
-    - 星河：文件名含"星河"或"小红星"（可能多个，全部收集）
-    - 薯条：文件名含"薯条"
-    - 灵犀：文件名含"灵犀"
+    """递归扫描目录树，按文件名关键字自动识别各平台数据表。
+    返回 dict：{pgy, star(list), chili, lx, bili, douyin}
+    - 小红书四表：蒲公英/星河/薯条/灵犀（关键字同前，支持子目录）
+    - B站：文件名含"B站"（取最新一份）
+    - 抖音：文件名含"抖音"（取最新一份，预留）
     同类多份时按修改时间取最新（除星河可多张）。
     """
     if not os.path.isdir(root):
         return {}
-    result = {"pgy": None, "star": [], "chili": None, "lx": None}
-    candidates = {"pgy": [], "star": [], "chili": [], "lx": []}
-    for name in os.listdir(root):
-        if not name.lower().endswith((".xlsx", ".xls", ".csv")):
-            continue
-        if name.startswith("~"):  # Excel 打开中的临时文件
-            continue
-        full = os.path.join(root, name)
-        mtime = os.path.getmtime(full)
-        if "蒲公英" in name:
-            candidates["pgy"].append((mtime, full))
-        elif "星河" in name or "小红星" in name:
-            # 排除二次加工的分日趋势/汇总宽表，只允许标准星河明细进入数据链路。
-            if any(tag in name for tag in ("分日趋势", "分日汇总", "趋势", "汇总")):
+    result = {"pgy": None, "star": [], "chili": None, "lx": None, "bili": None, "douyin": None}
+    candidates = {"pgy": [], "star": [], "chili": [], "lx": [], "bili": [], "douyin": []}
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for name in filenames:
+            if not name.lower().endswith((".xlsx", ".xls", ".csv")):
                 continue
-            candidates["star"].append((mtime, full))
-        elif "薯条" in name:
-            candidates["chili"].append((mtime, full))
-        elif "灵犀" in name:
-            candidates["lx"].append((mtime, full))
-    # 蒲公英/薯条/星河全部保留（多月份合并）；灵犀取最新一份
+            if name.startswith("~"):  # Excel 打开中的临时文件
+                continue
+            full = os.path.join(dirpath, name)
+            mtime = os.path.getmtime(full)
+            if "蒲公英" in name:
+                candidates["pgy"].append((mtime, full))
+            elif "星河" in name or "小红星" in name:
+                # 排除二次加工的分日趋势/汇总宽表，只允许标准星河明细进入数据链路。
+                if any(tag in name for tag in ("分日趋势", "分日汇总", "趋势", "汇总")):
+                    continue
+                candidates["star"].append((mtime, full))
+            elif "薯条" in name:
+                candidates["chili"].append((mtime, full))
+            elif "灵犀" in name:
+                candidates["lx"].append((mtime, full))
+            elif "B站" in name:
+                candidates["bili"].append((mtime, full))
+            elif "抖音" in name:
+                candidates["douyin"].append((mtime, full))
+    # 蒲公英/薯条/星河全部保留（多月份合并）；灵犀/B站/抖音取最新一份
     if candidates["pgy"]:
         result["pgy"] = [p for _, p in sorted(candidates["pgy"])]
     if candidates["chili"]:
         result["chili"] = [p for _, p in sorted(candidates["chili"])]
     if candidates["lx"]:
         result["lx"] = max(candidates["lx"])[1]
+    if candidates["bili"]:
+        result["bili"] = max(candidates["bili"])[1]
+    if candidates["douyin"]:
+        result["douyin"] = max(candidates["douyin"])[1]
     # 星河多张排序：文件名含"旧"排最前，含"新"排最后（新版口径优先，重叠日期以新版为准）
     def _star_sort_key(item):
         _, path = item
@@ -142,14 +150,72 @@ def _try(fn, path, label):
         return None, {"loaded": False, "reason": f"加载失败：{e}", "path": path}
 
 
+def _f(v):
+    """NaN/None → None；numpy 数值 → 原生 Python 数值（保证 JSON 可序列化）。"""
+    if v is None or pd.isna(v):
+        return None
+    if hasattr(v, "item"):  # numpy.int64 / numpy.float64
+        v = v.item()
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else v
+
+
+def compute_bilibili(df):
+    """B站明细 → 内容档案 + 单篇逐日 + 全量逐日。
+    行结构统一为 [date, visit_uv, cart_uv, deal_uv, gmv, play_uv]。
+    """
+    notes = []
+    for nid, g in df.groupby("note_id"):
+        g = g.sort_values("date")
+        row = g.iloc[-1]  # 取最新一行拿达人/链接等元信息
+        notes.append({
+            "note_id": str(nid),
+            "creator": str(row.get("creator", "") or ""),
+            "url": str(row.get("url", "") or ""),
+            "play_uv": _f(g["play_uv"].sum()) if "play_uv" in g else None,
+            "visit_uv": _f(g["visit_uv"].sum()) if "visit_uv" in g else None,
+            "cart_uv": _f(g["cart_uv"].sum()) if "cart_uv" in g else None,
+            "deal_uv": _f(g["deal_uv"].sum()) if "deal_uv" in g else None,
+            "gmv": _f(g["gmv"].sum()) if "gmv" in g else None,
+            "new_visit_uv": _f(g["new_visit_uv"].sum()) if "new_visit_uv" in g else None,
+            "first_date": int(g["date"].min()),
+        })
+    notes.sort(key=lambda n: n["first_date"], reverse=True)
+
+    trends = {}
+    for nid, g in df.groupby("note_id"):
+        g = g.sort_values("date")
+        trends[str(nid)] = [
+            [int(r["date"]),
+             _f(r.get("visit_uv")), _f(r.get("cart_uv")),
+             _f(r.get("deal_uv")), _f(r.get("gmv")),
+             _f(r.get("play_uv"))]
+            for _, r in g.iterrows()
+        ]
+
+    trends_all = []
+    g = df.groupby("date", as_index=False).agg({
+        "play_uv": "sum", "visit_uv": "sum", "cart_uv": "sum",
+        "deal_uv": "sum", "gmv": "sum",
+    }).sort_values("date")
+    for _, r in g.iterrows():
+        trends_all.append([
+            int(r["date"]),
+            _f(r.get("visit_uv")), _f(r.get("cart_uv")),
+            _f(r.get("deal_uv")), _f(r.get("gmv")), _f(r.get("play_uv")),
+        ])
+    return notes, trends, trends_all
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pugongying", nargs="+", default=[])
     ap.add_argument("--star", nargs="+", default=[])
     ap.add_argument("--chili", nargs="+", default=[])
     ap.add_argument("--lingxi", default=DEF_LX)
+    ap.add_argument("--bilibili", default="")
+    ap.add_argument("--douyin", default="")
     ap.add_argument("--scan-dir", default=None,
-                    help="扫描目录自动识别四张表（默认 " + DEFAULT_SCAN_DIR + "）")
+                    help="扫描目录自动识别各平台表（默认 " + DEFAULT_SCAN_DIR + "）")
     ap.add_argument("--no-scan", action="store_true", help="禁用自动扫描（只用显式传的路径）")
     ap.add_argument("--start", default=None)
     ap.add_argument("--end", default=None)
@@ -161,7 +227,7 @@ def main():
     scan_dir = args.scan_dir
     if not scan_dir and not args.no_scan:
         # 只在博哥没显式传路径时才自动用默认扫描目录
-        if not (args.pugongying or args.star or args.chili or args.lingxi):
+        if not (args.pugongying or args.star or args.chili or args.lingxi or args.bilibili or args.douyin):
             scan_dir = DEFAULT_SCAN_DIR
     if scan_dir and os.path.isdir(scan_dir):
         scanned = scan_data_dir(scan_dir)
@@ -181,6 +247,12 @@ def main():
         if scanned.get("lx") and not args.lingxi:
             args.lingxi = scanned["lx"]
             print(f"  灵犀 → {os.path.basename(args.lingxi)}")
+        if scanned.get("bili") and not args.bilibili:
+            args.bilibili = scanned["bili"]
+            print(f"  B站 → {os.path.basename(args.bilibili)}")
+        if scanned.get("douyin") and not args.douyin:
+            args.douyin = scanned["douyin"]
+            print(f"  抖音 → {os.path.basename(args.douyin)}")
         # 输出目录也默认为扫描目录（除非博哥显式指定）
         if args.output_dir is None:
             args.output_dir = scan_dir
@@ -267,6 +339,16 @@ def main():
     # 灵犀命中数：在四表并集主体下，已加载的灵犀记录都会进入主表。
     source_status["lx"]["hit"] = int(len(lx)) if lx is not None else 0
 
+    # ===== B站（独立于小红书四表：单表全链路，进入独立模块） =====
+    bili, source_status["bili"] = _try(load_bilibili, args.bilibili or "", "B站")
+    source_status["bili"]["name"] = "B站"
+    source_status["bili"]["rows"] = int(len(bili)) if bili is not None else 0
+    if bili is not None and len(bili):
+        b_lo, b_hi = int(bili["date"].min()), int(bili["date"].max())
+        source_status["bili"]["period"] = _period_str(b_lo, b_hi)
+    else:
+        source_status["bili"]["period"] = ""
+
     # ===== 每张表的日期范围（用于状态卡展示） =====
     def _dt_period(series):
         s = pd.to_datetime(series, errors="coerce").dropna()
@@ -286,7 +368,7 @@ def main():
     else:
         source_status["lx"]["period"] = ""
 
-    for k in ["pgy", "star", "chili", "lx"]:
+    for k in ["pgy", "star", "chili", "lx", "bili"]:
         s = source_status[k]
         badge = "✓" if s["loaded"] else "✗"
         p = f" · {s.get('period')}" if s.get("period") else ""
@@ -324,6 +406,23 @@ def main():
     payload = build_payload(master, waterlines, summary, daily, meta, cost=cost,
                             trends_all=trends_all, cost_all=cost_all,
                             daily_notes=daily_notes)
+
+    # ===== B站 模块数据（无表则为 None，前端显示占位） =====
+    if bili is not None and len(bili):
+        b_notes, b_trends, b_trends_all = compute_bilibili(bili)
+        payload["bilibili"] = {
+            "notes": b_notes,
+            "trends": b_trends,
+            "trends_all": b_trends_all,
+            "meta": {
+                "period": source_status["bili"].get("period", ""),
+                "flow_type": "全部流量",
+                "attr_period": 15,
+                "note_count": len(b_notes),
+            },
+        }
+    else:
+        payload["bilibili"] = None
     html = render_html(payload)
 
     # 默认固定文件名（覆盖同名），传 --prefix 才带前缀归档

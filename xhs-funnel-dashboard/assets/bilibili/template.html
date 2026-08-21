@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B站投放数据看板</title>
+<style>/*__CSS__*/</style>
+</head>
+<body>
+<div class="app-layout">
+<nav class="toc" id="toc">
+  <a class="toc-item active" data-target="sourceStrip">数据源</a>
+  <a class="toc-item" data-target="modTrend">单篇趋势</a>
+</nav>
+<div class="page">
+
+  <header class="page-head">
+    <div class="page-title">
+      <div class="title-cn">B站投放数据看板</div>
+      <div class="title-en">Bilibili Delivery Analytics</div>
+    </div>
+    <div class="page-meta">
+      <span class="meta-item" id="metaPeriod">数据周期：—</span>
+      <span class="meta-dot">·</span>
+      <span class="meta-item" id="metaFlow">口径：—</span>
+      <span class="meta-dot">·</span>
+      <span class="meta-item" id="metaGen">—</span>
+    </div>
+  </header>
+
+  <section class="kpi-row" id="kpiRow"></section>
+
+  <section class="source-strip" id="sourceStrip"></section>
+
+  <!-- 图表一 · 单篇趋势分析 -->
+  <section class="module" id="modTrend">
+    <div class="module-head">
+      <div class="module-title">
+        <span class="mod-idx">图表一</span>
+        <span class="mod-name">单篇趋势分析</span>
+        <span class="mod-sub">选一条视频看其逐日播放 / 进店 / 加购 / 成交 UV 走势</span>
+      </div>
+      <div class="module-tools">
+        <div class="combo" id="trendCombo">
+          <input type="text" id="trendSearch" class="ctrl-input combo-input" placeholder="搜索内容ID（BV号） 或 达人昵称" autocomplete="off">
+          <ul class="combo-list" id="trendList" hidden></ul>
+        </div>
+      </div>
+    </div>
+    <div class="trend-body">
+      <div class="trend-kpis" id="trendKpis"></div>
+      <div class="chart-toggles" id="trendToggles">
+        <button class="metric-toggle-card" data-metric="play" style="--mc:#00AEEC"><div class="mtc-label">播放UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FB7299"><div class="mtc-label">进店UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交UV</div><div class="mtc-val" data-slot="val">—</div></button>
+      </div>
+      <div class="chart-stage">
+        <div class="chart-pan-hint" id="trendPanHint" role="note">
+          <span class="chart-pan-hint-icon">↔</span>
+          <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+          <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+        </div>
+        <div class="trend-chart" id="trendChart"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page-foot">
+    <span id="footAlign">—</span>
+  </footer>
+</div>
+</div><!-- .app-layout -->
+
+<div class="tip-card" id="tipCard" hidden>
+  <div class="tip-title" id="tipTitle"></div>
+  <div class="tip-sub" id="tipSub"></div>
+  <div class="tip-block">
+    <div class="tip-label">计算口径</div>
+    <div class="tip-body" id="tipFormula"></div>
+  </div>
+  <div class="tip-block">
+    <div class="tip-label">指标含义</div>
+    <div class="tip-body" id="tipMeaning"></div>
+  </div>
+</div>
+
+<script>/*__ECHARTS__*/</script>
+<script id="dashPayload" type="application/json">__PAYLOAD__</script>
+<div id="gmvGlobalTip" class="gmv-global-tip" hidden></div>
+<script>/*__JS__*/</script>
+</body>
+</html>
