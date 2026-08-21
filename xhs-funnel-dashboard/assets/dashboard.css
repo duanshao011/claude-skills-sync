@@ -210,6 +210,7 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 .combo-input{width:100%;padding-right:32px;user-select:text}
 .combo-input::selection{background:var(--brand-soft);color:var(--brand-strong)}
 .combo-input.has-value{font-family:"SF Mono",Consolas,monospace;font-size:12px;color:var(--text)}
+.combo-input.multi-value{font-family:inherit;font-size:13px;font-weight:600;color:var(--brand-strong)}
 /* 联动外源笔记：搜索框内显示但本模块无此数据 → 灰色斜体提示 */
 .combo-input.linked-outside{color:var(--dim);font-style:italic}
 /* 清除按钮 ×：位于输入框右侧内部 */
@@ -242,6 +243,39 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 .combo-item .sep{color:var(--dim-2);text-align:center}
 .combo-item .creator{color:var(--text);font-weight:500;user-select:text}
 .combo-empty{padding:20px;text-align:center;color:var(--dim);font-size:12px;user-select:none}
+#tableList .table-multi-item{gap:9px}
+#tableList{
+  max-height:320px;padding:0;overflow:hidden;
+}
+#tableList .table-multi-options{
+  max-height:318px;overflow-y:auto;overflow-x:hidden;
+  padding:4px 0 50px;box-sizing:border-box;
+}
+#tableList .table-multi-item.selected{background:#FFF0F2;color:var(--brand-strong)}
+#tableList .multi-check{
+  width:16px;height:16px;flex:none;border:1.5px solid #C4C7CE;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;background:#fff;
+}
+#tableList .table-multi-item.selected .multi-check{background:var(--brand);border-color:var(--brand)}
+#tableList .table-multi-item.selected .multi-check::after{
+  content:"";width:6px;height:9px;border:solid #fff;border-width:0 2px 2px 0;
+  transform:rotate(45deg);margin-top:-2px;
+}
+#tableList .table-multi-confirm{
+  position:absolute;left:0;right:0;bottom:7px;z-index:2;
+  display:flex;align-items:center;justify-content:center;
+  padding:0;margin:0;border:0;background:transparent;box-shadow:none;
+  pointer-events:none;user-select:none;
+}
+#tableList .table-confirm-btn{
+  height:30px;min-width:108px;padding:0 18px;border:0;border-radius:5px;
+  background:var(--brand);color:#fff;font-family:inherit;font-size:13px;font-weight:600;line-height:1;cursor:pointer;pointer-events:auto;
+}
+#tableList .table-confirm-btn:hover{background:var(--brand-2)}
+#tableList .table-confirm-btn:focus-visible{outline:2px solid rgba(255,36,66,.28);outline-offset:2px}
+#tableList .table-confirm-btn:disabled{
+  background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;
+}
 .ctrl-btn{
   display:inline-flex;align-items:center;gap:6px;
   border:1px solid var(--border);background:var(--panel);color:var(--text-2);
@@ -385,13 +419,14 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 
 /* ---------- 全链路表格 ---------- */
 /* 表格容器：内部横向+纵向滚动，thead/前两列 sticky */
-.table-wrap{
-  overflow:auto;max-width:100%;
+.table-shell{
+  position:relative;max-width:100%;
   /* 固定高度：搜索/翻页时行数变化也不改变容器高度，页面不跳动 */
   height:min(620px, calc(100vh - 300px));
   min-height:420px;
   border-top:1px solid var(--divider);
 }
+.table-wrap{overflow:auto;width:100%;height:100%;max-width:100%}
 .funnel-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .funnel-table th,.funnel-table td{
   padding:11px 14px;border-bottom:1px solid var(--divider);text-align:left;
@@ -457,6 +492,24 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 .sort-arrow{font-size:10px;color:var(--dim);width:8px;display:inline-block}
 .sort-arrow.active{color:var(--brand)}
 .funnel-table tbody tr:hover{background:var(--panel-hover)}
+.table-average-dock{
+  position:absolute;z-index:5;
+  left:0;right:var(--table-v-scrollbar,10px);
+  bottom:var(--table-h-scrollbar,10px);
+  overflow:hidden;background:#F8FAFC;
+  border-top:2px solid #CBD5E1;
+  box-shadow:0 -2px 5px rgba(15,23,42,.05);
+}
+.table-average-track{will-change:transform}
+.average-table{table-layout:fixed;width:max-content}
+.average-table td{
+  padding:2px 14px;
+  height:26px;line-height:20px;background:#F8FAFC;border-bottom:0;
+  color:#334155;font-size:13px;font-weight:400;
+}
+.average-table td.frozen-col{position:relative;z-index:2;background:#F8FAFC}
+.average-table td.average-label{color:#111827;font-weight:600}
+.average-table td.average-value{font-variant-numeric:tabular-nums}
 .funnel-table td{color:var(--text);max-width:220px;overflow:hidden;text-overflow:ellipsis}
 .funnel-table td.dim{color:var(--dim)}
 .funnel-table td .num-good{color:var(--good);font-weight:600}
@@ -901,6 +954,7 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:32px}
 .table-wrap::-webkit-scrollbar-track{background:#FAFAFA}
 .table-wrap::-webkit-scrollbar-thumb{background:#D4D4D8;border:3px solid #FAFAFA;border-radius:999px}
 .funnel-table th,.funnel-table td{padding:12px 14px;border-color:#F2F2F4}
+.average-table td{padding:2px 14px;height:26px;line-height:20px}
 .funnel-table thead th{font-size:11px;font-weight:680;color:#52525B}
 .funnel-table thead tr:not(.group-row) th{background:#FAFAFB}
 .funnel-table thead .group-row th.group-h{padding:10px 14px;border-bottom:1px solid rgba(0,0,0,.035);font-size:11px;letter-spacing:.06em}

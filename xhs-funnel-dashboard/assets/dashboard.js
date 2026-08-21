@@ -56,9 +56,7 @@
 
     _push("trend");
     _push("cost");
-    _push("table", function () {
-      TABLE.keyword = noteId || ""; TABLE.page = 1; renderTable();
-    });
+    _push("table");
   }
 
   // ---------- 格式化 ----------
@@ -1584,6 +1582,7 @@
     sortKey: "pub_date",
     sortDir: "desc",
     keyword: "",
+    selectedIds: [],
     page: 1,
     pageSize: 30,
     // 查询面板筛选状态（图表三独立筛选，不参与联动）
@@ -1781,6 +1780,7 @@
     const cols = TABLE.selected.map(k => TABLE.byKey[k]).filter(Boolean);
     const thead = document.getElementById("tableHead");
     const tbody = document.getElementById("tableBody");
+    const averageBody = document.getElementById("tableAverage");
     const FZ = computeFrozen(cols);
 
     const groupRuns = [];
@@ -1823,6 +1823,10 @@
     let notes = DATA.notes.slice();
     // 查询面板筛选（达人昵称/笔记ID/发布日期/自然语言）
     notes = applyPanelFilter(notes);
+    if (TABLE.selectedIds.length) {
+      const selected = new Set(TABLE.selectedIds);
+      notes = notes.filter(n => selected.has(n.note_id));
+    }
     if (TABLE.keyword) {
       const terms = TABLE.keyword.toLowerCase().split(/\s+/).filter(Boolean);
       notes = notes.filter(n => {
@@ -1849,6 +1853,11 @@
     const pageRows = notes.slice(start, start + TABLE.pageSize);
 
     tbody.innerHTML = pageRows.map(n => "<tr>" + cols.map(c => cellHtml(n, c, FZ)).join("") + "</tr>").join("");
+    const useSelectedAverage = TABLE.selectedIds.length > 1;
+    const averageIds = useSelectedAverage ? new Set(TABLE.selectedIds) : null;
+    const averageNotes = useSelectedAverage ? DATA.notes.filter(n => averageIds.has(n.note_id)) : DATA.notes;
+    averageBody.innerHTML = buildAverageRow(averageNotes, cols, FZ, useSelectedAverage ? "已选平均" : "平均值");
+    requestAnimationFrame(syncAverageDock);
 
     document.getElementById("tableFoot").innerHTML =
       `<span>共 <b>${total}</b> 篇 · 显示 ${total === 0 ? 0 : start + 1}-${Math.min(start + TABLE.pageSize, total)} · ${cols.length} 列</span>
@@ -1899,6 +1908,76 @@
       th.addEventListener("mouseenter", e => showTip(e, TABLE.byKey[key]));
       th.addEventListener("mouseleave", hideTip);
     });
+  }
+
+  function noteHasColumnSource(n, c) {
+    const src = c.source || "";
+    if (src === "蒲公英") return !!n.in_pgy;
+    if (src === "星河") return !!n.in_star;
+    if (src === "薯条") return !!n.in_chili;
+    if (src === "灵犀") return !!n.in_lx;
+    return true;
+  }
+
+  function averageValue(notes, c) {
+    if (!c || !["int", "num", "ratio"].includes(c.type) || isColMissing(c)) return null;
+    const values = notes
+      .filter(n => noteHasColumnSource(n, c))
+      .map(n => n[c.key])
+      .filter(value => value != null && value !== "")
+      .map(Number)
+      .filter(Number.isFinite);
+    if (!values.length) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+
+  function formatAverage(v, c) {
+    if (v == null) return "—";
+    return fmt.val(v, c);
+  }
+
+  function buildAverageRow(notes, cols, FZ, label) {
+    return "<tr>" + cols.map((c, index) => {
+      const fz = FZ && FZ.map[c.key];
+      const fzCls = fz ? " frozen-col" + (c.key === FZ.lastKey ? " last-frozen" : "") : "";
+      const fzStyle = fz ? ` style="left:${fz.left}px;min-width:${fz.width}px;max-width:${fz.width}px"` : "";
+      if (index === 0) return `<td class="average-label${fzCls}"${fzStyle}>${label}</td>`;
+      return `<td class="average-value${fzCls}"${fzStyle}>${formatAverage(averageValue(notes, c), c)}</td>`;
+    }).join("") + "</tr>";
+  }
+
+  function syncAverageDock() {
+    const wrap = document.querySelector(".table-wrap");
+    const shell = document.querySelector(".table-shell");
+    const track = document.getElementById("tableAverageTrack");
+    const avgTable = track && track.querySelector(".average-table");
+    const colgroup = document.getElementById("tableAverageCols");
+    const headers = Array.from(document.querySelectorAll("#tableHead tr:last-child th"));
+    if (!wrap || !shell || !track || !avgTable || !colgroup || !headers.length) return;
+    const widths = headers.map(th => th.getBoundingClientRect().width);
+    const total = widths.reduce((sum, width) => sum + width, 0);
+    colgroup.innerHTML = widths.map(width => `<col style="width:${width}px">`).join("");
+    avgTable.style.width = total + "px";
+    track.style.width = total + "px";
+    shell.style.setProperty("--table-h-scrollbar", Math.max(0, wrap.offsetHeight - wrap.clientHeight) + "px");
+    shell.style.setProperty("--table-v-scrollbar", Math.max(0, wrap.offsetWidth - wrap.clientWidth) + "px");
+    syncAverageDockScroll();
+  }
+
+  function syncAverageDockScroll() {
+    const wrap = document.querySelector(".table-wrap");
+    const track = document.getElementById("tableAverageTrack");
+    if (!wrap || !track) return;
+    const x = wrap.scrollLeft;
+    track.style.transform = `translateX(${-x}px)`;
+    track.querySelectorAll("td.frozen-col").forEach(td => {
+      td.style.transform = `translateX(${x}px)`;
+    });
+  }
+
+  function initAverageDock() {
+    const wrap = document.querySelector(".table-wrap");
+    if (wrap) wrap.addEventListener("scroll", syncAverageDockScroll, { passive: true });
   }
 
   function cellHtml(n, c, FZ) {
@@ -2157,39 +2236,225 @@
     });
   }
 
-  // ---------- 表格搜索（combo + 关键词过滤） ----------
+  // ---------- 表格笔记多选 ----------
   let tableCombo = null;
 
+  function makeTableMultiCombo() {
+    const inp = document.getElementById("tableSearch");
+    const list = document.getElementById("tableList");
+    const candidates = DATA.notes.slice().sort((a, b) =>
+      (String(b.pub_date || "0").replace(/-/g, "") | 0) - (String(a.pub_date || "0").replace(/-/g, "") | 0));
+    const self = { currentId: null, keyword: "", hi: 0, selectById: null, clear: null };
+    let draftIds = [];
+    let draftActive = false;
+
+    const clearBtn = document.createElement("span");
+    clearBtn.className = "combo-clear";
+    clearBtn.innerHTML = "×";
+    clearBtn.title = "清空已选笔记";
+    inp.parentNode.insertBefore(clearBtn, inp.nextSibling);
+
+    function fmtPubDate(d) {
+      if (!d) return "—";
+      const s = String(d).slice(0, 10);
+      const parts = s.split("-");
+      if (parts.length === 3) return parseInt(parts[1], 10) + "/" + parseInt(parts[2], 10);
+      if (s.length === 8) return s.slice(4, 6).replace(/^0/, "") + "/" + s.slice(6, 8).replace(/^0/, "");
+      return s;
+    }
+
+    function findNote(noteId) {
+      return candidates.find(n => n.note_id === noteId) || DATA.notes.find(n => n.note_id === noteId);
+    }
+
+    function updateInputSummary() {
+      const count = TABLE.selectedIds.length;
+      self.currentId = count === 1 ? TABLE.selectedIds[0] : null;
+      inp.classList.toggle("has-value", count > 0);
+      inp.classList.toggle("multi-value", count > 1);
+      inp.classList.remove("linked-outside");
+      if (!count) inp.value = "";
+      else if (count > 1) inp.value = "已选 " + count + " 篇";
+      else {
+        const n = findNote(TABLE.selectedIds[0]);
+        inp.value = n ? `${fmtPubDate(n.pub_date)} | ${n.note_id} | ${n.creator || "—"}` : TABLE.selectedIds[0];
+      }
+      clearBtn.style.display = count ? "" : "none";
+    }
+
+    function getFiltered() {
+      if (!self.keyword) return candidates.slice(0, 200);
+      const low = self.keyword.toLowerCase();
+      return candidates.filter(n =>
+        String(n.note_id || "").toLowerCase().includes(low) ||
+        String(n.creator || "").toLowerCase().includes(low)
+      ).slice(0, 200);
+    }
+
+    function renderList() {
+      const items = getFiltered();
+      const selected = new Set(draftIds);
+      const itemHtml = items.length ? items.map((n, i) => {
+        const checked = selected.has(n.note_id);
+        return `<div class="combo-item table-multi-item${checked ? " selected" : ""}${i === self.hi ? " hi" : ""}" data-id="${n.note_id}" aria-selected="${checked}">
+          <span class="multi-check" aria-hidden="true"></span>
+          <span class="combo-line"><span class="pub-date">${fmtPubDate(n.pub_date)}</span><span class="sep">|</span><span class="id">${n.note_id}</span><span class="sep">|</span><span class="creator">${escapeHtml(n.creator || "—")}</span></span>
+        </div>`;
+      }).join("") : '<div class="combo-empty">无匹配笔记</div>';
+      const count = draftIds.length;
+      const buttonText = count ? `确认 ${count} 篇` : "确认";
+      list.innerHTML = `<div class="table-multi-options">${itemHtml}</div><div class="table-multi-confirm"><button type="button" class="table-confirm-btn"${count ? "" : " disabled"}>${buttonText}</button></div>`;
+      list.querySelectorAll(".combo-item").forEach(li => {
+        li.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggle(li.dataset.id, li);
+        });
+      });
+      list.querySelector(".table-confirm-btn").addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        commitDraft();
+      });
+      list.querySelector(".table-multi-options").scrollTop = 0;
+    }
+
+    function applySelection() {
+      TABLE.keyword = "";
+      TABLE.page = 1;
+      updateInputSummary();
+      renderTable();
+    }
+
+    function updateConfirmButton() {
+      const button = list.querySelector(".table-confirm-btn");
+      if (!button) return;
+      const count = draftIds.length;
+      button.textContent = count ? `确认 ${count} 篇` : "确认";
+      button.disabled = count === 0;
+    }
+
+    function toggle(noteId, itemElement) {
+      const index = draftIds.indexOf(noteId);
+      if (index >= 0) draftIds.splice(index, 1);
+      else draftIds.push(noteId);
+      const item = itemElement || Array.from(list.querySelectorAll(".table-multi-item"))
+        .find(el => el.dataset.id === noteId);
+      if (item) {
+        const checked = draftIds.includes(noteId);
+        item.classList.toggle("selected", checked);
+        item.setAttribute("aria-selected", String(checked));
+      }
+      updateConfirmButton();
+      list.hidden = false;
+    }
+
+    function moveHighlight(nextIndex) {
+      const visibleItems = Array.from(list.querySelectorAll(".table-multi-item"));
+      if (!visibleItems.length) return;
+      self.hi = Math.max(0, Math.min(visibleItems.length - 1, nextIndex));
+      visibleItems.forEach((item, index) => item.classList.toggle("hi", index === self.hi));
+      const options = list.querySelector(".table-multi-options");
+      const active = visibleItems[self.hi];
+      const itemTop = active.offsetTop;
+      const itemBottom = itemTop + active.offsetHeight;
+      if (itemTop < options.scrollTop) options.scrollTop = itemTop;
+      else if (itemBottom > options.scrollTop + options.clientHeight) {
+        options.scrollTop = itemBottom - options.clientHeight;
+      }
+    }
+
+    function beginDraft() {
+      draftIds = TABLE.selectedIds.slice();
+      draftActive = true;
+    }
+
+    function discardDraft() {
+      if (!draftActive) return;
+      draftIds = TABLE.selectedIds.slice();
+      draftActive = false;
+      self.keyword = "";
+      list.hidden = true;
+      updateInputSummary();
+    }
+
+    function commitDraft() {
+      if (!draftActive || !draftIds.length) return;
+      TABLE.selectedIds = draftIds.slice();
+      draftActive = false;
+      self.keyword = "";
+      list.hidden = true;
+      applySelection();
+    }
+
+    self.clear = function () {
+      TABLE.selectedIds = [];
+      draftIds = [];
+      self.keyword = "";
+      self.hi = 0;
+      draftActive = false;
+      list.hidden = true;
+      applySelection();
+    };
+
+    self.selectById = function (noteId) {
+      TABLE.selectedIds = noteId ? [noteId] : [];
+      draftIds = TABLE.selectedIds.slice();
+      self.keyword = "";
+      self.hi = 0;
+      draftActive = false;
+      list.hidden = true;
+      applySelection();
+    };
+
+    clearBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      self.clear();
+    });
+    inp.addEventListener("focus", () => {
+      if (!draftActive) {
+        beginDraft();
+        self.keyword = "";
+        self.hi = 0;
+      }
+      renderList();
+      list.hidden = false;
+      inp.select();
+    });
+    inp.addEventListener("input", () => {
+      self.keyword = inp.value.trim();
+      self.hi = 0;
+      renderList();
+      list.hidden = false;
+    });
+    inp.addEventListener("keydown", e => {
+      const items = getFiltered();
+      if (e.key === "ArrowDown") {
+        e.preventDefault(); moveHighlight(Math.min(items.length - 1, self.hi + 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault(); moveHighlight(Math.max(0, self.hi - 1));
+      } else if (e.key === "Enter") {
+        e.preventDefault(); if (items[self.hi]) toggle(items[self.hi].note_id);
+      } else if (e.key === "Escape") {
+        discardDraft();
+      }
+    });
+    document.addEventListener("click", e => {
+      if (!e.target.closest("#tableCombo")) {
+        discardDraft();
+      }
+    });
+
+    if (!candidates.length) {
+      inp.placeholder = "（无数据）";
+      inp.disabled = true;
+    }
+    updateInputSummary();
+    return self;
+  }
+
   function initTableCombo() {
-    tableCombo = makeCombo({
-      inputId: "tableSearch", listId: "tableList",
-      candidates: DATA.notes.slice().sort((a, b) => (String(b.pub_date || "0").replace(/-/g, "") | 0) - (String(a.pub_date || "0").replace(/-/g, "") | 0)),
-      filterKeys: ["note_id", "creator"],
-      moduleKey: "table",
-      emptyPlaceholder: "（无数据）",
-      onSelect: function (noteId) {
-        TABLE.keyword = noteId;
-        TABLE.page = 1;
-        renderTable();
-      },
-      onClear: function () {
-        TABLE.keyword = "";
-        TABLE.page = 1;
-        renderTable();
-      },
-    });
-    // 额外监听：用户打字但不选下拉项时，实时关键词过滤表格
-    const el = document.getElementById("tableSearch");
-    let t = null;
-    el.addEventListener("input", function () {
-      clearTimeout(t);
-      t = setTimeout(function () {
-        if (tableCombo && tableCombo.currentId && el.value.indexOf(tableCombo.currentId) >= 0) return;
-        TABLE.keyword = el.value.trim();
-        TABLE.page = 1;
-        renderTable();
-      }, 200);
-    });
+    tableCombo = makeTableMultiCombo();
   }
 
   // ---------- 联动复选框绑定（默认勾选，开箱即用） ----------
@@ -2627,6 +2892,7 @@
     if (costChart) costChart.resize();
     if (dailyOverviewChart) dailyOverviewChart.resize();
     if (biliTrendChart) biliTrendChart.resize();
+    syncAverageDock();
   });
 
   // ===== 全局 GMV tooltip（避免被 overflow 裁剪） =====
@@ -2669,6 +2935,7 @@
   renderSources(["bili"], "biliSourceStrip");
   initTableCols();
   initQueryPanel();
+  initAverageDock();
   renderTable();
   bindModal();
   initTableCombo();

@@ -59,6 +59,9 @@ def scan_data_dir(root):
             mtime = os.path.getmtime(full)
             if "蒲公英" in name:
                 candidates["pgy"].append((mtime, full))
+            elif "B站" in name:
+                # 须在"星河"之前判断：B站表导出自星河后台，文件名常为"星河B站"，含双关键字时必须归B站
+                candidates["bili"].append((mtime, full))
             elif "星河" in name or "小红星" in name:
                 # 排除二次加工的分日趋势/汇总宽表，只允许标准星河明细进入数据链路。
                 if any(tag in name for tag in ("分日趋势", "分日汇总", "趋势", "汇总")):
@@ -68,8 +71,6 @@ def scan_data_dir(root):
                 candidates["chili"].append((mtime, full))
             elif "灵犀" in name:
                 candidates["lx"].append((mtime, full))
-            elif "B站" in name:
-                candidates["bili"].append((mtime, full))
             elif "抖音" in name:
                 candidates["douyin"].append((mtime, full))
     # 蒲公英/薯条/星河全部保留（多月份合并）；灵犀/B站/抖音取最新一份

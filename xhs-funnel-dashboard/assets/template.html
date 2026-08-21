@@ -201,7 +201,7 @@
           <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink3" autocomplete="off" checked></label>
           <div class="combo" id="tableCombo">
             <input type="text" id="tableSearch" class="ctrl-input combo-input" placeholder="搜 达人昵称 / 笔记ID" autocomplete="off">
-            <ul class="combo-list" id="tableList" hidden></ul>
+            <div class="combo-list" id="tableList" hidden></div>
           </div>
           <button class="ctrl-btn" id="btnCustom">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
@@ -209,11 +209,21 @@
           </button>
         </div>
       </div>
-      <div class="table-wrap">
-        <table class="funnel-table">
-          <thead id="tableHead"></thead>
-          <tbody id="tableBody"></tbody>
-        </table>
+      <div class="table-shell">
+        <div class="table-wrap">
+          <table class="funnel-table">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="table-average-dock" id="tableAverageDock">
+          <div class="table-average-track" id="tableAverageTrack">
+            <table class="funnel-table average-table">
+              <colgroup id="tableAverageCols"></colgroup>
+              <tbody id="tableAverage"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
       <div class="table-foot" id="tableFoot"></div>
       <div class="table-legend">

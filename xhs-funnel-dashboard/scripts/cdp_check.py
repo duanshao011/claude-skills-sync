@@ -15,6 +15,8 @@ Edge 无头 + Chrome DevTools 协议直连，DOM 级验证产物，比截图可�
 """
 import base64, json, os, socket, struct, subprocess, sys, time, urllib.request, urllib.parse
 
+sys.stdout.reconfigure(encoding="utf-8")
+
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 DEFAULT_HTML = r"D:\C盘迁移归档\桌面工作文件\小红书营销数据\数据看板文件\全链路投放看板.html"
 PORT = 9333
@@ -128,6 +130,10 @@ CHECK1 = """(() => {
   out.kpiVals = Array.from(document.querySelectorAll('#kpiRow .kpi-val')).map(e => e.textContent.trim());
   out.srcCards = Array.from(document.querySelectorAll('#sourceStrip .src-card')).map(e => e.textContent.replace(/\\s+/g, ' ').trim());
   out.tableRows = document.querySelectorAll('#tableBody tr').length;
+  out.averageRow = !!document.querySelector('#tableAverage tr');
+  out.averageLabel = document.querySelector('#tableAverage td')?.textContent.trim() || '';
+  out.averageCellCount = document.querySelectorAll('#tableAverage td').length;
+  out.headerCellCount = document.querySelectorAll('#tableHead tr:last-child th').length;
   return JSON.stringify(out);
 })()"""
 
@@ -136,11 +142,13 @@ CHECK2 = """(() => {
   const wrap = document.querySelector('.table-wrap') || document.querySelector('.table-scroll');
   out.foundWrap = !!wrap;
   if (!wrap) return JSON.stringify(out);
+  wrap.scrollIntoView({block: 'center'});
   const wrapRect = wrap.getBoundingClientRect();
   const frozenTh = document.querySelector('th.frozen-col');
   out.beforeLeft = wrap.scrollLeft;
   out.frozenBefore = frozenTh ? Math.round(frozenTh.getBoundingClientRect().left - wrapRect.left) : null;
   wrap.scrollLeft = 650;
+  wrap.scrollTop = Math.min(400, wrap.scrollHeight - wrap.clientHeight);
   const afterRect = wrap.getBoundingClientRect();
   out.afterLeft = wrap.scrollLeft;
   out.frozenAfter = frozenTh ? Math.round(frozenTh.getBoundingClientRect().left - afterRect.left) : null;
@@ -168,6 +176,108 @@ CHECK3 = """(() => {
   return JSON.stringify(out);
 })()"""
 
+CHECK4 = """(() => {
+  const out = {};
+  const tableInput = document.getElementById('tableSearch');
+  const averageText = () => Array.from(document.querySelectorAll('#tableAverage td')).map(e => e.textContent.trim()).join('|');
+  out.averageBefore = averageText();
+
+  tableInput.focus();
+  let items = Array.from(document.querySelectorAll('#tableList .table-multi-item'));
+  out.hasCheckboxes = items.length > 1 && items.every(e => !!e.querySelector('.multi-check'));
+  const firstId = items[0] ? items[0].dataset.id : '';
+  const secondId = items[1] ? items[1].dataset.id : '';
+  let confirm = document.querySelector('#tableList .table-confirm-btn');
+  out.emptyConfirmText = confirm ? confirm.textContent.trim() : '';
+  out.emptyConfirmDisabled = confirm ? confirm.disabled : false;
+  const initialOptions = document.querySelector('#tableList .table-multi-options');
+  initialOptions.scrollTop = Math.round(initialOptions.scrollHeight / 2);
+  const visibleItem = Array.from(initialOptions.querySelectorAll('.table-multi-item')).find(item => {
+    const itemRect = item.getBoundingClientRect();
+    const optionsRect = initialOptions.getBoundingClientRect();
+    return itemRect.top >= optionsRect.top && itemRect.bottom <= optionsRect.bottom;
+  });
+  const scrollBeforeToggle = initialOptions.scrollTop;
+  const pageBeforeToggle = window.scrollY;
+  if (visibleItem) visibleItem.click();
+  out.scrollAfterSelect = initialOptions.scrollTop - scrollBeforeToggle;
+  out.pageAfterSelect = window.scrollY - pageBeforeToggle;
+  if (visibleItem) visibleItem.click();
+  out.scrollAfterDeselect = initialOptions.scrollTop - scrollBeforeToggle;
+  out.pageAfterDeselect = window.scrollY - pageBeforeToggle;
+  initialOptions.scrollTop = initialOptions.scrollHeight;
+  const lastItem = initialOptions.querySelector('.table-multi-item:last-child');
+  const initialButton = document.querySelector('#tableList .table-confirm-btn');
+  out.lastItemClearance = lastItem && initialButton
+    ? Math.round(initialButton.getBoundingClientRect().top - lastItem.getBoundingClientRect().bottom)
+    : null;
+  tableInput.value = firstId;
+  tableInput.dispatchEvent(new Event('input', {bubbles: true}));
+  items = Array.from(document.querySelectorAll('#tableList .table-multi-item'));
+  if (items[0]) items[0].click();
+  tableInput.value = secondId;
+  tableInput.dispatchEvent(new Event('input', {bubbles: true}));
+  items = Array.from(document.querySelectorAll('#tableList .table-multi-item'));
+  if (items[0]) items[0].click();
+  out.crossKeywordConfirmText = document.querySelector('#tableList .table-confirm-btn')?.textContent.trim() || '';
+  tableInput.value = firstId;
+  tableInput.dispatchEvent(new Event('input', {bubbles: true}));
+  out.firstSelectionPreserved = !!document.querySelector('#tableList .table-multi-item.selected');
+  out.rowsWhilePending = document.querySelectorAll('#tableBody tr').length;
+  out.listOpenWhilePending = !document.getElementById('tableList').hidden;
+  out.pendingSelected = Number((out.crossKeywordConfirmText.match(/[0-9]+/) || [0])[0]);
+  out.hasConfirmBar = !!document.querySelector('#tableList .table-multi-confirm .table-confirm-btn');
+  out.averageWhilePending = averageText();
+  const confirmLayerStyle = getComputedStyle(document.querySelector('#tableList .table-multi-confirm'));
+  out.confirmBackground = confirmLayerStyle.backgroundColor;
+  out.confirmBorderWidth = confirmLayerStyle.borderTopWidth;
+  out.confirmBoxShadow = confirmLayerStyle.boxShadow;
+
+  document.body.click();
+  tableInput.blur();
+  tableInput.focus();
+  out.selectedAfterDiscard = document.querySelectorAll('#tableList .table-multi-item.selected').length;
+  out.rowsAfterDiscard = document.querySelectorAll('#tableBody tr').length;
+  items = Array.from(document.querySelectorAll('#tableList .table-multi-item'));
+  if (items[0]) items[0].click();
+  items = Array.from(document.querySelectorAll('#tableList .table-multi-item:not(.selected)'));
+  if (items[0]) items[0].click();
+  confirm = document.querySelector('#tableList .table-confirm-btn');
+  if (confirm) confirm.click();
+  out.rowsAfterConfirm = document.querySelectorAll('#tableBody tr').length;
+  out.summaryAfterConfirm = tableInput.value;
+  out.averageAfterConfirm = averageText();
+
+  const wrap = document.querySelector('.table-wrap');
+  const dock = document.getElementById('tableAverageDock');
+  const shell = document.querySelector('.table-shell');
+  const wrapRect = wrap.getBoundingClientRect();
+  const dockRect = dock.getBoundingClientRect();
+  const horizontalScrollbar = Math.max(0, wrap.offsetHeight - wrap.clientHeight);
+  out.dockBottomGap = Math.round(wrapRect.bottom - horizontalScrollbar - dockRect.bottom);
+  out.dockHeight = Math.round(dockRect.height);
+  wrap.scrollLeft = 650;
+  wrap.dispatchEvent(new Event('scroll'));
+  const frozenAverage = document.querySelector('#tableAverage td.frozen-col');
+  out.averageFrozenLeft = frozenAverage ? Math.round(frozenAverage.getBoundingClientRect().left - shell.getBoundingClientRect().left) : null;
+
+  const clear = document.querySelector('#tableCombo .combo-clear');
+  if (clear) clear.click();
+  out.rowsAfterClear = document.querySelectorAll('#tableBody tr').length;
+  out.valueAfterClear = tableInput.value;
+  out.averageAfterClear = averageText();
+
+  const trendInput = document.getElementById('trendSearch');
+  if (trendInput) trendInput.focus();
+  const trendItem = document.querySelector('#trendList .combo-item');
+  if (trendItem) trendItem.click();
+  out.rowsAfterExternal = document.querySelectorAll('#tableBody tr').length;
+  out.valueAfterExternal = tableInput.value;
+  out.externalNoteId = trendItem ? trendItem.dataset.id : '';
+  out.averageAfterExternal = averageText();
+  return JSON.stringify(out);
+})()"""
+
 def main():
     html = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_HTML
     url = "file:///" + urllib.parse.quote(html.replace("\\", "/"))
@@ -187,10 +297,12 @@ def main():
         r1 = json.loads(cdp.eval(CHECK1))
         r2 = json.loads(cdp.eval(CHECK2))
         r3 = json.loads(cdp.eval(CHECK3))
+        r4 = json.loads(cdp.eval(CHECK4))
         print("=== 1. payload 与核心指标 ===")
         for k in ("hasPayload", "pgyLoaded", "starLoaded", "chiliLoaded", "lxLoaded", "biliLoaded",
                   "totalSpend", "totalGmv", "overallRoi", "noteCount", "matchedCount",
-                  "canvasCount", "tableRows"):
+                  "canvasCount", "tableRows", "averageRow", "averageLabel",
+                  "averageCellCount", "headerCellCount"):
             print(f"  {k}: {r1.get(k)}")
         print("  kpiVals:", r1.get("kpiVals"))
         print("  srcCards:")
@@ -199,15 +311,24 @@ def main():
         for k, v in r2.items(): print(f"  {k}: {v}")
         print("=== 3. 多平台目录 / 图例 / B站模块 ===")
         for k, v in r3.items(): print(f"  {k}: {v}")
+        print("=== 4. 表格多选 / 固定总体平均值 ===")
+        for k, v in r4.items(): print(f"  {k}: {v}")
 
-        shot = cdp.call("Page.captureScreenshot", {"format": "png"})
+        table_rect = json.loads(cdp.eval("""JSON.stringify((() => {
+          const r = document.querySelector('.table-shell').getBoundingClientRect();
+          return {x:r.left + window.scrollX, y:r.top + window.scrollY, width:r.width, height:r.height};
+        })())"""))
+        shot = cdp.call("Page.captureScreenshot", {
+            "format": "png", "captureBeyondViewport": True,
+            "clip": {**table_rect, "scale": 1}
+        })
         with open(SHOT, "wb") as f:
             f.write(base64.b64decode(shot["data"]))
         print(f"=== 截图备查: {SHOT} ===")
 
         ok = True
         def fail(msg):
-            global ok
+            nonlocal ok
             ok = False
             print("  ✗ " + msg)
         if not r1.get("hasPayload"): fail("dashPayload 缺失")
@@ -215,6 +336,9 @@ def main():
             if not r1.get(k): fail(f"{k} 未加载")
         if not (r1.get("totalGmv") or 0) > 0: fail("total_gmv 非正")
         if r1.get("overallRoi") is None: fail("overall_roi 为空")
+        if not r1.get("averageRow"): fail("平均值行缺失")
+        if r1.get("averageLabel") != "平均值": fail(f"平均值行标签异常: {r1.get('averageLabel')}")
+        if r1.get("averageCellCount") != r1.get("headerCellCount"): fail("平均值行与表头列数不一致")
         if (r1.get("canvasCount") or 0) < 3: fail(f"canvas 仅 {r1.get('canvasCount')} 个")
         if r2.get("foundWrap") is not True: fail("表格滚动容器未找到")
         if r2.get("frozenAfter") not in (0, 1): fail(f"横滚后冻结列 left={r2.get('frozenAfter')}（应为 0/1）")
@@ -222,6 +346,39 @@ def main():
         if not r3.get("tocExists"): fail("目录缺失")
         if not r3.get("biliChart"): fail("B站模块图表缺失")
         if not r3.get("legendTexts"): fail("水位线图例文案缺失")
+        if not r4.get("hasCheckboxes"): fail("表格下拉复选框缺失")
+        if not r4.get("hasConfirmBar"): fail("下拉框固定确认栏缺失")
+        if r4.get("emptyConfirmText") != "确认": fail(f"0篇确认按钮文案异常: {r4.get('emptyConfirmText')}")
+        if r4.get("emptyConfirmDisabled") is not True: fail("0篇确认按钮未禁用")
+        if abs(r4.get("scrollAfterSelect") or 0) > 1: fail(f"勾选后候选区跳动: {r4.get('scrollAfterSelect')}px")
+        if abs(r4.get("scrollAfterDeselect") or 0) > 1: fail(f"取消勾选后候选区跳动: {r4.get('scrollAfterDeselect')}px")
+        if abs(r4.get("pageAfterSelect") or 0) > 1: fail(f"勾选后页面跳动: {r4.get('pageAfterSelect')}px")
+        if abs(r4.get("pageAfterDeselect") or 0) > 1: fail(f"取消勾选后页面跳动: {r4.get('pageAfterDeselect')}px")
+        if (r4.get("lastItemClearance") or -999) < 0: fail(f"最后一项被确认按钮遮挡: {r4.get('lastItemClearance')}px")
+        if r4.get("crossKeywordConfirmText") != "确认 2 篇": fail(f"跨关键词累计文案异常: {r4.get('crossKeywordConfirmText')}")
+        if r4.get("firstSelectionPreserved") is not True: fail("切换关键词后此前临时选择丢失")
+        if r4.get("rowsWhilePending") != 30: fail(f"待确认时表格行数={r4.get('rowsWhilePending')}（应保持30）")
+        if not r4.get("listOpenWhilePending"): fail("勾选后下拉框意外关闭")
+        if r4.get("pendingSelected") != 2: fail(f"临时选中态数量={r4.get('pendingSelected')}（应为2）")
+        if r4.get("confirmBackground") not in ("rgba(0, 0, 0, 0)", "transparent"): fail("确认按钮外层仍有背景遮挡")
+        if r4.get("confirmBorderWidth") != "0px": fail("确认按钮外层仍有边框")
+        if r4.get("confirmBoxShadow") != "none": fail("确认按钮外层仍有阴影")
+        if r4.get("averageWhilePending") != r4.get("averageBefore"): fail("待确认时总体平均值发生变化")
+        if r4.get("selectedAfterDiscard") != 0: fail("点击外部后未放弃临时选择")
+        if r4.get("rowsAfterDiscard") != 30: fail("放弃临时选择后表格发生变化")
+        if r4.get("rowsAfterConfirm") != 2: fail(f"确认两篇后表格行数={r4.get('rowsAfterConfirm')}（应为2）")
+        if r4.get("summaryAfterConfirm") != "已选 2 篇": fail(f"确认后多选摘要异常: {r4.get('summaryAfterConfirm')}")
+        if r4.get("averageAfterConfirm") == r4.get("averageBefore"): fail("确认多选后未切换为已选平均值")
+        if not (r4.get("averageAfterConfirm") or "").startswith("已选平均|"): fail("多选平均值标签未显示为“已选平均”")
+        if abs(r4.get("dockBottomGap") or 0) > 1: fail(f"平均值栏未固定到底部，偏差={r4.get('dockBottomGap')}")
+        if (r4.get("dockHeight") or 999) > 28: fail(f"平均值栏高度={r4.get('dockHeight')}px（应不超过28px）")
+        if r4.get("averageFrozenLeft") not in (0, 1): fail(f"平均值冻结列横滚后 left={r4.get('averageFrozenLeft')}（应为0/1）")
+        if r4.get("rowsAfterClear") != 30: fail(f"清空后当前页行数={r4.get('rowsAfterClear')}（应为30）")
+        if r4.get("valueAfterClear") != "": fail("清空后输入框未恢复空值")
+        if r4.get("averageAfterClear") != r4.get("averageBefore"): fail("清空后总体平均值发生变化")
+        if r4.get("rowsAfterExternal") != 1: fail(f"外部联动后表格行数={r4.get('rowsAfterExternal')}（应为1）")
+        if r4.get("externalNoteId") not in (r4.get("valueAfterExternal") or ""): fail("外部联动未替换为对应单篇")
+        if r4.get("averageAfterExternal") != r4.get("averageBefore"): fail("单篇外部联动后未恢复全量平均值")
         print("=== 结论:", "PASS ✅" if ok else "FAIL ❌", "===")
         sys.exit(0 if ok else 1)
     finally:
