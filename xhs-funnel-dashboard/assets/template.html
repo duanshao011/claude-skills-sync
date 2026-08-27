@@ -34,7 +34,10 @@
       <span>B站</span><span class="platform-chevron" aria-hidden="true">⌄</span>
     </button>
     <div class="toc-sub" id="tocSub-bili" hidden>
-      <a class="toc-item" data-target="modBiliTrend">单篇趋势</a>
+      <a class="toc-item" data-target="biliSourceStrip">数据源</a>
+      <a class="toc-item" data-target="modBiliDailyOverview">进店汇总</a>
+      <a class="toc-item" data-target="modBiliTrend">进店趋势</a>
+      <a class="toc-item" data-target="modBiliCost">成本分析</a>
     </div>
   </div>
 </nav>
@@ -97,6 +100,7 @@
             </table>
           </div>
         </div>
+        <div class="source-note" id="dailySourceNote" aria-label="图表一数据来源"></div>
       </div>
     </section>
 
@@ -132,6 +136,7 @@
           </div>
           <div class="trend-chart" id="trendChart"></div>
         </div>
+        <div class="source-note" id="trendSourceNote" aria-label="图表二数据来源"></div>
       </div>
     </section>
 
@@ -154,10 +159,10 @@
       <div class="cost-body">
         <div class="cost-kpis" id="costKpis"></div>
         <div class="chart-toggles" id="costToggles">
-          <button class="metric-toggle-card" data-metric="read" style="--mc:#CC3300"><div class="mtc-label">阅读成本</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="read" style="--mc:#991B1B"><div class="mtc-label">阅读成本</div><div class="mtc-val" data-slot="val">—</div></button>
           <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FF2442"><div class="mtc-label">进店成本</div><div class="mtc-val" data-slot="val">—</div></button>
-          <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购成本</div><div class="mtc-val" data-slot="val">—</div></button>
-          <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交成本</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="cart" style="--mc:#E11D48"><div class="mtc-label">加购成本</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="deal" style="--mc:#FB7185"><div class="mtc-label">成交成本</div><div class="mtc-val" data-slot="val">—</div></button>
         </div>
         <div class="chart-stage">
           <div class="chart-pan-hint" id="costPanHint" role="note">
@@ -168,10 +173,11 @@
           <div class="cost-chart" id="costChart"></div>
         </div>
         <div class="cost-note cost-legend" aria-label="成本趋势图例">
-          <span class="cost-legend-item"><i class="cost-legend-bar"></i>每日实付</span>
+          <span class="cost-legend-item"><i class="cost-legend-bar cost-legend-chili"></i>薯条实付</span>
+          <span class="cost-legend-item"><i class="cost-legend-bar cost-legend-juguang"></i>聚光消耗</span>
           <span class="cost-legend-item"><i class="cost-legend-solid"></i>3日滚动</span>
           <span class="cost-legend-item"><i class="cost-legend-dashed"></i>累计基线</span>
-          <span class="cost-legend-note">汇总成本按薯条与星河同样本计算</span>
+          <span class="cost-legend-note">成本线按薯条+聚光与星河同样本计算</span>
         </div>
         <div class="daily-detail-panel" id="costDetailPanel" hidden>
           <div class="daily-detail-head">
@@ -184,8 +190,9 @@
               <tbody id="costDetailBody"></tbody>
             </table>
           </div>
-          <div class="cost-detail-note">数据来源于薯条推广明细表；曝光量、阅读量为薯条官方统计，仅供参考。</div>
+          <div class="cost-detail-note">薯条按实际支付与启动日归集；聚光按实际消耗与自然日归集；成本分母统一采用淘宝星河。</div>
         </div>
+        <div class="source-note" id="costSourceNote" aria-label="图表三数据来源"></div>
       </div>
     </section>
 
@@ -195,7 +202,7 @@
         <div class="module-title">
           <span class="mod-idx">图表四</span>
           <span class="mod-name">全链路数据</span>
-          <span class="mod-sub">四表打通的笔记级明细 · 字段名悬停看口径 / 点击排序 / 右上角自定义列</span>
+          <span class="mod-sub">五表打通的笔记级明细 · 字段名悬停看口径 / 点击排序 / 右上角自定义列</span>
         </div>
         <div class="module-tools">
           <label class="link-inline" title="选中后与其他开启联动的图表同步"><input type="checkbox" id="chkLink3" autocomplete="off" checked></label>
@@ -233,6 +240,7 @@
         <span class="lg-item"><i class="lg-sw na"></i>— 无数据</span>
         <span class="lg-note">颜色按指标「越高越好 / 越低越好」自动判向，<b>绿=好、橙=差</b>（如成本类越低越绿）；均为本期这批笔记的相对比较</span>
       </div>
+      <div class="source-note table-source-note" id="tableSourceNote" aria-label="图表四数据来源"></div>
     </section>
 
     <footer class="page-foot">
@@ -292,11 +300,52 @@
 
     <section class="source-strip" id="biliSourceStrip"></section>
 
-    <!-- 单篇趋势分析 -->
-    <section class="module" id="modBiliTrend">
+    <!-- 图表一 · 日维度进店趋势 -->
+    <section class="module" id="modBiliDailyOverview">
       <div class="module-head">
         <div class="module-title">
           <span class="mod-idx">图表一</span>
+          <span class="mod-name">日维度进店趋势</span>
+          <span class="mod-sub">分组柱状图 · 悬停看视频明细 · 点击柱子展开全部</span>
+        </div>
+      </div>
+      <div class="daily-body">
+        <div class="trend-kpis" id="biliDailyOverviewKpis"></div>
+        <div class="chart-toggles" id="biliDailyToggles">
+          <button class="metric-toggle-card" data-metric="play" style="--mc:#00AEEC"><div class="mtc-label">播放UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FB7299"><div class="mtc-label">进店UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购UV</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交UV</div><div class="mtc-val" data-slot="val">—</div></button>
+        </div>
+        <div class="chart-stage">
+          <div class="chart-pan-hint" id="biliDailyPanHint" role="note">
+            <span class="chart-pan-hint-icon">↔</span>
+            <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+            <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+          </div>
+          <div class="trend-chart" id="biliDailyOverviewChart"></div>
+        </div>
+        <div class="daily-detail-panel" id="biliDailyDetailPanel" hidden>
+          <div class="daily-detail-head">
+            <span class="daily-detail-title" id="biliDailyDetailTitle"></span>
+            <button class="daily-detail-close" id="biliDailyDetailClose">折叠 ↑</button>
+          </div>
+          <div class="daily-detail-table-wrap">
+            <table class="funnel-table">
+              <thead id="biliDailyDetailHead"></thead>
+              <tbody id="biliDailyDetailBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="source-note" id="biliDailySourceNote" aria-label="B站图表一数据来源"></div>
+      </div>
+    </section>
+
+    <!-- 图表二 · 单篇趋势分析 -->
+    <section class="module" id="modBiliTrend">
+      <div class="module-head">
+        <div class="module-title">
+          <span class="mod-idx">图表二</span>
           <span class="mod-name">单篇趋势分析</span>
           <span class="mod-sub">选一条视频看其逐日播放 / 进店 / 加购 / 成交 UV 走势</span>
         </div>
@@ -323,6 +372,62 @@
           </div>
           <div class="trend-chart" id="biliTrendChart"></div>
         </div>
+        <div class="source-note" id="biliTrendSourceNote" aria-label="B站图表二数据来源"></div>
+      </div>
+    </section>
+
+    <!-- 图表三 · 单篇成本分析 -->
+    <section class="module" id="modBiliCost">
+      <div class="module-head">
+        <div class="module-title">
+          <span class="mod-idx">图表三</span>
+          <span class="mod-name">单篇成本分析</span>
+          <span class="mod-sub">视频粒度双渠道投放成本 · 统一截止星河最新日期</span>
+        </div>
+        <div class="module-tools">
+          <div class="combo" id="biliCostCombo">
+            <input type="text" id="biliCostSearch" class="ctrl-input combo-input" placeholder="搜索内容ID（BV号） 或 达人昵称" autocomplete="off">
+            <ul class="combo-list" id="biliCostList" hidden></ul>
+          </div>
+        </div>
+      </div>
+      <div class="cost-body">
+        <div class="cost-kpis" id="biliCostKpis"></div>
+        <div class="chart-toggles" id="biliCostToggles">
+          <button class="metric-toggle-card" data-metric="play" style="--mc:#00AEEC"><div class="mtc-label">播放成本</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card active" data-metric="visit" style="--mc:#FB7299"><div class="mtc-label">进店成本</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="cart" style="--mc:#F97316"><div class="mtc-label">加购成本</div><div class="mtc-val" data-slot="val">—</div></button>
+          <button class="metric-toggle-card" data-metric="deal" style="--mc:#EAB308"><div class="mtc-label">成交成本</div><div class="mtc-val" data-slot="val">—</div></button>
+        </div>
+        <div class="chart-stage">
+          <div class="chart-pan-hint" id="biliCostPanHint" role="note">
+            <span class="chart-pan-hint-icon">↔</span>
+            <span class="chart-pan-hint-mouse">Shift + 滚轮缩放 / 拖动平移 / 双击恢复</span>
+            <span class="chart-pan-hint-touch">双指缩放 / 拖动平移 / 双击恢复</span>
+          </div>
+          <div class="cost-chart" id="biliCostChart"></div>
+        </div>
+        <div class="cost-note cost-legend" aria-label="B站成本趋势图例">
+          <span class="cost-legend-item"><i class="cost-legend-bar bili-cost-bihuo"></i>必火消耗</span>
+          <span class="cost-legend-item"><i class="cost-legend-bar bili-cost-trilan"></i>三联花费</span>
+          <span class="cost-legend-item"><i class="cost-legend-solid"></i>3日滚动</span>
+          <span class="cost-legend-item"><i class="cost-legend-dashed"></i>累计基线</span>
+          <span class="cost-legend-note">每条视频从首个付费日开始 · 统一截止星河最新日</span>
+        </div>
+        <div class="daily-detail-panel" id="biliCostDetailPanel" hidden>
+          <div class="daily-detail-head">
+            <span class="daily-detail-title" id="biliCostDetailTitle"></span>
+            <button class="daily-detail-close" id="biliCostDetailClose">折叠 ↑</button>
+          </div>
+          <div class="daily-detail-table-wrap">
+            <table class="funnel-table">
+              <thead id="biliCostDetailHead"></thead>
+              <tbody id="biliCostDetailBody"></tbody>
+            </table>
+          </div>
+          <div class="cost-detail-note">必火整单消耗按推广开始日归集；三联按自然日；播放与转化分母统一采用B站星河。</div>
+        </div>
+        <div class="source-note" id="biliCostSourceNote" aria-label="B站图表三数据来源"></div>
       </div>
     </section>
   </div>

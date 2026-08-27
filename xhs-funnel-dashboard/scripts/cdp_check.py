@@ -2,7 +2,7 @@
 """投放看板 · CDP 无头自检（纯标准库，零依赖）
 
 Edge 无头 + Chrome DevTools 协议直连，DOM 级验证产物，比截图可靠：
-  - payload 与核心指标：四表加载标记、total_gmv、overall_roi、交集篇数
+  - payload 与核心指标：小红书五表加载标记、total_gmv、overall_roi、交集篇数
   - 渲染完整性：ECharts canvas 数、KPI 卡、数据源状态条、表格行数
   - 横滚冻结列：scrollLeft=650 后冻结列仍贴容器左缘、分组表头 sticky + 不透明
   - 多平台目录：小红书/抖音/B站分组、B站模块节点、水位线图例文案
@@ -93,8 +93,19 @@ class CDP:
     def eval(self, expr):
         r = self.call("Runtime.evaluate", {"expression": expr, "returnByValue": True})
         if r.get("exceptionDetails"):
-            return {"__exception__": r["exceptionDetails"].get("text", "")}
+            details = r["exceptionDetails"]
+            exception = details.get("exception") or {}
+            return {"__exception__": exception.get("description") or details.get("text", "")}
         return r.get("result", {}).get("value")
+
+
+def eval_json(cdp, expr, label):
+    value = cdp.eval(expr)
+    if isinstance(value, dict) and value.get("__exception__"):
+        raise RuntimeError(f"{label} 执行失败: {value['__exception__']}")
+    if isinstance(value, (dict, list)):
+        return value
+    return json.loads(value)
 
 def get_ws_url():
     for _ in range(60):
@@ -113,14 +124,30 @@ CHECK1 = """(() => {
   const out = {};
   const p = document.getElementById('dashPayload');
   out.hasPayload = !!p;
+  const D = p ? JSON.parse(p.textContent) : {};
   if (p) {
-    const D = JSON.parse(p.textContent);
     out.starLoaded = !!(D.meta && D.meta.sources && D.meta.sources.star && D.meta.sources.star.loaded);
     out.chiliLoaded = !!(D.meta && D.meta.sources && D.meta.sources.chili && D.meta.sources.chili.loaded);
+    out.juguangLoaded = !!(D.meta && D.meta.sources && D.meta.sources.juguang && D.meta.sources.juguang.loaded);
     out.pgyLoaded = !!(D.meta && D.meta.sources && D.meta.sources.pgy && D.meta.sources.pgy.loaded);
     out.lxLoaded = !!(D.meta && D.meta.sources && D.meta.sources.lx && D.meta.sources.lx.loaded);
     out.biliLoaded = !!(D.meta && D.meta.sources && D.meta.sources.bili && D.meta.sources.bili.loaded);
+    out.biliFireLoaded = !!(D.meta && D.meta.sources && D.meta.sources.bili_fire && D.meta.sources.bili_fire.loaded);
+    out.biliAdsLoaded = !!(D.meta && D.meta.sources && D.meta.sources.bili_ads && D.meta.sources.bili_ads.loaded);
+    const B = D.bilibili || {};
+    const BC = B.cost_all || {};
+    out.biliNoteCount = (B.notes || []).length;
+    out.biliCostNoteCount = Object.keys(B.cost || {}).length;
+    out.biliMatchedNoteCount = B.meta && B.meta.matched_note_count;
+    out.biliEffectiveEnd = B.meta && B.meta.effective_end;
+    out.biliExcludedSpend = B.meta && B.meta.excluded_after_cutoff_spend;
+    out.biliCostSpend = BC.summary && BC.summary.spend;
+    out.biliCostDailyLast = BC.daily && BC.daily.length ? BC.daily[BC.daily.length - 1][0] : null;
     out.totalSpend = D.summary && D.summary.total_spend;
+    out.totalChiliSpend = D.summary && D.summary.total_chili_spend;
+    out.totalJuguangSpend = D.summary && D.summary.total_juguang_spend;
+    out.waitingSpend = D.summary && D.summary.waiting_attribution_spend;
+    out.unmatchedPaidSpend = D.summary && D.summary.unmatched_paid_spend;
     out.totalGmv = D.summary && D.summary.total_gmv;
     out.overallRoi = D.summary && D.summary.overall_roi;
     out.noteCount = D.summary && D.summary.note_count;
@@ -128,13 +155,57 @@ CHECK1 = """(() => {
   }
   out.canvasCount = document.querySelectorAll('canvas').length;
   out.kpiVals = Array.from(document.querySelectorAll('#kpiRow .kpi-val')).map(e => e.textContent.trim());
+  out.trendKpis = document.querySelectorAll('#trendKpis .trend-kpi').length;
+  out.trendKpiLabels = Array.from(document.querySelectorAll('#trendKpis .trend-kpi-label')).map(e => e.textContent.replace(/\\s+/g, ' ').trim());
+  out.trendReadValue = Array.from(document.querySelectorAll('#trendKpis .trend-kpi')).find(e => e.textContent.includes('总阅读UV（全部）'))?.querySelector('.trend-kpi-val')?.textContent.trim() || '';
+  out.expectedTrendRead = (D.trends_all || []).reduce((sum, row) => sum + (row[5] || 0), 0);
   out.srcCards = Array.from(document.querySelectorAll('#sourceStrip .src-card')).map(e => e.textContent.replace(/\\s+/g, ' ').trim());
+  out.costKpiTexts = Array.from(document.querySelectorAll('#costKpis .trend-kpi')).map(e => e.textContent.replace(/\\s+/g, ' ').trim());
+  const costInstance = window.echarts && echarts.getInstanceByDom(document.getElementById('costChart'));
+  out.costSeriesNames = costInstance ? (costInstance.getOption().series || []).map(series => series.name) : [];
+  out.tableGroupTexts = Array.from(document.querySelectorAll('#tableHead .group-row th')).map(e => e.textContent.trim());
   out.tableRows = document.querySelectorAll('#tableBody tr').length;
   out.averageRow = !!document.querySelector('#tableAverage tr');
   out.averageLabel = document.querySelector('#tableAverage td')?.textContent.trim() || '';
-  out.averageCellCount = document.querySelectorAll('#tableAverage td').length;
-  out.headerCellCount = document.querySelectorAll('#tableHead tr:last-child th').length;
-  return JSON.stringify(out);
+    out.averageCellCount = document.querySelectorAll('#tableAverage td').length;
+    out.headerCellCount = document.querySelectorAll('#tableHead tr:last-child th').length;
+    const countPaths = path => String(path || '').split(' · ').filter(Boolean).length;
+    const sources = (D.meta && D.meta.sources) || {};
+    const expectedSourcePaths = {
+      dailySourceNote: countPaths(sources.star && sources.star.path),
+      trendSourceNote: countPaths(sources.star && sources.star.path) + countPaths(sources.pgy && sources.pgy.path),
+      costSourceNote: countPaths(sources.chili && sources.chili.path) + countPaths(sources.juguang && sources.juguang.path) + countPaths(sources.star && sources.star.path) + countPaths(sources.pgy && sources.pgy.path),
+      tableSourceNote: ['pgy', 'star', 'chili', 'juguang', 'lx'].reduce((sum, key) => sum + countPaths(sources[key] && sources[key].path), 0),
+    };
+    out.sourceNotes = ['dailySourceNote', 'trendSourceNote', 'costSourceNote', 'tableSourceNote'].map(id => {
+      const el = document.getElementById(id);
+      const paths = el ? Array.from(el.querySelectorAll('.source-note-path')) : [];
+      const details = el && el.querySelector('details.source-note-disclosure');
+      const summary = details && details.querySelector('summary');
+      const color = summary ? getComputedStyle(summary).color : '';
+      const rgb = (color.match(/[0-9]+/g) || []).slice(0, 3).map(Number);
+      return {
+        id,
+        exists: !!el,
+        hasHeading: !!el && el.textContent.includes('数据来源'),
+        pathCount: paths.length,
+        expectedPathCount: expectedSourcePaths[id],
+        absoluteTitleCount: paths.filter(path => path.title.length > 2 && path.title.charAt(1) === ':').length,
+        hasDisclosure: !!details,
+        collapsedByDefault: !!details && !details.open,
+        summaryText: summary ? summary.textContent.trim() : '',
+        summaryColor: color,
+        summaryIsRed: rgb.length === 3 && rgb[0] > rgb[1] * 2 && rgb[0] > rgb[2] * 2,
+      };
+    });
+    const firstDisclosure = document.querySelector('#dailySourceNote details.source-note-disclosure');
+    if (firstDisclosure) {
+      firstDisclosure.querySelector('summary').click();
+      out.sourceNoteOpened = firstDisclosure.open;
+      firstDisclosure.querySelector('summary').click();
+      out.sourceNoteClosedAgain = !firstDisclosure.open;
+    }
+    return JSON.stringify(out);
 })()"""
 
 CHECK2 = """(() => {
@@ -162,11 +233,37 @@ CHECK2 = """(() => {
 
 CHECK3 = """(() => {
   const out = {};
+  const payloadEl = document.getElementById('dashPayload');
+  const D = payloadEl ? JSON.parse(payloadEl.textContent) : {};
+  const B = D.bilibili || {};
   const toc = document.getElementById('toc');
   out.tocExists = !!toc;
   out.platformToggles = Array.from(document.querySelectorAll('.platform-group-toggle span')).map(e => e.textContent.trim());
   out.biliModule = !!document.querySelector('[data-platform="bili"]');
-  out.biliChart = !!document.getElementById('biliTrendChart');
+  out.biliChartIds = ['biliDailyOverviewChart', 'biliTrendChart', 'biliCostChart'].filter(id => !!document.getElementById(id));
+  out.biliModuleOrder = Array.from(document.querySelectorAll('#page-bili section.module')).map(el => el.id);
+  out.biliModuleLabels = Array.from(document.querySelectorAll('#page-bili .mod-idx')).map(el => el.textContent.trim());
+  out.biliCanvasRects = out.biliChartIds.map(id => {
+    const el = document.getElementById(id);
+    const canvas = el && el.querySelector('canvas');
+    const rect = el && el.getBoundingClientRect();
+    return {id, width: rect ? Math.round(rect.width) : 0, height: rect ? Math.round(rect.height) : 0,
+      canvasWidth: canvas ? canvas.width : 0, canvasHeight: canvas ? canvas.height : 0};
+  });
+  out.biliSourceCards = document.querySelectorAll('#biliSourceStrip .src-card').length;
+  out.biliTrendKpis = document.querySelectorAll('#biliTrendKpis .trend-kpi').length;
+  out.biliTrendKpiLabels = Array.from(document.querySelectorAll('#biliTrendKpis .trend-kpi-label')).map(e => e.textContent.replace(/\\s+/g, ' ').trim());
+  out.biliTrendPlayValue = Array.from(document.querySelectorAll('#biliTrendKpis .trend-kpi')).find(e => e.textContent.includes('总播放UV（全部）'))?.querySelector('.trend-kpi-val')?.textContent.trim() || '';
+  out.biliExpectedTrendPlay = (B.trends_all || []).reduce((sum, row) => sum + (row[5] || 0), 0);
+  out.biliCostKpis = document.querySelectorAll('#biliCostKpis .trend-kpi').length;
+  const biliCostInstance = window.echarts && echarts.getInstanceByDom(document.getElementById('biliCostChart'));
+  out.biliCostSeriesNames = biliCostInstance ? (biliCostInstance.getOption().series || []).map(series => series.name) : [];
+  out.biliQualityText = document.querySelector('#biliSourceStrip .data-quality-note')?.textContent.trim() || '';
+  out.biliCutoffText = document.getElementById('biliCostSourceNote')?.textContent.trim() || '';
+  out.biliSourceNotes = ['biliDailySourceNote','biliTrendSourceNote','biliCostSourceNote'].map(id => {
+    const el = document.getElementById(id);
+    return {id, exists: !!el, pathCount: el ? el.querySelectorAll('.source-note-path').length : 0};
+  });
   const legends = [];
   document.querySelectorAll('div,span,small,p').forEach(el => {
     const t = (el.textContent || '').trim();
@@ -178,6 +275,9 @@ CHECK3 = """(() => {
 
 CHECK4 = """(() => {
   const out = {};
+  const xhsToggle = document.querySelector('.platform-group-toggle[data-page="page-xhs"]');
+  const xhsPage = document.getElementById('page-xhs');
+  if (xhsToggle && xhsPage && getComputedStyle(xhsPage).display === 'none') xhsToggle.click();
   const tableInput = document.getElementById('tableSearch');
   const averageText = () => Array.from(document.querySelectorAll('#tableAverage td')).map(e => e.textContent.trim()).join('|');
   out.averageBefore = averageText();
@@ -294,17 +394,23 @@ def main():
             time.sleep(0.3)
         time.sleep(2)  # 等 ECharts 完成渲染
 
-        r1 = json.loads(cdp.eval(CHECK1))
-        r2 = json.loads(cdp.eval(CHECK2))
-        r3 = json.loads(cdp.eval(CHECK3))
-        r4 = json.loads(cdp.eval(CHECK4))
+        r1 = eval_json(cdp, CHECK1, "CHECK1")
+        r2 = eval_json(cdp, CHECK2, "CHECK2")
+        cdp.eval("document.querySelector('.platform-group-toggle[data-page=\"page-bili\"]')?.click()")
+        time.sleep(0.25)  # switchPlatform 内部延迟 resize，等画布完成重算。
+        r3 = eval_json(cdp, CHECK3, "CHECK3")
+        r4 = eval_json(cdp, CHECK4, "CHECK4")
         print("=== 1. payload 与核心指标 ===")
-        for k in ("hasPayload", "pgyLoaded", "starLoaded", "chiliLoaded", "lxLoaded", "biliLoaded",
-                  "totalSpend", "totalGmv", "overallRoi", "noteCount", "matchedCount",
+        for k in ("hasPayload", "pgyLoaded", "starLoaded", "chiliLoaded", "juguangLoaded", "lxLoaded", "biliLoaded", "biliFireLoaded", "biliAdsLoaded",
+                  "totalSpend", "totalChiliSpend", "totalJuguangSpend", "waitingSpend", "unmatchedPaidSpend",
+                  "totalGmv", "overallRoi", "noteCount", "matchedCount",
+                  "biliNoteCount", "biliCostNoteCount", "biliMatchedNoteCount", "biliEffectiveEnd", "biliExcludedSpend",
+                  "biliCostSpend", "biliCostDailyLast",
                   "canvasCount", "tableRows", "averageRow", "averageLabel",
                   "averageCellCount", "headerCellCount"):
             print(f"  {k}: {r1.get(k)}")
         print("  kpiVals:", r1.get("kpiVals"))
+        print("  trendKpis:", r1.get("trendKpis"), "trendReadValue:", r1.get("trendReadValue"))
         print("  srcCards:")
         for c in r1.get("srcCards", []): print("    ", c)
         print("=== 2. 横滚冻结列验证 ===")
@@ -332,19 +438,82 @@ def main():
             ok = False
             print("  ✗ " + msg)
         if not r1.get("hasPayload"): fail("dashPayload 缺失")
-        for k in ("pgyLoaded", "starLoaded", "chiliLoaded", "lxLoaded"):
+        for k in ("pgyLoaded", "starLoaded", "chiliLoaded", "juguangLoaded", "lxLoaded"):
             if not r1.get(k): fail(f"{k} 未加载")
+        if abs((r1.get("totalSpend") or 0) - (r1.get("totalChiliSpend") or 0) - (r1.get("totalJuguangSpend") or 0)) > 0.01:
+            fail("小红书总投入不等于薯条+聚光")
+        if len(r1.get("srcCards") or []) != 5:
+            fail(f"小红书数据源卡片={len(r1.get('srcCards') or [])}（应为5）")
+        if r1.get("trendKpis") != 6:
+            fail(f"小红书单篇趋势汇总指标卡={r1.get('trendKpis')}（应为6）")
+        if "总阅读UV（全部）" not in (r1.get("trendKpiLabels") or []):
+            fail("小红书单篇趋势汇总缺少总阅读UV卡")
+        if r1.get("trendReadValue") != f"{int(round(r1.get('expectedTrendRead') or 0)):,}":
+            fail("小红书单篇趋势汇总阅读UV与payload不一致")
+        if not {"薯条实付", "聚光消耗"}.issubset(set(r1.get("costSeriesNames") or [])):
+            fail(f"成本堆叠柱系列缺失: {r1.get('costSeriesNames')}")
+        groups = r1.get("tableGroupTexts") or []
+        for label in ("投放汇总", "薯条投放", "聚光投放"):
+            if label not in groups: fail(f"全链路表缺少分组: {label}")
+        if not r1.get("biliLoaded"): fail("B站星河未加载")
+        if not r1.get("biliFireLoaded"): fail("B站必火未加载")
+        if not r1.get("biliAdsLoaded"): fail("B站三联日报未加载")
+        if not (r1.get("biliCostSpend") or 0) > 0: fail("B站有效花费非正")
+        if r1.get("biliEffectiveEnd") != r1.get("biliCostDailyLast"):
+            fail("B站成本日序列未截止到星河最新日期")
+        if not (r1.get("biliCostNoteCount") or 0) > 0: fail("B站成本视频数为0")
+        if r1.get("biliCostNoteCount") != r1.get("biliMatchedNoteCount"):
+            fail("B站成本视频数与同样本命中数不一致")
         if not (r1.get("totalGmv") or 0) > 0: fail("total_gmv 非正")
         if r1.get("overallRoi") is None: fail("overall_roi 为空")
         if not r1.get("averageRow"): fail("平均值行缺失")
         if r1.get("averageLabel") != "平均值": fail(f"平均值行标签异常: {r1.get('averageLabel')}")
         if r1.get("averageCellCount") != r1.get("headerCellCount"): fail("平均值行与表头列数不一致")
+        source_notes = r1.get("sourceNotes") or []
+        if len(source_notes) != 4: fail(f"数据源备注数量={len(source_notes)}（应为4）")
+        for note in source_notes:
+            if not note.get("exists"): fail(f"{note.get('id')} 缺失")
+            if not note.get("hasHeading"): fail(f"{note.get('id')} 缺少数据来源标题")
+            if note.get("pathCount") != note.get("expectedPathCount"):
+                fail(f"{note.get('id')} 路径数={note.get('pathCount')}，预期={note.get('expectedPathCount')}")
+            if note.get("absoluteTitleCount") != note.get("pathCount"):
+                fail(f"{note.get('id')} 完整绝对路径未全部保留在悬停信息中")
+            if not note.get("hasDisclosure"): fail(f"{note.get('id')} 折叠控件缺失")
+            if not note.get("collapsedByDefault"): fail(f"{note.get('id')} 未默认收起")
+            if note.get("summaryText") != "数据来源": fail(f"{note.get('id')} 折叠标题异常")
+            if not note.get("summaryIsRed"): fail(f"{note.get('id')} 折叠标题不是红色: {note.get('summaryColor')}")
+        if not r1.get("sourceNoteOpened"): fail("数据来源点击后未展开")
+        if not r1.get("sourceNoteClosedAgain"): fail("数据来源再次点击后未收起")
         if (r1.get("canvasCount") or 0) < 3: fail(f"canvas 仅 {r1.get('canvasCount')} 个")
         if r2.get("foundWrap") is not True: fail("表格滚动容器未找到")
         if r2.get("frozenAfter") not in (0, 1): fail(f"横滚后冻结列 left={r2.get('frozenAfter')}（应为 0/1）")
         if r2.get("groupHeadPos") != "sticky": fail(f"分组表头 position={r2.get('groupHeadPos')}（应为 sticky）")
         if not r3.get("tocExists"): fail("目录缺失")
-        if not r3.get("biliChart"): fail("B站模块图表缺失")
+        if r3.get("biliChartIds") != ["biliDailyOverviewChart", "biliTrendChart", "biliCostChart"]:
+            fail(f"B站图表节点异常: {r3.get('biliChartIds')}")
+        if r3.get("biliModuleOrder") != ["modBiliDailyOverview", "modBiliTrend", "modBiliCost"]:
+            fail(f"B站图表顺序异常: {r3.get('biliModuleOrder')}")
+        if r3.get("biliModuleLabels") != ["图表一", "图表二", "图表三"]:
+            fail(f"B站图表编号异常: {r3.get('biliModuleLabels')}")
+        for chart in r3.get("biliCanvasRects") or []:
+            if chart.get("width", 0) <= 250 or chart.get("height", 0) <= 250:
+                fail(f"B站图表尺寸异常: {chart}")
+            if chart.get("canvasWidth", 0) <= 0 or chart.get("canvasHeight", 0) <= 0:
+                fail(f"B站图表画布为空: {chart}")
+        if r3.get("biliSourceCards") != 3: fail(f"B站数据源卡片={r3.get('biliSourceCards')}（应为3）")
+        if r3.get("biliTrendKpis") != 6: fail(f"B站单篇趋势汇总指标卡={r3.get('biliTrendKpis')}（应为6）")
+        if "总播放UV（全部）" not in (r3.get("biliTrendKpiLabels") or []): fail("B站单篇趋势汇总缺少总播放UV卡")
+        if r3.get("biliTrendPlayValue") != f"{int(round(r3.get('biliExpectedTrendPlay') or 0)):,}": fail("B站单篇趋势汇总播放UV与payload不一致")
+        if r3.get("biliCostKpis") != 6: fail(f"B站成本指标卡={r3.get('biliCostKpis')}（应为6）")
+        if not {"必火消耗", "三联花费"}.issubset(set(r3.get("biliCostSeriesNames") or [])):
+            fail(f"B站双渠道成本柱缺失: {r3.get('biliCostSeriesNames')}")
+        if "统一截止星河最新日" not in (r3.get("biliCutoffText") or ""):
+            fail("B站成本截止口径提示缺失")
+        if (r1.get("biliExcludedSpend") or 0) > 0 and "星河最新日期" not in (r3.get("biliQualityText") or ""):
+            fail("B站存在等待归因金额但末端日期截断提示缺失")
+        for note in r3.get("biliSourceNotes") or []:
+            if not note.get("exists") or note.get("pathCount", 0) < 1:
+                fail(f"B站数据来源备注异常: {note}")
         if not r3.get("legendTexts"): fail("水位线图例文案缺失")
         if not r4.get("hasCheckboxes"): fail("表格下拉复选框缺失")
         if not r4.get("hasConfirmBar"): fail("下拉框固定确认栏缺失")

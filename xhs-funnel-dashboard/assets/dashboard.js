@@ -246,10 +246,10 @@
     const s = DATA.summary;
     const m = DATA.meta || {};
     const kpi = [
-      { l: "总投入（薯条实付）", v: fmt.money(s.total_spend), u: "元", sub: "仅推广完成·实际支付，不含达人合作费", range: m.chili_period, rangeTip: "薯条投放周期" },
+      { l: "总投入（薯条+聚光）", v: fmt.money(s.total_spend), u: "元", sub: "薯条 " + fmt.money(s.total_chili_spend) + " · 聚光 " + fmt.money(s.total_juguang_spend) },
       { l: '总 GMV <span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单如果有多条笔记共同贡献，该订单GMV会被重复计入每条笔记，因此加总后的GMV高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.total_gmv), u: "元", sub: "⚠ 多内容归因存在重复计算", range: m.star_period, rangeTip: "星河数据周期", approx: true },
-      { l: '整体 ROI <span class="gmv-approx" data-tip="ROI仅使用同时命中薯条和星河的同一批笔记：交集GMV ÷ 交集实付。因GMV含多内容归因重复，该ROI仍为近似参考值。">≈ 参考值</span>', v: s.overall_roi == null ? "—" : Number(s.overall_roi).toFixed(2), u: "", sub: "同样本交集 " + fmt.int(s.matched_note_count || 0) + " 篇 · GMV / 薯条实付", approx: true },
-      { l: "笔记数",        v: fmt.int(s.note_count),    u: "篇", sub: "已投 " + fmt.int(s.invested_count) + " 篇" },
+      { l: '整体 ROI <span class="gmv-approx" data-tip="ROI使用薯条或聚光与星河同时命中的笔记，从每篇首个付费日开始并截止星河最新日。因GMV含多内容归因重复，该ROI仅作相对比较。">≈ 参考值</span>', v: s.overall_roi == null ? "—" : Number(s.overall_roi).toFixed(2), u: "", sub: "同样本 " + fmt.int(s.matched_note_count || 0) + " 篇 · GMV / 有效合计成本", approx: true },
+      { l: "笔记数", v: fmt.int(s.note_count), u: "篇", sub: "薯条 " + fmt.int(s.chili_note_count) + " · 聚光 " + fmt.int(s.juguang_note_count) + " · 双投 " + fmt.int(s.both_note_count) },
     ];
     document.getElementById("kpiRow").innerHTML = kpi.map(k =>
       `<div class="kpi${k.approx ? " kpi-approx" : ""}">
@@ -282,7 +282,7 @@
         </div>
       </div>`;
     }).join("");
-    // 数据质量提示仅小红书（四表口径）
+    // 数据质量提示仅小红书（五表口径）
     let qualityHtml = "";
     if (containerId === "sourceStrip") {
       const quality = [];
@@ -290,13 +290,183 @@
         quality.push(DATA.summary.funnel_violation_count + "篇成交UV高于加购UV，请结合星河归因链路判断");
       }
       if ((DATA.meta.latest_data_gap_days || 0) > 0) {
-        quality.push("薯条最新日期比星河晚" + DATA.meta.latest_data_gap_days + "天，末端成本仍在等待归因回补");
+        quality.push("投放数据比星河晚" + DATA.meta.latest_data_gap_days + "天，等待归因金额 ¥" + fmt.money(DATA.summary.waiting_attribution_spend || 0));
+      }
+      if ((DATA.summary.unmatched_paid_spend || 0) > 0) {
+        quality.push(fmt.int(DATA.summary.unmatched_paid_count || 0) + "篇付费笔记未命中星河，¥" + fmt.money(DATA.summary.unmatched_paid_spend) + "未进入ROI和成本");
+      }
+      const jg = src.juguang || {};
+      if (jg.loaded && jg.summary_diff != null && Math.abs(Number(jg.summary_diff)) >= 0.005) {
+        quality.push("聚光汇总行与逐日明细相差 ¥" + Math.abs(Number(jg.summary_diff)).toFixed(2) + "，已按逐日明细求和");
+      }
+      if (jg.loaded && (jg.invalid_spend || 0) > 0) {
+        quality.push("聚光有 ¥" + Number(jg.invalid_spend).toFixed(2) + " 无法关联有效笔记ID，已排除");
+      }
+      if (!(src.chili && src.chili.loaded) || !(src.juguang && src.juguang.loaded)) {
+        quality.push("总投入仅包含已上传渠道，当前成本口径不完整");
+      }
+      qualityHtml = quality.length
+        ? '<div class="data-quality-note"><strong>数据质量提示</strong><span>' + quality.join("；") + "</span></div>"
+        : "";
+    } else if (containerId === "biliSourceStrip") {
+      const bm = (DATA.bilibili && DATA.bilibili.meta) || {};
+      const quality = [];
+      if ((bm.excluded_after_cutoff_spend || 0) > 0) {
+        quality.push("成本按星河最新日期 " + fmtDate(bm.effective_end) + " 截止；其后 ¥" +
+          Number(bm.excluded_after_cutoff_spend).toFixed(2) + " 花费等待星河回补");
+      }
+      if ((bm.unmatched_spend || 0) > 0) {
+        quality.push("有 ¥" + Number(bm.unmatched_spend).toFixed(2) + " 花费未匹配到星河BV号，已排除");
+      }
+      if ((bm.invalid_id_spend || 0) > 0) {
+        quality.push("有 ¥" + Number(bm.invalid_id_spend).toFixed(2) + " 花费缺少有效BV号，已排除");
+      }
+      if ((bm.unmatched_trilan_spend || 0) > 0) {
+        quality.push("三联有 ¥" + Number(bm.unmatched_trilan_spend).toFixed(2) + " 未命中星河BVID，已排除");
+      }
+      if ((bm.unmatched_bihuo_spend || 0) > 0) {
+        quality.push("必火有 ¥" + Number(bm.unmatched_bihuo_spend).toFixed(2) + " 昵称未命中星河，已排除");
+      }
+      if ((bm.ambiguous_bihuo_spend || 0) > 0) {
+        quality.push("必火有 ¥" + Number(bm.ambiguous_bihuo_spend).toFixed(2) + " 昵称对应多个BVID，已排除");
+      }
+      if ((bm.funnel_violation_count || 0) > 0) {
+        quality.push(bm.funnel_violation_count + " 条日记录成交UV高于加购UV，请结合15天归因链路判断");
       }
       qualityHtml = quality.length
         ? '<div class="data-quality-note"><strong>数据质量提示</strong><span>' + quality.join("；") + "</span></div>"
         : "";
     }
     document.getElementById(containerId).innerHTML = cards + qualityHtml;
+  }
+
+  // ===== 图表底部数据来源 =====
+  function sourceInfo(key) {
+    const sources = (DATA.meta && DATA.meta.sources) || {};
+    return sources[key] || { name: key, loaded: false, path: "", period: "" };
+  }
+
+  function sourcePaths(key) {
+    const source = sourceInfo(key);
+    if (!source.loaded || !source.path) return [];
+    return String(source.path).split(" · ").map(function(path) {
+      return path.trim();
+    }).filter(Boolean);
+  }
+
+  function relativeSourcePath(path) {
+    const normalized = String(path || "").replace(/\//g, "\\");
+    const marker = "数据看板文件\\";
+    const markerIndex = normalized.indexOf(marker);
+    if (markerIndex >= 0) return normalized.slice(markerIndex + marker.length);
+    const parts = normalized.split("\\");
+    return parts[parts.length - 1] || normalized;
+  }
+
+  function sourceRole(key, role) {
+    const source = sourceInfo(key);
+    return source.loaded
+      ? escapeHtml(source.name || key) + "（" + escapeHtml(role) + "）"
+      : escapeHtml(source.name || key) + "（未上传）";
+  }
+
+  function sourceFileRow(key, label) {
+    const source = sourceInfo(key);
+    const paths = sourcePaths(key);
+    const period = source.loaded && source.period
+      ? '<span class="source-note-period">' + escapeHtml(source.period) + "</span>"
+      : "";
+    const files = paths.length
+      ? paths.map(function(path) {
+          return '<code class="source-note-path" title="' + escapeHtml(path) + '">' +
+            escapeHtml(relativeSourcePath(path)) + "</code>";
+        }).join('<span class="source-note-sep">；</span>')
+      : '<span class="source-note-missing">' + escapeHtml(source.reason || "未上传") + "</span>";
+    return '<div class="source-note-row" data-source-key="' + escapeHtml(key) + '">' +
+      '<span class="source-note-label">' + escapeHtml(label) + "</span>" +
+      '<span class="source-note-files">' + files + period + "</span>" +
+      "</div>";
+  }
+
+  function sourceDisclosure(content) {
+    return '<details class="source-note-disclosure">' +
+      '<summary>数据来源</summary>' +
+      '<div class="source-note-expanded">' + content + "</div>" +
+      "</details>";
+  }
+
+  function renderSourceNotes() {
+    const daily = document.getElementById("dailySourceNote");
+    const trend = document.getElementById("trendSourceNote");
+    const cost = document.getElementById("costSourceNote");
+    const table = document.getElementById("tableSourceNote");
+    const biliDaily = document.getElementById("biliDailySourceNote");
+    const biliTrend = document.getElementById("biliTrendSourceNote");
+    const biliCost = document.getElementById("biliCostSourceNote");
+
+    if (daily) {
+      daily.innerHTML = sourceDisclosure(
+        '<div class="source-note-summary">' + sourceRole("star", "日维度阅读与转化指标") + "</div>" +
+        '<div class="source-note-detail">指标口径：阅读、进店、加购、成交数据均采用星河“全部流量 · 归因30天”。</div>' +
+        sourceFileRow("star", "文件路径")
+      );
+    }
+
+    if (trend) {
+      trend.innerHTML = sourceDisclosure(
+        '<div class="source-note-summary">' +
+        sourceRole("star", "趋势与转化指标") + " + " + sourceRole("pgy", "发布日期、达人信息") + "</div>" +
+        sourceFileRow("star", "星河文件") + sourceFileRow("pgy", "蒲公英文件")
+      );
+    }
+
+    if (cost) {
+      cost.innerHTML = sourceDisclosure(
+        '<div class="source-note-summary">' +
+        sourceRole("chili", "实际支付、启动日") + " + " + sourceRole("juguang", "实际消耗、自然日") + " + " + sourceRole("star", "阅读及转化UV") + "</div>" +
+        '<div class="source-note-detail">辅助信息：蒲公英提供发布日期和达人信息。</div>' +
+        sourceFileRow("chili", "薯条文件") + sourceFileRow("juguang", "聚光文件") + sourceFileRow("star", "星河文件") + sourceFileRow("pgy", "蒲公英文件")
+      );
+    }
+
+    if (table) {
+      const tableKeys = ["pgy", "star", "chili", "juguang", "lx"];
+      const fileCount = tableKeys.reduce(function(total, key) {
+        return total + sourcePaths(key).length;
+      }, 0);
+      table.innerHTML = sourceDisclosure(
+        '<div class="source-note-summary">' +
+        sourceRole("pgy", "内容表现") + " + " + sourceRole("star", "后端转化") + " + " +
+        sourceRole("chili", "薯条成本") + " + " + sourceRole("juguang", "聚光成本") + " + " + sourceRole("lx", "人群资产") + "</div>" +
+        '<div class="source-note-detail">投放汇总由薯条与聚光相加；当前共使用 ' + fileCount + " 份小红书数据文件。</div>" +
+        sourceFileRow("pgy", "蒲公英") + sourceFileRow("star", "淘宝星河") +
+        sourceFileRow("chili", "薯条") + sourceFileRow("juguang", "聚光") + sourceFileRow("lx", "灵犀")
+      );
+    }
+
+    if (biliDaily) {
+      biliDaily.innerHTML = sourceDisclosure(
+        '<div class="source-note-summary">' + sourceRole("bili", "日维度播放与转化指标") + "</div>" +
+        '<div class="source-note-detail">指标口径：播放、进店、加购、成交均采用B站星河“全部流量 · 归因15天”。</div>' +
+        sourceFileRow("bili", "B站星河文件")
+      );
+    }
+    if (biliTrend) {
+      biliTrend.innerHTML = sourceDisclosure(
+        '<div class="source-note-summary">' + sourceRole("bili", "单篇趋势与转化指标") + "</div>" +
+        sourceFileRow("bili", "B站星河文件")
+      );
+    }
+    if (biliCost) {
+      const bm = (DATA.bilibili && DATA.bilibili.meta) || {};
+      biliCost.innerHTML = sourceDisclosure(
+        '<div class="source-note-summary">' + sourceRole("bili_fire", "必火订单消耗") + " + " +
+        sourceRole("bili_ads", "三联逐日花费") + " + " + sourceRole("bili", "播放及转化UV") + "</div>" +
+        '<div class="source-note-detail">有效成本周期：' + escapeHtml(bm.effective_period || "—") +
+        '；必火整单按推广开始日归集，每条视频从首个付费日开始，统一截止星河最新日。</div>' +
+        sourceFileRow("bili_fire", "必火文件") + sourceFileRow("bili_ads", "三联文件") + sourceFileRow("bili", "B站星河文件")
+      );
+    }
   }
 
   // ===== 图表一 · 单篇趋势分析 =====
@@ -486,7 +656,7 @@
   const PLATFORMS = {
     xhs:  { pageId: "page-xhs",  tocId: "tocSub-xhs",  charts: ["dailyOverviewChart", "trendChart", "costChart"], title: "小红书投放数据看板" },
     dy:   { pageId: "page-dy",   tocId: "tocSub-dy",   charts: [], title: "抖音投放数据看板" },
-    bili: { pageId: "page-bili", tocId: "tocSub-bili", charts: ["biliTrendChart"], title: "B站投放数据看板" },
+    bili: { pageId: "page-bili", tocId: "tocSub-bili", charts: ["biliDailyOverviewChart", "biliTrendChart", "biliCostChart"], title: "B站投放数据看板" },
   };
   let currentPlatform = "xhs";
 
@@ -494,7 +664,9 @@
     if (id === "dailyOverviewChart") return dailyOverviewChart;
     if (id === "trendChart") return trendChart;
     if (id === "costChart") return costChart;
+    if (id === "biliDailyOverviewChart") return biliDailyOverviewChart;
     if (id === "biliTrendChart") return biliTrendChart;
+    if (id === "biliCostChart") return biliCostChart;
     return null;
   }
 
@@ -687,7 +859,9 @@
       const totalCart = rows.reduce((s, r) => s + (r[2] || 0), 0);
       const totalDeal = rows.reduce((s, r) => s + (r[3] || 0), 0);
       const totalGmv = rows.reduce((s, r) => s + (r[4] || 0), 0);
+      const totalRead = rows.reduce((s, r) => s + (r[5] || 0), 0);
       const kpis = [
+        { l: "总阅读UV（全部）", v: fmt.int(totalRead), u: "" },
         { l: "总进店UV（全部）", v: fmt.int(totalVisit), u: "" },
         { l: "总加购UV（全部）", v: fmt.int(totalCart), u: "" },
         { l: "总成交UV（全部）", v: fmt.int(totalDeal), u: "" },
@@ -701,7 +875,6 @@
         </div>`
       ).join("");
 
-      const totalRead = rows.reduce((s, r) => s + (r[5] || 0), 0);
       updateToggleCards("trendToggles", {
         read: fmt.int(totalRead),
         visit: fmt.int(totalVisit),
@@ -839,8 +1012,9 @@
     bindChartPanInteractions(trendChart, "trendPanHint");
   }
 
-  // ===== B站 · 单篇趋势分析（独立模块，B站粉蓝配色；不参与小红书四表联动） =====
-  let biliTrendChart = null, biliTrendCombo = null;
+  // ===== B站（独立模块，B站粉蓝配色；不参与小红书五表联动） =====
+  let biliDailyOverviewChart = null, biliTrendChart = null, biliCostChart = null;
+  let biliTrendCombo = null, biliCostCombo = null;
 
   const BILI_TREND_METRICS = {
     play:  { label: "播放UV", col: 5, color: "#00AEEC", avg: true },
@@ -893,7 +1067,7 @@
       });
     });
   }
-  // ===== B站 页头 meta + 顶部 KPI（B站表无投放消耗字段，不做投入/ROI） =====
+  // ===== B站 页头 meta + 顶部 KPI =====
   function renderBiliMeta() {
     const b = DATA.bilibili || {};
     const m = b.meta || {};
@@ -912,7 +1086,13 @@
     const totalCart = rows.reduce((s, r) => s + (r[2] || 0), 0);
     const totalDeal = rows.reduce((s, r) => s + (r[3] || 0), 0);
     const totalGmv = rows.reduce((s, r) => s + (r[4] || 0), 0);
-    const kpi = [
+    const ca = b.cost_all && b.cost_all.summary;
+    const kpi = ca ? [
+      { l: "总花费（必火+三联）", v: fmt.money((b.meta && b.meta.source_spend) || ca.spend), u: "元", sub: "必火 " + fmt.money((b.meta && b.meta.source_bihuo_spend) || 0) + " · 三联 " + fmt.money((b.meta && b.meta.source_trilan_spend) || 0), range: (b.meta && b.meta.source_period) || "", rangeTip: "全量投放周期" },
+      { l: '总 GMV <span class="gmv-approx" data-tip="B站按内容维度统计GMV，同一笔订单如果有多条内容共同贡献，该订单GMV会被重复计入每条内容，因此加总后的GMV高于实际成交额。">≈ 参考值</span>', v: fmt.money(totalGmv), u: "元", sub: "全部内容 · 多内容归因参考值", range: (b.meta && b.meta.period) || "", rangeTip: "星河数据周期", approx: true },
+      { l: '整体 ROI <span class="gmv-approx" data-tip="ROI使用必火或三联与星河安全匹配的内容，从首个付费日开始并截止星河最新日。GMV存在多内容归因重复，仅作相对比较。">≈ 参考值</span>', v: ca.roi == null ? "—" : Number(ca.roi).toFixed(2), u: "", sub: "同样本 " + fmt.int(ca.note_count || 0) + " 条 · GMV / 有效成本", approx: true },
+      { l: "视频数", v: fmt.int((b.notes || []).length), u: "条", sub: "必火 " + fmt.int((b.meta && b.meta.bihuo_note_count) || 0) + " · 三联 " + fmt.int((b.meta && b.meta.trilan_note_count) || 0) + " · 双投 " + fmt.int((b.meta && b.meta.both_note_count) || 0) },
+    ] : [
       { l: "总播放UV", v: fmt.int(totalPlay), u: "", sub: "全部内容 · 播放口径", range: (b.meta && b.meta.period) || "", rangeTip: "数据周期" },
       { l: "总进店UV", v: fmt.int(totalVisit), u: "", sub: "播放 → 进店" },
       { l: "总加购UV", v: fmt.int(totalCart), u: "", sub: "进店 → 加购" },
@@ -926,6 +1106,173 @@
       </div>`
     ).join("");
   }
+
+  const BILI_DAILY_REST_COLOR = "#D1D5DB";
+  const BILI_DAILY_METRICS = {
+    play:  { label: "播放", key: "play_uv", idx: 5, axis: "播放UV", palette: ["#00AEEC","#25B9EF","#48C5F2","#6BD1F5","#8DDBF7","#A9E4F9","#BFEAFA","#D3F1FC","#E5F7FD","#F1FBFE"] },
+    visit: { label: "进店", key: "visit_uv", idx: 1, axis: "进店/加购/成交 UV", palette: ["#FB7299","#FC87A7","#FC9BB5","#FDAFC3","#FDC1D0","#FED1DC","#FEDDE5","#FFE7EC","#FFF0F4","#FFF7F9"] },
+    cart:  { label: "加购", key: "cart_uv", idx: 2, axis: "进店/加购/成交 UV", palette: ["#F97316","#FA8737","#FA9A55","#FBAD73","#FCC08F","#FCD0A9","#FDE0C2","#FEEAD5","#FEF3E7","#FFF9F2"] },
+    deal:  { label: "成交", key: "deal_uv", idx: 3, axis: "进店/加购/成交 UV", palette: ["#EAB308","#EDBF2D","#F0CA50","#F3D573","#F5DF93","#F7E7AE","#F9EFC8","#FBF5DC","#FDF9EB","#FEFCF5"] },
+  };
+
+  function biliDailyActiveMetrics() {
+    var active = [];
+    document.querySelectorAll("#biliDailyToggles .metric-toggle-card.active").forEach(function(btn){
+      active.push(btn.dataset.metric);
+    });
+    return active.length ? ["play", "visit", "cart", "deal"].filter(function(m){ return active.indexOf(m) >= 0; }) : ["visit"];
+  }
+
+  function initBiliDailyToggles() {
+    document.querySelectorAll("#biliDailyToggles .metric-toggle-card").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        this.classList.toggle("active");
+        if (!document.querySelectorAll("#biliDailyToggles .metric-toggle-card.active").length) {
+          this.classList.add("active"); return;
+        }
+        renderBiliDailyOverview();
+      });
+    });
+  }
+
+  function renderBiliDailyOverview() {
+    var b = DATA.bilibili || {};
+    var dailyNotes = b.daily_notes || {};
+    var trendsAll = b.trends_all || [];
+    var chartEl = document.getElementById("biliDailyOverviewChart");
+    if (!trendsAll.length) {
+      chartEl.innerHTML = '<div style="padding:80px;text-align:center;color:#9CA3AF">B站星河未加载，无法展示日维度数据</div>';
+      return;
+    }
+    var active = biliDailyActiveMetrics();
+    var useDual = active.indexOf("play") >= 0 && active.length > 1;
+    var totals = { play: 0, visit: 0, cart: 0, deal: 0 };
+    var noteIds = new Set();
+    trendsAll.forEach(function(r){
+      totals.play += r[5] || 0; totals.visit += r[1] || 0;
+      totals.cart += r[2] || 0; totals.deal += r[3] || 0;
+    });
+    Object.keys(dailyNotes).forEach(function(d){
+      (dailyNotes[d] || []).forEach(function(n){ noteIds.add(n.note_id); });
+    });
+    var kpis = [
+      ["总播放UV", totals.play, ""], ["总进店UV", totals.visit, ""],
+      ["总加购UV", totals.cart, ""], ["总成交UV", totals.deal, ""],
+      ["有数据视频", noteIds.size, "条"],
+    ];
+    document.getElementById("biliDailyOverviewKpis").innerHTML = kpis.map(function(k){
+      return '<div class="trend-kpi"><div class="trend-kpi-label">' + k[0] + '</div><div class="trend-kpi-val">' + fmt.int(k[1]) + '<span class="u"> ' + k[2] + '</span></div></div>';
+    }).join("");
+    updateToggleCards("biliDailyToggles", {
+      play: fmt.int(totals.play), visit: fmt.int(totals.visit),
+      cart: fmt.int(totals.cart), deal: fmt.int(totals.deal),
+    });
+
+    var dates = trendsAll.map(function(r){ return fmtDate(r[0]); });
+    var dateInts = trendsAll.map(function(r){ return r[0]; });
+    var series = [];
+    active.forEach(function(metric){
+      var conf = BILI_DAILY_METRICS[metric];
+      var yAxisIndex = metric === "play" && useDual ? 1 : 0;
+      var rankData = Array.from({length: 10}, function(){ return new Array(dateInts.length).fill(null); });
+      var restData = new Array(dateInts.length).fill(null);
+      dateInts.forEach(function(d, di){
+        var items = (dailyNotes[d] || []).slice().sort(function(a, z){ return (z[conf.key] || 0) - (a[conf.key] || 0); });
+        items.slice(0, 10).forEach(function(item, rank){ rankData[rank][di] = item[conf.key]; });
+        if (items.length > 10) {
+          var rest = items.slice(10).reduce(function(sum, item){ return sum + (item[conf.key] || 0); }, 0);
+          restData[di] = rest || null;
+        }
+      });
+      rankData.forEach(function(data, rank){
+        series.push({ name: metric + "_Top" + (rank + 1), type: "bar", stack: metric + "_stack", yAxisIndex: yAxisIndex,
+          data: data, color: conf.palette[rank], barMaxWidth: active.length > 1 ? 24 : 44,
+          emphasis: { focus: "series" }, itemStyle: { borderWidth: 0 } });
+      });
+      series.push({ name: metric + "_rest", type: "bar", stack: metric + "_stack", yAxisIndex: yAxisIndex,
+        data: restData, color: BILI_DAILY_REST_COLOR, barMaxWidth: active.length > 1 ? 24 : 44,
+        emphasis: { focus: "series" }, itemStyle: { borderWidth: 0 } });
+      var dailyTotals = trendsAll.map(function(r){ return r[conf.idx] || 0; });
+      series.push({ name: metric + "_label", type: "bar", stack: metric + "_stack", yAxisIndex: yAxisIndex,
+        data: new Array(dateInts.length).fill(null), color: "transparent", silent: true,
+        barMaxWidth: active.length > 1 ? 24 : 44, itemStyle: { borderWidth: 0 },
+        label: { show: true, position: "top", fontSize: 10, fontWeight: 700, color: conf.palette[0],
+          formatter: function(p){ return fmt.int(dailyTotals[p.dataIndex]); } } });
+    });
+
+    if (!biliDailyOverviewChart) biliDailyOverviewChart = echarts.init(chartEl);
+    biliDailyOverviewChart.off("click");
+    biliDailyOverviewChart.setOption({
+      backgroundColor: "transparent",
+      tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, backgroundColor: "#fff", borderColor: C.border,
+        textStyle: { color: C.text, fontSize: 12 }, extraCssText: "max-width:430px;border-radius:6px;box-shadow:0 2px 12px rgba(0,0,0,.10)",
+        formatter: function(params){
+          if (!params || !params.length) return "";
+          var idx = params[0].dataIndex, d = dateInts[idx];
+          var items = (dailyNotes[d] || []).slice().sort(function(a, z){ return (z.visit_uv || 0) - (a.visit_uv || 0); });
+          var summary = trendsAll[idx] || [];
+          var html = '<div style="font-weight:700;margin-bottom:6px">' + fmtDate(d) + '</div>' +
+            '<div style="display:grid;grid-template-columns:repeat(4,auto);gap:5px 14px;margin-bottom:6px;font-size:11px">' +
+            '<span>播放 <b style="color:#00AEEC">' + fmt.int(summary[5]) + '</b></span>' +
+            '<span>进店 <b style="color:#FB7299">' + fmt.int(summary[1]) + '</b></span>' +
+            '<span>加购 <b style="color:#F97316">' + fmt.int(summary[2]) + '</b></span>' +
+            '<span>成交 <b style="color:#EAB308">' + fmt.int(summary[3]) + '</b></span></div>';
+          html += items.slice(0, 6).map(function(n, rank){
+            return '<div style="display:grid;grid-template-columns:14px minmax(72px,1fr) repeat(4,48px);gap:5px;align-items:center;font-size:10px;line-height:1.8">' +
+              '<i style="width:7px;height:7px;background:' + BILI_DAILY_METRICS.visit.palette[rank] + '"></i>' +
+              '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(n.creator || n.note_id) + '</span>' +
+              '<b>' + fmt.int(n.play_uv) + '</b><b>' + fmt.int(n.visit_uv) + '</b><b>' + fmt.int(n.cart_uv) + '</b><b>' + fmt.int(n.deal_uv) + '</b></div>';
+          }).join("");
+          if (items.length > 6) html += '<div style="margin-top:4px;color:#9CA3AF;font-size:10px">其余 ' + (items.length - 6) + ' 条点击柱子展开</div>';
+          return html;
+        } },
+      legend: { show: false }, grid: { top: 28, left: 56, right: useDual ? 56 : 20, bottom: 40 },
+      dataZoom: buildInsideZoom(),
+      xAxis: { type: "category", data: dates, axisLine: { lineStyle: { color: C.border } }, axisLabel: { fontSize: 11, color: C.muted, rotate: dates.length > 40 ? 45 : 0 } },
+      yAxis: [
+        { type: "value", name: useDual ? "进店/加购/成交 UV" : "UV", position: "left", axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: C.grid } }, axisLabel: { color: C.muted, fontSize: 11 } },
+        { type: "value", name: "播放UV", position: "right", show: useDual, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: useDual, color: "#00AEEC", fontSize: 11, formatter: function(v){ return v >= 1000 ? (v / 1000).toFixed(1) + "k" : v; } } },
+      ],
+      series: series,
+    }, true);
+    bindChartPanInteractions(biliDailyOverviewChart, "biliDailyPanHint");
+    biliDailyOverviewChart.resize();
+    biliDailyOverviewChart.on("click", function(params){
+      if (params.componentType === "series" && params.seriesType === "bar" && params.dataIndex != null) {
+        runConfirmedChartClick(biliDailyOverviewChart, function(){ expandBiliDailyNotes(dateInts[params.dataIndex]); });
+      }
+    });
+    document.getElementById("biliDailyDetailPanel").hidden = true;
+  }
+
+  function expandBiliDailyNotes(dateInt) {
+    var b = DATA.bilibili || {};
+    var notes = ((b.daily_notes || {})[dateInt] || []).slice().sort(function(a, z){ return (z.visit_uv || 0) - (a.visit_uv || 0); });
+    document.getElementById("biliDailyDetailTitle").textContent = fmtDate(dateInt) + " 视频明细（共 " + notes.length + " 条）";
+    document.getElementById("biliDailyDetailHead").innerHTML = '<tr><th>#</th><th>达人</th><th>BV号</th><th>播放UV</th><th>进店UV</th><th>加购UV</th><th>成交UV</th></tr>';
+    var body = document.getElementById("biliDailyDetailBody");
+    body.innerHTML = notes.map(function(n, i){
+      var color = i < 10 ? BILI_DAILY_METRICS.visit.palette[i] : BILI_DAILY_REST_COLOR;
+      return '<tr class="daily-detail-row-note" data-nid="' + escapeHtml(n.note_id) + '"><td><span class="daily-rank-badge" style="background:' + color + ';color:#fff">' + (i + 1) + '</span></td>' +
+        '<td>' + escapeHtml(n.creator || "—") + '</td><td class="mono-id">' + escapeHtml(n.note_id) + '</td>' +
+        '<td>' + fmt.int(n.play_uv) + '</td><td>' + fmt.int(n.visit_uv) + '</td><td>' + fmt.int(n.cart_uv) + '</td><td>' + fmt.int(n.deal_uv) + '</td></tr>';
+    }).join("");
+    body.querySelectorAll(".daily-detail-row-note").forEach(function(row){
+      row.addEventListener("click", function(){
+        var nid = row.dataset.nid;
+        if (biliTrendCombo && biliTrendCombo.selectById) biliTrendCombo.selectById(nid);
+        if (biliCostCombo && biliCostCombo.selectById) biliCostCombo.selectById(nid);
+        document.getElementById("modBiliTrend").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    var panel = document.getElementById("biliDailyDetailPanel");
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  document.getElementById("biliDailyDetailClose").addEventListener("click", function(){
+    document.getElementById("biliDailyDetailPanel").hidden = true;
+  });
 
   function renderBiliTrendModule() {
     const bili = DATA.bilibili;
@@ -976,6 +1323,7 @@
       const totalGmv = rows.reduce((s, r) => s + (r[4] || 0), 0);
       const totalPlay = rows.reduce((s, r) => s + (r[5] || 0), 0);
       const kpis = [
+        { l: "总播放UV（全部）", v: fmt.int(totalPlay), u: "" },
         { l: "总进店UV（全部）", v: fmt.int(totalVisit), u: "" },
         { l: "总加购UV（全部）", v: fmt.int(totalCart), u: "" },
         { l: "总成交UV（全部）", v: fmt.int(totalDeal), u: "" },
@@ -1124,15 +1472,226 @@
     bindChartPanInteractions(biliTrendChart, "biliTrendPanHint");
   }
 
-  // ===== 图表二 · 单篇成本分析 =====
+  // ===== B站 · 单篇成本分析 =====
+  const BILI_COST_METRICS = {
+    play:  { label: "播放成本", color: "#00AEEC" },
+    visit: { label: "进店成本", color: "#FB7299" },
+    cart:  { label: "加购成本", color: "#F97316" },
+    deal:  { label: "成交成本", color: "#EAB308" },
+  };
+
+  function biliActiveCostMetrics() {
+    var active = [];
+    document.querySelectorAll("#biliCostToggles .metric-toggle-card.active").forEach(function(btn){ active.push(btn.dataset.metric); });
+    if (!active.length) active = ["visit"];
+    return ["play", "visit", "cart", "deal"].filter(function(m){ return active.indexOf(m) >= 0; });
+  }
+
+  function initBiliCostToggles() {
+    document.querySelectorAll("#biliCostToggles .metric-toggle-card").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        this.classList.toggle("active");
+        if (!document.querySelectorAll("#biliCostToggles .metric-toggle-card.active").length) {
+          this.classList.add("active"); return;
+        }
+        renderBiliCost(biliCostCombo ? biliCostCombo.currentId : null);
+      });
+    });
+  }
+
+  function biliCostChartOptions() {
+    return {
+      metricConfig: BILI_COST_METRICS,
+      activeMetrics: biliActiveCostMetrics(),
+      accentColor: "#FB7299", accentTop: "#FF9BBA",
+      spendTitle: "每日花费（元）", dailySpendLabel: "当日花费",
+      dateTag: "内容首个数据日", itemLabel: "投放视频", itemUnit: "条",
+      averageSpendLabel: "条均花费", clickHint: "点击金额柱查看当天双渠道投放明细",
+      channels: [
+        { index: 8, label: "必火消耗", color: "#E9567C" },
+        { index: 9, label: "三联花费", color: "#00AEEC" },
+      ],
+    };
+  }
+
+  function renderBiliCostChart(daily, uvIdxMap, isSummary, firstDateStr) {
+    var chartEl = document.getElementById("biliCostChart");
+    var metricCount = biliActiveCostMetrics().length;
+    chartEl.style.height = (metricCount > 1 ? 188 + metricCount * 160 : 400) + "px";
+    if (!biliCostChart) biliCostChart = echarts.init(chartEl);
+    biliCostChart.setOption(buildCostChartOption(daily, uvIdxMap, isSummary, firstDateStr, biliCostChartOptions()), true);
+    bindChartPanInteractions(biliCostChart, "biliCostPanHint");
+    biliCostChart.resize();
+  }
+
+  function renderBiliCostModule() {
+    var b = DATA.bilibili || {};
+    var notes = (b.notes || []).slice().sort(function(a, z){ return Number(z.first_date || 0) - Number(a.first_date || 0); });
+    var candidates = notes.map(function(n){ return { note_id: n.note_id, creator: n.creator, pub_date: String(n.first_date || "") }; });
+    biliCostCombo = makeCombo({
+      inputId: "biliCostSearch", listId: "biliCostList", candidates: candidates,
+      filterKeys: ["note_id", "creator"], emptyPlaceholder: "（无双渠道成本数据）",
+      onSelect: function(noteId){ renderBiliCost(noteId); },
+      onClear: function(){ renderBiliCost(null); },
+    });
+    if (b.cost_all || candidates.length) renderBiliCost(null);
+    else document.getElementById("biliCostChart").innerHTML = '<div style="padding:80px;text-align:center;color:#9CA3AF">必火与三联均未加载，无法展示成本分析</div>';
+  }
+
+  function biliCostCompare(value, average) {
+    if (value == null || average == null) return { color: null, mean: null };
+    var diff = Number(value) - Number(average);
+    return {
+      color: Math.abs(diff) < 0.005 ? "#9CA3AF" : (diff < 0 ? "#10B981" : "#EF4444"),
+      mean: '<span style="color:#9CA3AF">均 ¥' + Number(average).toFixed(2) + '</span>',
+    };
+  }
+
+  function renderBiliCost(noteId) {
+    var b = DATA.bilibili || {};
+    var costData = b.cost || {};
+    var panel = document.getElementById("biliCostDetailPanel");
+    if (panel) panel.hidden = true;
+    var input = document.getElementById("biliCostSearch");
+    if (noteId && input && !input.value.trim()) noteId = null;
+    if (biliCostCombo) biliCostCombo.currentId = noteId || null;
+
+    if (!noteId) {
+      var ca = b.cost_all;
+      if (!ca || !ca.daily || !ca.daily.length) {
+        if (biliCostChart) { try { biliCostChart.dispose(); } catch (ignore) {} biliCostChart = null; }
+        document.getElementById("biliCostKpis").innerHTML = "";
+        document.getElementById("biliCostChart").innerHTML = '<div style="padding:80px;text-align:center;color:#9CA3AF">暂无星河有效窗口内的双渠道成本数据</div>';
+        return;
+      }
+      var s = ca.summary || {}, daily = ca.daily || [];
+      var playCost = s.play_uv > 0 ? s.spend / s.play_uv : null;
+      var visitCost = s.visit_uv > 0 ? s.spend / s.visit_uv : null;
+      var cartCost = s.cart_uv > 0 ? s.spend / s.cart_uv : null;
+      var dealCost = s.deal_uv > 0 ? s.spend / s.deal_uv : null;
+      document.querySelector("#modBiliCost .mod-sub").textContent = "全部投放视频汇总 · 必火+三联合计成本";
+      var kpis = [
+        { label: "有效累计花费", value: fmt.money(s.spend), unit: "元", sub: "必火 " + fmt.money(s.bihuo_spend) + " · 三联 " + fmt.money(s.trilan_spend) },
+        { label: "播放UV成本", value: playCost == null ? "—" : "¥" + playCost.toFixed(2), unit: "" },
+        { label: "进店UV成本", value: visitCost == null ? "—" : "¥" + visitCost.toFixed(2), unit: "" },
+        { label: "加购成本", value: cartCost == null ? "—" : "¥" + cartCost.toFixed(2), unit: "" },
+        { label: "成交成本", value: dealCost == null ? "—" : "¥" + dealCost.toFixed(2), unit: "" },
+        { label: "合计投放天数", value: fmt.int(s.days), unit: "天", sub: "必火 " + fmt.int(s.bihuo_days) + " · 三联 " + fmt.int(s.trilan_days) },
+      ];
+      document.getElementById("biliCostKpis").innerHTML = kpis.map(function(k){
+        return '<div class="trend-kpi"><div class="trend-kpi-label">' + k.label + '</div><div class="trend-kpi-val">' + k.value + '<span class="u"> ' + k.unit + '</span></div>' +
+          (k.sub ? '<div class="trend-kpi-sub">' + k.sub + '</div>' : '') + '</div>';
+      }).join("");
+      updateToggleCards("biliCostToggles", {
+        play: playCost == null ? "—" : "¥" + playCost.toFixed(2),
+        visit: visitCost == null ? "—" : "¥" + visitCost.toFixed(2),
+        cart: cartCost == null ? "—" : "¥" + cartCost.toFixed(2),
+        deal: dealCost == null ? "—" : "¥" + dealCost.toFixed(2),
+      });
+      renderBiliCostChart(daily, { play: 5, visit: 2, cart: 3, deal: 4 }, true, null);
+      biliCostChart.off("click");
+      biliCostChart.on("click", function(p){
+        if (p.componentType === "series" && p.seriesType === "bar" && p.dataIndex != null) {
+          runConfirmedChartClick(biliCostChart, function(){ expandBiliCostDailyNotes(daily[p.dataIndex][0]); });
+        }
+      });
+      return;
+    }
+
+    var entry = costData[noteId];
+    if (!entry) {
+      if (biliCostChart) { try { biliCostChart.dispose(); } catch (ignore) {} biliCostChart = null; }
+      document.getElementById("biliCostKpis").innerHTML = "";
+      document.getElementById("biliCostChart").innerHTML = '<div class="nodata-card">' +
+        '<div class="nodata-head"><span class="nodata-icon">!</span><span class="nodata-title">该视频暂无双渠道成本数据</span></div>' +
+        '<div class="nodata-row"><span class="nodata-tag tag-ok">已加载</span><span class="nodata-text">视频已存在于B站星河数据</span></div>' +
+        '<div class="nodata-row"><span class="nodata-tag tag-info">原因</span><span class="nodata-text">必火与三联均未覆盖该内容，或付费数据未能安全匹配星河</span></div>' +
+        '<div class="nodata-row"><span class="nodata-tag tag-act">解决</span><span class="nodata-text">更新必火、三联和星河后重新生成看板</span></div></div>';
+      document.querySelector("#modBiliCost .mod-sub").textContent = "该视频暂无双渠道成本数据";
+      return;
+    }
+
+    var s = entry.summary || {}, daily = entry.daily || [];
+    var all = (b.cost_all && b.cost_all.summary) || {};
+    var averages = {
+      play: all.play_uv > 0 ? all.spend / all.play_uv : null,
+      visit: all.visit_uv > 0 ? all.spend / all.visit_uv : null,
+      cart: all.cart_uv > 0 ? all.spend / all.cart_uv : null,
+      deal: all.deal_uv > 0 ? all.spend / all.deal_uv : null,
+    };
+    var comps = {
+      play: biliCostCompare(s.uv_cost, averages.play), visit: biliCostCompare(s.visit_uv_cost, averages.visit),
+      cart: biliCostCompare(s.cart_cost, averages.cart), deal: biliCostCompare(s.deal_cost, averages.deal),
+    };
+    document.querySelector("#modBiliCost .mod-sub").textContent = "视频粒度双渠道合计成本 · 对比全部投放视频均值";
+    var kpis = [
+      { label: "有效累计花费", value: fmt.money(s.spend), unit: "元", sub: "必火 " + fmt.money(s.bihuo_spend) + " · 三联 " + fmt.money(s.trilan_spend) },
+      { label: "播放UV成本", value: s.uv_cost == null ? "—" : "¥" + Number(s.uv_cost).toFixed(2), comp: comps.play },
+      { label: "进店UV成本", value: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), comp: comps.visit },
+      { label: "加购成本", value: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), comp: comps.cart },
+      { label: "成交成本", value: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), comp: comps.deal },
+      { label: "合计投放天数", value: fmt.int(s.days), unit: "天", sub: "必火 " + fmt.int(s.bihuo_days) + " · 三联 " + fmt.int(s.trilan_days) },
+    ];
+    document.getElementById("biliCostKpis").innerHTML = kpis.map(function(k){
+      return '<div class="trend-kpi"><div class="trend-kpi-label">' + k.label + '</div><div class="trend-kpi-val"' +
+        (k.comp && k.comp.color ? ' style="color:' + k.comp.color + '"' : '') + '>' + k.value +
+        '<span class="u"> ' + (k.unit || "") + '</span></div>' +
+        ((k.sub || (k.comp && k.comp.mean)) ? '<div class="trend-kpi-sub">' + (k.sub || k.comp.mean) + '</div>' : '') + '</div>';
+    }).join("");
+    updateToggleCards("biliCostToggles", {
+      play: s.uv_cost == null ? "—" : "¥" + Number(s.uv_cost).toFixed(2),
+      visit: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2),
+      cart: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2),
+      deal: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2),
+    });
+    var note = (b.notes || []).find(function(n){ return n.note_id === noteId; }) || {};
+    var firstDate = note.first_date ? fmtDate(note.first_date) : null;
+    try {
+      renderBiliCostChart(daily, { play: 6, visit: 2, cart: 3, deal: 4 }, false, firstDate);
+      biliCostChart.off("click");
+    } catch (error) {
+      console.error("biliCostChart render error:", error);
+      if (biliCostChart) { try { biliCostChart.dispose(); } catch (ignore) {} biliCostChart = null; }
+      document.getElementById("biliCostChart").innerHTML = '<div style="padding:80px;text-align:center;color:#DC2626">图表渲染失败：' + escapeHtml(error.message || String(error)) + '</div>';
+    }
+  }
+
+  function expandBiliCostDailyNotes(dateInt) {
+    var b = DATA.bilibili || {};
+    var notes = (((b.cost_all || {}).daily_notes || {})[dateInt] || []).slice().sort(function(a, z){ return (z.spend || 0) - (a.spend || 0); });
+    document.getElementById("biliCostDetailTitle").textContent = fmtDate(dateInt) + " 双渠道投放明细（共 " + notes.length + " 条）";
+    document.getElementById("biliCostDetailHead").innerHTML = '<tr><th>#</th><th>达人</th><th>BV号</th><th>合计花费</th><th>必火消耗</th><th>三联花费</th></tr>';
+    var body = document.getElementById("biliCostDetailBody");
+    body.innerHTML = notes.map(function(n, i){
+      var color = i < 10 ? BILI_DAILY_METRICS.visit.palette[i] : BILI_DAILY_REST_COLOR;
+      return '<tr class="daily-detail-row-note" data-nid="' + escapeHtml(n.note_id) + '"><td><span class="daily-rank-badge" style="background:' + color + ';color:#fff">' + (i + 1) + '</span></td>' +
+        '<td>' + escapeHtml(n.creator || "—") + '</td><td class="mono-id">' + escapeHtml(n.note_id) + '</td>' +
+        '<td>' + fmt.money(n.spend) + '</td><td>' + fmt.money(n.bihuo_spend) + '</td><td>' + fmt.money(n.trilan_spend) + '</td></tr>';
+    }).join("");
+    body.querySelectorAll(".daily-detail-row-note").forEach(function(row){
+      row.addEventListener("click", function(){
+        if (biliCostCombo && biliCostCombo.selectById) biliCostCombo.selectById(row.dataset.nid);
+        document.getElementById("modBiliCost").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    var panel = document.getElementById("biliCostDetailPanel");
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  document.getElementById("biliCostDetailClose").addEventListener("click", function(){
+    document.getElementById("biliCostDetailPanel").hidden = true;
+  });
+
+  // ===== 小红书 · 单篇成本分析 =====
   let costChart = null, costCombo = null;
 
   // 图表三成本曲线：阅读/进店/加购/成交，默认仅进店；实线为3日滚动成本，灰虚线为累计成本基线
   const COST_METRICS = {
-    read:  { label: "阅读成本", color: "#CC3300" },
+    read:  { label: "阅读成本", color: "#991B1B" },
     visit: { label: "进店成本", color: "#FF2442" },
-    cart:  { label: "加购成本", color: "#F97316" },
-    deal:  { label: "成交成本", color: "#EAB308" },
+    cart:  { label: "加购成本", color: "#E11D48" },
+    deal:  { label: "成交成本", color: "#FB7185" },
   };
   function activeCostMetrics() {
     var a = [];
@@ -1157,8 +1716,8 @@
     return denominator > 0 ? +(Number(spend || 0) / denominator).toFixed(4) : null;
   }
 
-  function buildCostTrendData(daily, spendIdx, uvIdxMap) {
-    var metrics = activeCostMetrics();
+  function buildCostTrendData(daily, spendIdx, uvIdxMap, metrics) {
+    metrics = metrics || activeCostMetrics();
     var spendPrefix = [0];
     daily.forEach(function(row){
       spendPrefix.push(spendPrefix[spendPrefix.length - 1] + (Number(row[spendIdx]) || 0));
@@ -1188,7 +1747,10 @@
     return value == null || !isFinite(value) ? "—" : "¥" + Number(value).toFixed(2);
   }
 
-  function buildCostTooltip(daily, trendData, isSummary, pubDateStr) {
+  function buildCostTooltip(daily, trendData, isSummary, pubDateStr, options) {
+    options = options || {};
+    var metricConfig = options.metricConfig || COST_METRICS;
+    var accentColor = options.accentColor || "#FF2442";
     return function(params) {
       if (!params || !params.length) return "";
       var index = params[0].dataIndex;
@@ -1196,24 +1758,28 @@
       if (!row) return "";
       var dateText = fmtDate(row[0]);
       var pubTag = !isSummary && pubDateStr && dateText === pubDateStr
-        ? '<span style="color:#FF2442;font-size:11px;font-weight:600">笔记发布日期</span>' : "";
+        ? '<span style="color:' + accentColor + ';font-size:11px;font-weight:600">' + (options.dateTag || "笔记发布日期") + '</span>' : "";
       var spend = row[1] == null ? "—" : "¥" + Number(row[1]).toFixed(2);
       var summaryItems = [
-        '<span style="color:#6B7280">当日消耗</span><b style="font-variant-numeric:tabular-nums">' + spend + "</b>"
+        '<span style="color:#6B7280">' + (options.dailySpendLabel || "当日消耗") + '</span><b style="font-variant-numeric:tabular-nums">' + spend + "</b>"
       ];
+      var channels = options.channels || [];
+      channels.forEach(function(channel){
+        summaryItems.push('<span style="color:#6B7280">' + channel.label + '</span><b style="color:' + channel.color + ';font-variant-numeric:tabular-nums">' + formatCostValue(row[channel.index]) + '</b>');
+      });
       if (isSummary) {
         var noteCount = row[7] != null ? Number(row[7]) : 0;
         var avgSpend = noteCount > 0 && row[1] != null ? "¥" + (Number(row[1]) / noteCount).toFixed(2) : "—";
-        summaryItems.push('<span style="color:#6B7280">投放笔记</span><b>' + noteCount + " 篇</b>");
-        summaryItems.push('<span style="color:#6B7280">篇均消耗</span><b style="font-variant-numeric:tabular-nums">' + avgSpend + "</b>");
+        summaryItems.push('<span style="color:#6B7280">' + (options.itemLabel || "投放笔记") + '</span><b>' + noteCount + " " + (options.itemUnit || "篇") + "</b>");
+        summaryItems.push('<span style="color:#6B7280">' + (options.averageSpendLabel || "篇均消耗") + '</span><b style="font-variant-numeric:tabular-nums">' + avgSpend + "</b>");
       }
-      var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(' + summaryItems.length + ',auto);gap:8px 18px;padding:9px 10px;background:#F7F7F8;border:1px solid #ECEDEF">'
+      var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(' + Math.min(summaryItems.length, 3) + ',auto);gap:8px 18px;padding:9px 10px;background:#F7F7F8;border:1px solid #ECEDEF">'
         + summaryItems.map(function(item){ return '<div style="display:grid;gap:2px">' + item + "</div>"; }).join("") + "</div>";
       var isMultiMetric = trendData.metrics.length > 1;
       var metricContent;
       if (isMultiMetric) {
         var metricRows = trendData.metrics.map(function(metric){
-          var conf = COST_METRICS[metric];
+          var conf = metricConfig[metric];
           var values = trendData.byMetric[metric];
           return '<tr>'
             + '<th style="padding:6px 8px;text-align:left;border-top:1px solid #ECEDEF;color:' + conf.color + ';font-weight:700;white-space:nowrap">'
@@ -1233,7 +1799,7 @@
           + "</tr></thead><tbody>" + metricRows + "</tbody></table></div>";
       } else {
         var metric = trendData.metrics[0];
-        var conf = COST_METRICS[metric];
+        var conf = metricConfig[metric];
         var values = trendData.byMetric[metric];
         var rows = [
           ["当日", values.daily[index]],
@@ -1248,7 +1814,7 @@
                 + '<b style="font-variant-numeric:tabular-nums;white-space:nowrap">' + formatCostValue(item[1]) + "</b></div>";
             }).join("") + "</div>";
       }
-      var clickHint = isSummary ? '<div style="margin-top:8px;font-size:10px;color:#9CA3AF;text-align:center">点击每日实付柱查看当天投放明细</div>' : "";
+      var clickHint = isSummary ? '<div style="margin-top:8px;font-size:10px;color:#9CA3AF;text-align:center">' + (options.clickHint || "点击每日实付柱查看当天投放明细") + '</div>' : "";
       return '<div style="' + (isMultiMetric ? 'width:400px;max-width:calc(100vw - 32px)' : 'min-width:230px;max-width:460px') + '">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px;font-weight:700">'
         + '<span>' + dateText + "</span>" + pubTag + "</div>" + summaryHtml
@@ -1257,25 +1823,25 @@
     };
   }
 
-  function costXAxis(dates, gridIndex, showLabels, pubDateStr) {
+  function costXAxis(dates, gridIndex, showLabels, pubDateStr, accentColor) {
     return {
       type: "category", gridIndex: gridIndex, data: dates,
       axisLine: { lineStyle: { color: C.border } }, axisTick: { show: false },
       axisLabel: {
         show: showLabels, fontSize: 11, fontWeight: 600,
-        color: function(value){ return pubDateStr && value === pubDateStr ? "#FF2442" : "#111827"; },
+        color: function(value){ return pubDateStr && value === pubDateStr ? (accentColor || "#FF2442") : "#111827"; },
         rotate: dates.length > 40 ? 45 : 0,
       },
       axisPointer: { show: true, snap: true },
     };
   }
 
-  function spendYAxis(gridIndex) {
+  function spendYAxis(gridIndex, accentColor) {
     return {
       type: "value", gridIndex: gridIndex, position: "left",
       axisLine: { show: false }, axisTick: { show: false },
       splitLine: { lineStyle: { color: C.grid } },
-      axisLabel: { margin: 12, color: "#FF2442", fontSize: 11, fontWeight: 600, formatter: function(v){ return v >= 1000 ? (v / 1000).toFixed(1) + "k" : Math.round(v); } },
+      axisLabel: { margin: 12, color: accentColor || "#FF2442", fontSize: 11, fontWeight: 600, formatter: function(v){ return v >= 1000 ? (v / 1000).toFixed(1) + "k" : Math.round(v); } },
     };
   }
 
@@ -1288,19 +1854,21 @@
     };
   }
 
-  function rollingCostSeries(metric, data, xAxisIndex, yAxisIndex) {
+  function rollingCostSeries(metric, data, xAxisIndex, yAxisIndex, metricConfig) {
+    var conf = (metricConfig || COST_METRICS)[metric];
     return {
-      name: COST_METRICS[metric].label + "（3日滚动）", type: "line",
+      name: conf.label + "（3日滚动）", type: "line",
       xAxisIndex: xAxisIndex, yAxisIndex: yAxisIndex, data: data,
       smooth: true, symbol: "none", connectNulls: false,
-      lineStyle: { color: COST_METRICS[metric].color, width: 2.5, type: "solid" },
-      itemStyle: { color: COST_METRICS[metric].color },
+      lineStyle: { color: conf.color, width: 2.5, type: "solid" },
+      itemStyle: { color: conf.color },
     };
   }
 
-  function cumulativeCostSeries(metric, data, xAxisIndex, yAxisIndex) {
+  function cumulativeCostSeries(metric, data, xAxisIndex, yAxisIndex, metricConfig) {
+    var conf = (metricConfig || COST_METRICS)[metric];
     return {
-      name: COST_METRICS[metric].label + "（累计基线）", type: "line",
+      name: conf.label + "（累计基线）", type: "line",
       xAxisIndex: xAxisIndex, yAxisIndex: yAxisIndex, data: data,
       smooth: true, symbol: "none", connectNulls: false,
       lineStyle: { color: "#9CA3AF", width: 1.5, type: "dashed", opacity: 0.9 },
@@ -1308,49 +1876,62 @@
     };
   }
 
-  function buildCostChartOption(daily, uvIdxMap, isSummary, pubDateStr) {
+  function buildCostChartOption(daily, uvIdxMap, isSummary, pubDateStr, options) {
+    options = options || {};
+    var metricConfig = options.metricConfig || COST_METRICS;
+    var accentColor = options.accentColor || "#FF2442";
+    var accentTop = options.accentTop || "#FF4D6A";
+    var activeMetrics = options.activeMetrics || activeCostMetrics();
     var dates = daily.map(function(row){ return fmtDate(row[0]); });
     var spendVals = daily.map(function(row){ return row[1]; });
-    var trendData = buildCostTrendData(daily, 1, uvIdxMap);
+    var trendData = buildCostTrendData(daily, 1, uvIdxMap, activeMetrics);
     var multi = trendData.metrics.length > 1;
     var grids = [], xAxes = [], yAxes = [], series = [], titles = [];
+    function addSpendSeries(xAxisIndex, yAxisIndex) {
+      if (options.channels && options.channels.length) {
+        options.channels.forEach(function(channel){
+          series.push({
+            name: channel.label, type: "bar", stack: "paid_spend", xAxisIndex: xAxisIndex, yAxisIndex: yAxisIndex,
+            data: daily.map(function(row){ return row[channel.index] || 0; }),
+            itemStyle: { color: channel.color }, barMaxWidth: 30,
+          });
+        });
+      } else {
+        series.push({
+          name: isSummary ? "当日总实付" : "当日实付", type: "bar", xAxisIndex: xAxisIndex, yAxisIndex: yAxisIndex, data: spendVals,
+          itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: accentTop }, { offset: 1, color: accentColor }
+          ]) }, barMaxWidth: 30,
+        });
+      }
+    }
 
     if (!multi) {
       var metric = trendData.metrics[0];
       grids.push({ top: 30, left: 88, right: 96, bottom: 52, containLabel: false });
-      xAxes.push(costXAxis(dates, 0, true, pubDateStr));
-      yAxes.push(spendYAxis(0));
-      var singleCostAxis = costYAxis(0, COST_METRICS[metric].color, "right");
+      xAxes.push(costXAxis(dates, 0, true, pubDateStr, accentColor));
+      yAxes.push(spendYAxis(0, accentColor));
+      var singleCostAxis = costYAxis(0, metricConfig[metric].color, "right");
       singleCostAxis.splitLine = { show: false };
       yAxes.push(singleCostAxis);
-      series.push({
-        name: isSummary ? "当日总实付" : "当日实付", type: "bar", yAxisIndex: 0, data: spendVals,
-        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: "#FF4D6A" }, { offset: 1, color: "#FF2442" }
-        ]) }, barMaxWidth: 30,
-      });
-      series.push(rollingCostSeries(metric, trendData.byMetric[metric].rolling, 0, 1));
-      series.push(cumulativeCostSeries(metric, trendData.byMetric[metric].cumulative, 0, 1));
+      addSpendSeries(0, 0);
+      series.push(rollingCostSeries(metric, trendData.byMetric[metric].rolling, 0, 1, metricConfig));
+      series.push(cumulativeCostSeries(metric, trendData.byMetric[metric].cumulative, 0, 1, metricConfig));
     } else {
       grids.push({ top: 34, height: 92, left: 96, right: 48, containLabel: false });
-      xAxes.push(costXAxis(dates, 0, false, pubDateStr));
-      yAxes.push(spendYAxis(0));
-      titles.push({ text: "每日实付（元）", left: 98, top: 6, textStyle: { color: "#FF2442", fontSize: 12, fontWeight: 700 } });
-      series.push({
-        name: isSummary ? "当日总实付" : "当日实付", type: "bar", xAxisIndex: 0, yAxisIndex: 0, data: spendVals,
-        itemStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: "#FF4D6A" }, { offset: 1, color: "#FF2442" }
-        ]) }, barMaxWidth: 30,
-      });
+      xAxes.push(costXAxis(dates, 0, false, pubDateStr, accentColor));
+      yAxes.push(spendYAxis(0, accentColor));
+      titles.push({ text: options.spendTitle || "每日实付（元）", left: 98, top: 6, textStyle: { color: accentColor, fontSize: 12, fontWeight: 700 } });
+      addSpendSeries(0, 0);
       trendData.metrics.forEach(function(metric, index){
         var axisIndex = index + 1;
         var top = 166 + index * 160;
         grids.push({ top: top, height: 108, left: 96, right: 48, containLabel: false });
-        xAxes.push(costXAxis(dates, axisIndex, index === trendData.metrics.length - 1, pubDateStr));
-        yAxes.push(costYAxis(axisIndex, COST_METRICS[metric].color, "left"));
-        titles.push({ text: COST_METRICS[metric].label + "（元/UV）", left: 98, top: top - 28, textStyle: { color: COST_METRICS[metric].color, fontSize: 12, fontWeight: 700 } });
-        series.push(rollingCostSeries(metric, trendData.byMetric[metric].rolling, axisIndex, axisIndex));
-        series.push(cumulativeCostSeries(metric, trendData.byMetric[metric].cumulative, axisIndex, axisIndex));
+        xAxes.push(costXAxis(dates, axisIndex, index === trendData.metrics.length - 1, pubDateStr, accentColor));
+        yAxes.push(costYAxis(axisIndex, metricConfig[metric].color, "left"));
+        titles.push({ text: metricConfig[metric].label + "（元/UV）", left: 98, top: top - 28, textStyle: { color: metricConfig[metric].color, fontSize: 12, fontWeight: 700 } });
+        series.push(rollingCostSeries(metric, trendData.byMetric[metric].rolling, axisIndex, axisIndex, metricConfig));
+        series.push(cumulativeCostSeries(metric, trendData.byMetric[metric].cumulative, axisIndex, axisIndex, metricConfig));
       });
     }
 
@@ -1365,7 +1946,12 @@
         backgroundColor: "#fff", borderColor: C.border, padding: 10,
         extraCssText: "box-shadow:0 10px 30px rgba(17,24,39,.12);border-radius:2px;",
         textStyle: { color: C.text, fontSize: 12 },
-        formatter: buildCostTooltip(daily, trendData, isSummary, pubDateStr),
+        formatter: buildCostTooltip(daily, trendData, isSummary, pubDateStr, {
+          metricConfig: metricConfig, accentColor: accentColor, dateTag: options.dateTag,
+          itemLabel: options.itemLabel, itemUnit: options.itemUnit,
+          averageSpendLabel: options.averageSpendLabel, dailySpendLabel: options.dailySpendLabel,
+          clickHint: options.clickHint, channels: options.channels,
+        }),
       },
       axisPointer: { link: [{ xAxisIndex: "all" }] },
       grid: grids, dataZoom: zoom, xAxis: xAxes, yAxis: yAxes, series: series,
@@ -1377,7 +1963,17 @@
     var metricCount = activeCostMetrics().length;
     chartEl.style.height = (metricCount > 1 ? 188 + metricCount * 160 : 400) + "px";
     if (!costChart) costChart = echarts.init(chartEl);
-    costChart.setOption(buildCostChartOption(daily, uvIdxMap, isSummary, pubDateStr), true);
+    costChart.setOption(buildCostChartOption(daily, uvIdxMap, isSummary, pubDateStr, {
+      metricConfig: COST_METRICS, activeMetrics: activeCostMetrics(),
+      accentColor: "#FF2442", accentTop: "#FF6B82",
+      spendTitle: "每日合计（元）", dailySpendLabel: "当日合计",
+      itemLabel: "投放笔记", itemUnit: "篇", averageSpendLabel: "篇均合计",
+      clickHint: "点击金额柱查看当天双渠道投放明细",
+      channels: [
+        { index: 8, label: "薯条实付", color: "#C8102E" },
+        { index: 9, label: "聚光消耗", color: "#FF8FA3" },
+      ],
+    }), true);
     bindChartPanInteractions(costChart, "costPanHint");
     costChart.resize();
   }
@@ -1439,19 +2035,20 @@
       var avgDealCost2 = s.deal_uv > 0 ? s.spend / s.deal_uv : null;
       // Update title bar to indicate all-notes mode
       var modSub = document.querySelector("#modCost .mod-sub");
-      if (modSub) modSub.textContent = "全部笔记汇总 · 消耗趋势";
+      if (modSub) modSub.textContent = "全部付费笔记汇总 · 薯条+聚光合计成本趋势";
       const kpiItems = [
-        { l: "总消耗（全部）", v: fmt.money(s.spend), u: "元" },
-        { l: '总GMV（全部）<span class="gmv-approx" data-tip="星河按内容维度统计GMV，同一笔订单被多条笔记共同贡献时会重复计入，加总后高于实际成交额。">≈ 参考值</span>', v: fmt.money(s.gmv), u: "元", approx: true },
-        { l: "总进店UV（全部）", v: fmt.int(s.visit_uv), u: "" },
-        { l: "总加购UV（全部）", v: fmt.int(s.cart_uv), u: "" },
-        { l: "总成交UV（全部）", v: fmt.int(s.deal_uv), u: "" },
-        { l: "笔记数", v: fmt.int(s.note_count), u: "篇" },
+        { l: "有效累计消耗", v: fmt.money(s.spend), u: "元", rate: "薯条 " + fmt.money(s.chili_spend) + " · 聚光 " + fmt.money(s.juguang_spend) },
+        { l: "阅读UV成本", v: s.read_uv > 0 ? "¥" + (s.spend / s.read_uv).toFixed(2) : "—", u: "" },
+        { l: "进店UV成本", v: avgVisitCost2 != null ? "¥" + avgVisitCost2.toFixed(2) : "—", u: "" },
+        { l: "加购成本", v: avgCartCost2 != null ? "¥" + avgCartCost2.toFixed(2) : "—", u: "" },
+        { l: "成交成本", v: avgDealCost2 != null ? "¥" + avgDealCost2.toFixed(2) : "—", u: "" },
+        { l: "合计投放天数", v: fmt.int(s.days), u: "天", rate: "薯条 " + fmt.int(s.chili_days) + " · 聚光 " + fmt.int(s.juguang_days) },
       ];
       document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
         `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
           <div class="trend-kpi-label">${k.l}</div>
-          <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
+          <div class="trend-kpi-val">${k.v}<span class="u"> ${k.u}</span></div>
+          ${k.rate ? '<div class="trend-kpi-sub">' + k.rate + '</div>' : ""}
         </div>`
       ).join("");
 
@@ -1487,8 +2084,8 @@
         '<div class="nodata-card">' +
           '<div class="nodata-head"><span class="nodata-icon">⚠️</span><span class="nodata-title">该笔记暂无成本数据</span></div>' +
           '<div class="nodata-row"><span class="nodata-tag tag-ok">已加载</span><span class="nodata-text">笔记已加载，可在「全链路数据」表格中查看</span></div>' +
-          '<div class="nodata-row"><span class="nodata-tag tag-info">原因</span><span class="nodata-text">薯条表尚未覆盖此笔记：未投放、订单未完成，或薯条表未更新到该笔记</span></div>' +
-          '<div class="nodata-row"><span class="nodata-tag tag-act">解决</span><span class="nodata-text">薯条表更新后重新生成看板，数据将自动补全</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-info">原因</span><span class="nodata-text">薯条与聚光均未投放，或付费笔记未命中星河同样本</span></div>' +
+          '<div class="nodata-row"><span class="nodata-tag tag-act">解决</span><span class="nodata-text">更新薯条、聚光与星河后重新生成看板</span></div>' +
         '</div>';
       // 清空指标卡，避免残留汇总数据
       document.getElementById("costKpis").innerHTML = "";
@@ -1522,7 +2119,7 @@
 
     // Restore title bar to single-note mode
     var modSub2 = document.querySelector("#modCost .mod-sub");
-    if (modSub2) modSub2.textContent = "笔记粒度的投放消耗与成本效率 · 对比全量均值";
+    if (modSub2) modSub2.textContent = "笔记粒度双渠道合计成本 · 对比同样本均值";
 
     var readComp  = costCompare(s.uv_cost, avgReadCost);
     var visitComp = costCompare(s.visit_uv_cost, avgVisitCost);
@@ -1530,17 +2127,18 @@
     var dealComp  = costCompare(s.deal_cost, avgDealCost);
 
     const kpiItems = [
-      { l: "累计消耗", v: fmt.money(s.spend), u: "元", valColor: null, rate: null },
+      { l: "有效累计消耗", v: fmt.money(s.spend), u: "元", valColor: null, rate: '<span style="color:#9CA3AF">薯条 ' + fmt.money(s.chili_spend) + ' · 聚光 ' + fmt.money(s.juguang_spend) + '</span>' },
       { l: "阅读UV成本", v: s.uv_cost == null ? "—" : "¥" + Number(s.uv_cost).toFixed(2), u: "", valColor: readComp.valColor, rate: readComp.meanHtml, tip: "累计实际支付金额 ÷ 星河阅读/播放UV" },
       { l: "进店UV成本", v: s.visit_uv_cost == null ? "—" : "¥" + Number(s.visit_uv_cost).toFixed(2), u: "", valColor: visitComp.valColor, rate: visitComp.meanHtml },
       { l: "加购成本",  v: s.cart_cost == null ? "—" : "¥" + Number(s.cart_cost).toFixed(2), u: "", valColor: cartComp.valColor, rate: cartComp.meanHtml },
       { l: "成交成本",  v: s.deal_cost == null ? "—" : "¥" + Number(s.deal_cost).toFixed(2), u: "", valColor: dealComp.valColor, rate: dealComp.meanHtml },
-      { l: "累计投放天数", v: s.days == null ? "—" : s.days, u: "天", valColor: null, rate: null },
+      { l: "合计投放天数", v: s.days == null ? "—" : s.days, u: "天", valColor: null, rate: '<span style="color:#9CA3AF">薯条 ' + fmt.int(s.chili_days) + ' · 聚光 ' + fmt.int(s.juguang_days) + '</span>' },
     ];
     document.getElementById("costKpis").innerHTML = kpiItems.map(k =>
       `<div class="trend-kpi${k.approx ? " kpi-approx" : ""}"${k.tip ? ' title="' + k.tip + '"' : ""}>
         <div class="trend-kpi-label">${k.l}</div>
-        <div class="trend-kpi-val"${k.valColor ? ' style="color:' + k.valColor + '"' : ""}>${k.v}<span class="u"> ${k.u}</span>${k.rate ? '<span class="trend-kpi-rate"> ' + k.rate + '</span>' : ""}</div>
+        <div class="trend-kpi-val"${k.valColor ? ' style="color:' + k.valColor + '"' : ""}>${k.v}<span class="u"> ${k.u}</span></div>
+        ${k.rate ? '<div class="trend-kpi-sub">' + k.rate + '</div>' : ""}
       </div>`
     ).join("");
 
@@ -1620,12 +2218,12 @@
   }
   function safeLoadSel() {
     try {
-      const v = localStorage.getItem("xhs_dash_cols_v4");
+      const v = localStorage.getItem("xhs_dash_cols_v5");
       return v ? JSON.parse(v) : null;
     } catch { return null; }
   }
   function safeSaveSel() {
-    try { localStorage.setItem("xhs_dash_cols_v4", JSON.stringify(TABLE.selected)); } catch {}
+    try { localStorage.setItem("xhs_dash_cols_v5", JSON.stringify(TABLE.selected)); } catch {}
   }
 
   function isColMissing(col) {
@@ -1635,11 +2233,12 @@
       "蒲公英": !!(src.pgy && src.pgy.loaded),
       "星河": !!(src.star && src.star.loaded),
       "薯条": !!(src.chili && src.chili.loaded),
+      "聚光": !!(src.juguang && src.juguang.loaded),
       "灵犀": !!(src.lx && src.lx.loaded),
     };
     const deps = [];
     const need = col.source || "";
-    for (const t of ["蒲公英", "星河", "薯条", "灵犀"]) if (need.includes(t)) deps.push(t);
+    for (const t of ["蒲公英", "星河", "薯条", "聚光", "灵犀"]) if (need.includes(t)) deps.push(t);
     if (Array.isArray(col.needs)) for (const t of col.needs) if (!deps.includes(t)) deps.push(t);
     for (const t of deps) if (!loaded[t]) return "需上传" + t;
     return null;
@@ -1915,6 +2514,7 @@
     if (src === "蒲公英") return !!n.in_pgy;
     if (src === "星河") return !!n.in_star;
     if (src === "薯条") return !!n.in_chili;
+    if (src === "聚光") return !!n.in_juguang;
     if (src === "灵犀") return !!n.in_lx;
     return true;
   }
@@ -1993,6 +2593,7 @@
     if (src === "蒲公英" && !n.in_pgy) return rm("该笔记不在蒲公英合作报备名单");
     if (src === "星河" && !n.in_star) return rm("该笔记无星河转化数据");
     if (src === "薯条" && !n.in_chili) return rm("该笔记未投薯条");
+    if (src === "聚光" && !n.in_juguang) return rm("该笔记未投聚光");
     if (src === "灵犀" && !n.in_lx) return rm("该笔记不在灵犀种草贡献榜单");
 
     let v = n[c.key];
@@ -2850,8 +3451,8 @@
     var thead = document.getElementById("costDetailHead");
     var tbody = document.getElementById("costDetailBody");
 
-    title.textContent = fmtDate(dateInt) + " 薯条投放明细（共 " + notes.length + " 篇）";
-    thead.innerHTML = '<tr><th style="width:40px">#</th><th>达人昵称</th><th>笔记ID</th><th>消耗金额</th><th>曝光量</th><th>阅读量</th></tr>';
+    title.textContent = fmtDate(dateInt) + " 双渠道投放明细（共 " + notes.length + " 篇）";
+    thead.innerHTML = '<tr><th style="width:40px">#</th><th>达人昵称</th><th>笔记ID</th><th>合计金额</th><th>薯条实付</th><th>聚光消耗</th></tr>';
 
     tbody.innerHTML = notes.map(function(n, i){
       var rank = i + 1;
@@ -2861,8 +3462,8 @@
         '<td>' + escapeHtml(n.creator || "—") + '</td>' +
         '<td class="mono-id">' + escapeHtml(n.note_id) + '</td>' +
         '<td>' + fmt.money(n.spend) + '</td>' +
-        '<td>' + fmt.int(n.impression) + '</td>' +
-        '<td>' + fmt.int(n.read) + '</td></tr>';
+        '<td>' + fmt.money(n.chili_spend) + '</td>' +
+        '<td>' + fmt.money(n.juguang_spend) + '</td></tr>';
     }).join("");
 
     // 点击行 → 联动跳转到该笔记的单篇成本图
@@ -2891,7 +3492,9 @@
     if (trendChart) trendChart.resize();
     if (costChart) costChart.resize();
     if (dailyOverviewChart) dailyOverviewChart.resize();
+    if (biliDailyOverviewChart) biliDailyOverviewChart.resize();
     if (biliTrendChart) biliTrendChart.resize();
+    if (biliCostChart) biliCostChart.resize();
     syncAverageDock();
   });
 
@@ -2929,10 +3532,11 @@
   bindLinks();
   renderMeta();
   renderKpis();
-  renderSources(["pgy", "star", "chili", "lx"], "sourceStrip");
+  renderSources(["pgy", "star", "chili", "juguang", "lx"], "sourceStrip");
+  renderSourceNotes();
   renderBiliMeta();
   renderBiliKpis();
-  renderSources(["bili"], "biliSourceStrip");
+  renderSources(["bili", "bili_fire", "bili_ads"], "biliSourceStrip");
   initTableCols();
   initQueryPanel();
   initAverageDock();
@@ -2946,8 +3550,12 @@
   renderDailyOverview();
   renderTrendModule();
   renderCostModule();
+  initBiliDailyToggles();
   initBiliToggles();
+  initBiliCostToggles();
+  renderBiliDailyOverview();
   renderBiliTrendModule();
+  renderBiliCostModule();
   initChartPanHints();
   initToc();
 })();

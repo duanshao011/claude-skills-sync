@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""四个独立 loader：把每张表的"坑"各自封死，输出标准化列名的 DataFrame。
+"""独立 loader：把每张表的"坑"各自封死，输出标准化列名的 DataFrame。
 
 - load_pugongying: 多级表头(header=2)，按发布日期可选筛当期；返回笔记粒度档案
 - load_star:       锁口径(全部流量+归因30)再聚合，避免重复累加；返回(笔记粒度, 日维度)
 - load_chili:      仅使用“实际支付金额”，过滤实付>0；按笔记ID汇总投放金额
+- load_juguang:   使用日维度“消费”，过滤汇总行；返回笔记汇总、日维度和元数据
 - load_lingxi:     人群资产表，笔记粒度直接映射
 """
 import pandas as pd
@@ -311,6 +312,118 @@ def load_chili(path):
     return agg, chili_daily, meta
 
 
+# ---------- 聚光 ----------
+JUGUANG_COL_MAP = {
+    "date": ["时间", "日期"],
+    "note_id": ["笔记ID", "笔记id"],
+    "url": ["笔记跳转链接", "笔记链接"],
+    "spend": ["消费", "实际消耗"],
+    "impression": ["展现量", "展示量"],
+    "click": ["点击量"],
+    "interaction": ["互动量"],
+}
+JUGUANG_REQUIRED = ["date", "note_id", "spend"]
+
+
+def load_juguang(path):
+    """聚光日维度明细 -> 笔记汇总、逐日明细和元数据。
+
+    同一文件内相同 ``(note_id, date)`` 求和；多份文件重叠时后传文件覆盖。
+    导出首行“合计N条记录”只用于对账，不进入明细。
+    """
+    paths = [path] if isinstance(path, (str, bytes)) else list(path)
+    parts = []
+    source_rows = summary_rows = invalid_rows = 0
+    summary_spend = summarized_detail_spend = invalid_spend = 0.0
+
+    for file_order, current_path in enumerate(paths):
+        if str(current_path).lower().endswith(".csv"):
+            raw = pd.read_csv(current_path, encoding="utf-8-sig")
+        else:
+            raw = pd.read_excel(current_path)
+        source_rows += int(len(raw))
+        normalized = {str(c).strip().lower(): c for c in raw.columns}
+        mapped = {}
+        for key, names in JUGUANG_COL_MAP.items():
+            col = next((normalized.get(str(name).strip().lower()) for name in names
+                        if str(name).strip().lower() in normalized), None)
+            if col is not None:
+                mapped[key] = col
+        missing = [key for key in JUGUANG_REQUIRED if key not in mapped]
+        if missing:
+            raise ValueError(
+                f"[聚光] 缺少关键字段 {missing}；已识别到的列：{list(raw.columns)[:30]}"
+            )
+
+        frame = pd.DataFrame({key: raw[col] for key, col in mapped.items()})
+        date_text = frame["date"].astype(str).str.strip()
+        note_ids = frame["note_id"].astype(str).str.strip()
+        spend = pd.to_numeric(frame["spend"], errors="coerce")
+        is_summary = date_text.str.match(r"^合计\d+条记录$", na=False)
+        summary_rows += int(is_summary.sum())
+        summary_spend += float(spend[is_summary].fillna(0).sum())
+
+        dates = pd.to_datetime(date_text, format="%Y-%m-%d", errors="coerce")
+        valid_id = note_ids.str.match(r"^[0-9a-fA-F]{24}$", na=False)
+        invalid = ~is_summary & (~valid_id | dates.isna() | spend.isna())
+        invalid_rows += int(invalid.sum())
+        invalid_spend += float(spend[invalid].fillna(0).sum())
+        negative = spend[~is_summary].dropna() < 0
+        if negative.any():
+            raise ValueError(f"[聚光] 有 {int(negative.sum())} 行消费为负数")
+
+        valid = ~is_summary & valid_id & dates.notna() & spend.notna()
+        if is_summary.any():
+            summarized_detail_spend += float(spend[valid].sum())
+        clean = pd.DataFrame({
+            "note_id": note_ids[valid],
+            "date": pd.to_numeric(dates[valid].dt.strftime("%Y%m%d")),
+            "juguang_spend": spend[valid].astype(float),
+            "_file_order": file_order,
+        })
+        for key, out_key in [
+            ("impression", "juguang_impression"),
+            ("click", "juguang_click"),
+            ("interaction", "juguang_interaction"),
+        ]:
+            if key in frame:
+                clean[out_key] = pd.to_numeric(frame.loc[valid, key], errors="coerce").fillna(0).astype(float)
+        clean["juguang_url"] = frame.loc[valid, "url"].fillna("").astype(str) if "url" in frame else ""
+
+        numeric = [c for c in clean.columns if c.startswith("juguang_") and c != "juguang_url"]
+        rules = {c: "sum" for c in numeric}
+        rules.update({"juguang_url": "last", "_file_order": "last"})
+        clean = clean.groupby(["note_id", "date"], as_index=False).agg(rules)
+        parts.append(clean)
+
+    if not parts:
+        raise ValueError("[聚光] 未读取到任何日维度明细")
+    daily = pd.concat(parts, ignore_index=True)
+    daily = daily.sort_values("_file_order").drop_duplicates(["note_id", "date"], keep="last")
+    daily = daily.drop(columns=["_file_order"]).sort_values(["date", "note_id"]).reset_index(drop=True)
+
+    rules = {
+        "juguang_spend": "sum", "juguang_impression": "sum",
+        "juguang_click": "sum", "juguang_interaction": "sum", "juguang_url": "last",
+    }
+    rules = {key: value for key, value in rules.items() if key in daily.columns}
+    agg = daily.groupby("note_id").agg(rules)
+    positive = daily[daily["juguang_spend"] > 0]
+    agg["juguang_days"] = positive.groupby("note_id")["date"].nunique()
+    agg["juguang_days"] = agg["juguang_days"].fillna(0).astype(int)
+
+    detail_spend = float(daily["juguang_spend"].sum())
+    meta = {
+        "source_rows": source_rows, "dedup_rows": int(len(daily)),
+        "summary_rows": summary_rows, "summary_spend": summary_spend,
+        "detail_spend": detail_spend,
+        "summary_diff": summarized_detail_spend - summary_spend if summary_rows else None,
+        "invalid_rows": invalid_rows, "invalid_spend": invalid_spend,
+        "date_min": int(daily["date"].min()), "date_max": int(daily["date"].max()),
+    }
+    return agg, daily, meta
+
+
 # ---------- 灵犀 ----------
 LX_NUM = ["exposure", "read_count", "interact_count",
           "iti_users", "ti_users", "visit_users",
@@ -357,11 +470,21 @@ BILI_REQUIRED = ["note_id", "date", "visit_uv"]
 def load_bilibili(path):
     """B站商家后台导出明细表 → 标准列 DataFrame（内容ID×日期粒度）。
 
+    支持单个路径或路径列表；多份表按传入顺序合并，重叠的
+    ``(note_id, date)`` 保留后传文件，避免重复累计。
     单表全链路字段：播放/进店/加购/成交/GMV 都在这张表里。
     日期兼容 "20260817" / "2026-08-17" 两种写法，统一转 int YYYYMMDD。
     """
-    raw = pd.read_csv(path, encoding="utf-8-sig") if path.lower().endswith(".csv") \
-        else pd.read_excel(path)
+    paths = [path] if isinstance(path, (str, bytes)) else list(path)
+    frames = []
+    for file_order, current_path in enumerate(paths):
+        raw = pd.read_csv(current_path, encoding="utf-8-sig") \
+            if str(current_path).lower().endswith(".csv") else pd.read_excel(current_path)
+        raw["_file_order"] = file_order
+        frames.append(raw)
+    if not frames:
+        raise ValueError("[B站] 未提供星河文件")
+    raw = pd.concat(frames, ignore_index=True)
     mapped = {}
     for key, names in BILI_COL_MAP.items():
         col = next((c for c in raw.columns if str(c).strip() in names), None)
@@ -385,4 +508,173 @@ def load_bilibili(path):
     df["note_id"] = df["note_id"].astype(str).str.strip()
     df["creator"] = df.get("creator", pd.Series("", index=df.index)).fillna("").astype(str)
     df["url"] = df.get("url", pd.Series("", index=df.index)).fillna("").astype(str)
+    df["_file_order"] = raw.loc[df.index, "_file_order"].astype(int)
+    df = (df.sort_values("_file_order")
+          .drop_duplicates(["note_id", "date"], keep="last")
+          .drop(columns="_file_order")
+          .sort_values(["date", "note_id"])
+          .reset_index(drop=True))
     return df
+
+
+# ---------- B站三联（日维度） ----------
+BILI_AD_COL_MAP = {
+    "date": ["日期"],
+    "note_id": ["bvid", "BVID", "视频BVID"],
+    "avid": ["avid", "AVID", "视频AVID"],
+    "title": ["标题内容", "视频标题"],
+    "spend": ["总花费", "花费"],
+    "impression": ["展示量"],
+    "click": ["点击量"],
+}
+BILI_AD_REQUIRED = ["date", "note_id", "spend"]
+
+
+def load_bilibili_ads(path):
+    """B站三联日维度报表 -> 标准列 DataFrame（BVID x 日期粒度）。
+
+    仅保留合法 BV 号；导出表中的 ``--`` 空壳行不参与花费或成本计算。
+    同一 BVID 同一天若出现多行，数值字段求和，身份字段取最后一个有效值。
+    """
+    raw = pd.read_csv(path, encoding="utf-8-sig") if path.lower().endswith(".csv") \
+        else pd.read_excel(path)
+    mapped = {}
+    normalized = {str(c).strip().lower(): c for c in raw.columns}
+    for key, names in BILI_AD_COL_MAP.items():
+        col = next((normalized.get(str(name).strip().lower()) for name in names
+                    if str(name).strip().lower() in normalized), None)
+        if col is not None:
+            mapped[key] = col
+    missing = [k for k in BILI_AD_REQUIRED if k not in mapped]
+    if missing:
+        raise ValueError(
+            f"[B站竞价] 缺少关键字段 {missing}；已识别到的列：{list(raw.columns)[:30]}"
+        )
+
+    df = pd.DataFrame({k: raw[mapped[k]] for k in mapped})
+    date_text = df["date"].astype(str).str.strip()
+    if date_text.str.contains(r"~|至", regex=True, na=False).any():
+        raise ValueError("[B站竞价] 日期列包含区间值；成本趋势必须使用逐日明细报表")
+    dates = pd.to_datetime(date_text, errors="coerce")
+    if dates.isna().any():
+        raise ValueError(f"[B站竞价] 有 {int(dates.isna().sum())} 行日期无法解析")
+    df["date"] = pd.to_numeric(dates.dt.strftime("%Y%m%d"), errors="coerce")
+    df["note_id"] = df["note_id"].astype(str).str.strip()
+    spend_num = pd.to_numeric(df["spend"], errors="coerce")
+    if spend_num.isna().any():
+        raise ValueError(f"[B站竞价] 有 {int(spend_num.isna().sum())} 行总花费无法解析")
+    if (spend_num < 0).any():
+        raise ValueError(f"[B站竞价] 有 {int((spend_num < 0).sum())} 行总花费为负数")
+    df["spend"] = spend_num
+    valid_id = df["note_id"].str.match(r"^BV[0-9A-Za-z]+$", na=False)
+    source_rows = int(len(df))
+    invalid_id_rows = int((~valid_id).sum())
+    invalid_spend = pd.to_numeric(df.loc[~valid_id, "spend"], errors="coerce").fillna(0).sum()
+    df = df[valid_id & df["date"].notna()].copy()
+    df["date"] = df["date"].astype("int64")
+
+    for key in ["impression", "click"]:
+        if key in df.columns:
+            df[key] = _to_num(df[key])
+    for key in ["avid", "title"]:
+        if key not in df.columns:
+            df[key] = ""
+        df[key] = df[key].fillna("").astype(str).str.strip()
+
+    agg = {"spend": "sum", "impression": "sum", "click": "sum",
+           "avid": "last", "title": "last"}
+    agg = {k: v for k, v in agg.items() if k in df.columns}
+    df = df.groupby(["note_id", "date"], as_index=False).agg(agg)
+    df.attrs["source_rows"] = source_rows
+    df.attrs["invalid_id_rows"] = invalid_id_rows
+    df.attrs["invalid_id_spend"] = float(invalid_spend)
+    return df
+
+
+# ---------- B站必火 ----------
+BILI_FIRE_COL_MAP = {
+    "order_time": ["下单时间"],
+    "order_id": ["订单号"],
+    "launch_time": ["推广开始时间"],
+    "creator": ["被投昵称"],
+    "creator_uid": ["被投UID"],
+    "title": ["全部稿件名称"],
+    "status": ["订单状态"],
+    "duration": ["订单时长"],
+    "spend": ["消耗金额(单位：元)", "消耗金额（单位：元）", "消耗金额"],
+    "play": ["播放量"],
+    "blue_click": ["蓝链点击量"],
+}
+BILI_FIRE_REQUIRED = ["order_id", "launch_time", "creator", "status", "spend"]
+
+
+def load_bilibili_fire(path):
+    """必火订单明细 -> 达人昵称 x 推广开始日粒度。
+
+    仅保留推广完成且消耗金额>0的唯一订单。必火没有逐日消耗，整单金额归到
+    推广开始日；昵称到BVID的一对一匹配由 B站计算层使用星河达人表完成。
+    """
+    raw = pd.read_excel(path, header=1)
+    normalized = {str(c).strip().lower(): c for c in raw.columns}
+    mapped = {}
+    for key, names in BILI_FIRE_COL_MAP.items():
+        col = next((normalized.get(str(name).strip().lower()) for name in names
+                    if str(name).strip().lower() in normalized), None)
+        if col is not None:
+            mapped[key] = col
+    missing = [key for key in BILI_FIRE_REQUIRED if key not in mapped]
+    if missing:
+        raise ValueError(
+            f"[B站必火] 缺少关键字段 {missing}；已识别到的列：{list(raw.columns)[:40]}"
+        )
+    df = pd.DataFrame({key: raw[col] for key, col in mapped.items()})
+    source_rows = int(len(df))
+    df["order_id"] = df["order_id"].astype(str).str.strip()
+    df = df[df["order_id"].notna() & ~df["order_id"].isin(["", "nan", "None"])]
+    before_dedup = len(df)
+    df = df.drop_duplicates("order_id", keep="last").copy()
+    after_dedup = len(df)
+    df["status"] = df["status"].astype(str).str.strip()
+    completed = df["status"] == "推广完成"
+    df["spend"] = pd.to_numeric(df["spend"], errors="coerce")
+    if df.loc[completed, "spend"].isna().any():
+        raise ValueError(f"[B站必火] 有 {int(df.loc[completed, 'spend'].isna().sum())} 行消耗金额无法解析")
+    if (df.loc[completed, "spend"] < 0).any():
+        raise ValueError(f"[B站必火] 有 {int((df.loc[completed, 'spend'] < 0).sum())} 行消耗金额为负数")
+    df = df[completed & (df["spend"] > 0)].copy()
+    launch = pd.to_datetime(df["launch_time"], errors="coerce")
+    if launch.isna().any():
+        raise ValueError(f"[B站必火] 有 {int(launch.isna().sum())} 行推广开始时间无法解析")
+    df["date"] = launch.dt.strftime("%Y%m%d").astype(int)
+    df["creator"] = df["creator"].fillna("").astype(str).str.strip()
+    if (df["creator"] == "").any():
+        raise ValueError(f"[B站必火] 有 {int((df['creator'] == '').sum())} 行被投昵称为空")
+    for field in ["duration", "play", "blue_click"]:
+        if field in df:
+            df[field] = pd.to_numeric(df[field], errors="coerce").fillna(0)
+    if "title" not in df:
+        df["title"] = ""
+    df["title"] = df["title"].fillna("").astype(str)
+
+    rules = {"spend": "sum", "order_id": "nunique", "title": "last"}
+    if "duration" in df:
+        rules["duration"] = "sum"
+    if "play" in df:
+        rules["play"] = "sum"
+    if "blue_click" in df:
+        rules["blue_click"] = "sum"
+    daily = df.groupby(["creator", "date"], as_index=False).agg(rules)
+    daily = daily.rename(columns={
+        "spend": "bihuo_spend", "order_id": "bihuo_orders",
+        "duration": "bihuo_duration", "play": "bihuo_play",
+        "blue_click": "bihuo_blue_click", "title": "bihuo_title",
+    })
+    daily.attrs.update({
+        "source_rows": source_rows,
+        "dedup_rows": int(before_dedup - after_dedup),
+        "completed_orders": int(df["order_id"].nunique()),
+        "source_spend": float(df["spend"].sum()),
+        "date_min": int(df["date"].min()),
+        "date_max": int(df["date"].max()),
+    })
+    return daily

@@ -153,6 +153,7 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 .source-strip{
   display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;
 }
+#sourceStrip{grid-template-columns:repeat(5,minmax(0,1fr))}
 .src-card{
   background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:12px 16px;display:flex;align-items:center;gap:10px;
@@ -302,6 +303,10 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 .trend-kpi-rate.is-bad{color:var(--bad)}
 .trend-kpi-rate.is-neutral{color:var(--mid)}
 .trend-kpi-average{margin-left:6px;color:var(--dim);font-size:11px;font-weight:500;letter-spacing:0}
+.cost-kpis .trend-kpi{min-height:112px;display:flex;flex-direction:column;min-width:0}
+.cost-kpis .trend-kpi-val{font-size:21px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;letter-spacing:0}
+.cost-kpis .trend-kpi-sub{margin-top:auto;padding-top:7px;color:var(--dim);font-size:10px;font-weight:600;line-height:1.4;letter-spacing:0;white-space:normal;overflow-wrap:anywhere}
+.cost-kpis .trend-kpi-sub .trend-kpi-rate{margin-left:0;font-size:10px;font-weight:600;white-space:normal}
 .trend-chart{height:340px}
 .chart-stage{position:relative}
 .chart-pan-hint{
@@ -341,8 +346,14 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 .cost-legend-item{display:inline-flex;align-items:center;gap:7px;color:var(--muted);white-space:nowrap}
 .cost-legend-item i{display:inline-block;flex:0 0 auto}
 .cost-legend-bar{width:7px;height:13px;background:#FF2442}
+.cost-legend-chili{background:#C8102E}
+.cost-legend-juguang{background:#FF8FA3}
 .cost-legend-solid{width:24px;height:3px;background:#FF2442}
 .cost-legend-dashed{width:24px;height:0;border-top:2px dashed #9CA3AF}
+[data-platform="bili"] .cost-legend-bar{background:#FB7299}
+[data-platform="bili"] .cost-legend-solid{background:#FB7299}
+[data-platform="bili"] .bili-cost-bihuo{background:#E9567C}
+[data-platform="bili"] .bili-cost-trilan{background:#00AEEC}
 .cost-legend-note{color:var(--dim)}
 
 /* 近7天决策提示条 */
@@ -451,7 +462,9 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 .funnel-table thead .group-row th.grp-base  { background:#F1F5F9; color:#475569; border-top:4px solid #94A3B8 }
 .funnel-table thead .group-row th.grp-pgy   { background:#FFE8EC; color:#E11D48; border-top:4px solid #FF2442 }
 .funnel-table thead .group-row th.grp-star  { background:#FFF3E0; color:#C2410C; border-top:4px solid #F97316 }
-.funnel-table thead .group-row th.grp-chili { background:#F3E8FF; color:#7E22CE; border-top:4px solid #A855F7 }
+.funnel-table thead .group-row th.grp-paid { background:#FFF0F2; color:#D90B2E; border-top:4px solid #FF2442 }
+.funnel-table thead .group-row th.grp-chili { background:#FDE8EC; color:#9F1239; border-top:4px solid #C8102E }
+.funnel-table thead .group-row th.grp-juguang { background:#FFF4F6; color:#E11D48; border-top:4px solid #FF8FA3 }
 .funnel-table thead .group-row th.grp-lx    { background:#E0F2FE; color:#0369A1; border-top:4px solid #0EA5E9 }
 
 /* Sticky 层级设计（关键，避免横滚时右侧表头浮在冻结列上）：
@@ -671,6 +684,9 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:24px}
 .grp-color-base{--gc:#94A3B8}
 .grp-color-pgy{--gc:#6366F1}
 .grp-color-star{--gc:#10B981}
+.grp-color-paid{--gc:#FF2442}
+.grp-color-chili{--gc:#C8102E}
+.grp-color-juguang{--gc:#FF8FA3}
 .grp-color-lx{--gc:#F59E0B}
 
 /* ---------- metric toggle cards (图表内胶囊式切换+数值) ---------- */
@@ -961,7 +977,9 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:32px}
 .funnel-table thead .group-row th.grp-base{background:#F4F4F5;color:#52525B;border-top:3px solid #A1A1AA}
 .funnel-table thead .group-row th.grp-pgy{background:#FFF0F2;color:#D90B2E;border-top:3px solid #FF2442}
 .funnel-table thead .group-row th.grp-star{background:#FFF6F0;color:#C94D12;border-top:3px solid #FF7A3D}
-.funnel-table thead .group-row th.grp-chili{background:#F9F2FF;color:#7E3AAF;border-top:3px solid #B76BE1}
+.funnel-table thead .group-row th.grp-paid{background:#FFF0F2;color:#D90B2E;border-top:3px solid #FF2442}
+.funnel-table thead .group-row th.grp-chili{background:#FDE8EC;color:#9F1239;border-top:3px solid #C8102E}
+.funnel-table thead .group-row th.grp-juguang{background:#FFF4F6;color:#E11D48;border-top:3px solid #FF8FA3}
 .funnel-table thead .group-row th.grp-lx{background:#F0F8FF;color:#1675A9;border-top:3px solid #55AEE0}
 .funnel-table tbody tr:hover td,.funnel-table tbody tr:hover td.frozen-col{background:#FFF8F9}
 .funnel-table td .num-good{color:#078B69}
@@ -1016,6 +1034,8 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:32px}
   .module-head,.daily-body,.trend-body,.cost-body,.query-panel{padding-left:16px;padding-right:16px}
   .mod-sub{display:none}
 }
+@media (max-width:1280px){#sourceStrip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){#sourceStrip{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
@@ -1031,3 +1051,37 @@ section.module,section.kpi-row,section.source-strip{scroll-margin-top:32px}
 .tag-info{background:#FFF4E5;color:#F59E0B}
 .tag-act{background:var(--brand-soft);color:var(--brand-strong)}
 .nodata-text{color:#6B7280}
+
+/* ===== 图表底部数据来源（从 payload 动态生成） ===== */
+.source-note{
+  margin:18px -22px -24px;padding:13px 22px 15px;
+  border-top:1px solid var(--divider);background:#FAFAFB;
+  color:var(--muted);font-size:11px;line-height:1.65;
+}
+.table-source-note{margin:0;padding:13px 22px 15px}
+.source-note-summary{color:var(--text-2)}
+.source-note-summary strong{font-weight:700;color:var(--text)}
+.source-note-detail{margin-top:2px;color:var(--dim)}
+.source-note-row{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;margin-top:4px}
+.source-note-label{color:var(--dim);white-space:nowrap}
+.source-note-files{min-width:0;color:var(--muted)}
+.source-note-path{
+  padding:0;background:transparent;color:#52525B;font:11px/1.65 "SF Mono",Consolas,Monaco,monospace;
+  overflow-wrap:anywhere;word-break:break-word;
+}
+.source-note-sep{color:var(--dim-2)}
+.source-note-period{margin-left:8px;color:var(--brand-strong);white-space:nowrap}
+.source-note-missing{color:var(--warn)}
+.source-note-disclosure{margin:0}
+.source-note-disclosure summary{
+  width:max-content;max-width:100%;cursor:pointer;color:var(--brand);font-size:12px;font-weight:700;
+}
+.source-note-disclosure summary:hover{color:var(--brand-strong)}
+.source-note-disclosure summary:focus-visible{outline:2px solid rgba(255,36,66,.2);outline-offset:2px}
+.source-note-expanded{padding-top:5px}
+
+@media (max-width:760px){
+  .source-note{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}
+  .table-source-note{margin:0;padding-left:16px;padding-right:16px}
+  .source-note-row{grid-template-columns:1fr;gap:0}
+}

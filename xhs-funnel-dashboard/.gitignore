@@ -1,0 +1,29 @@
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+test-results/
+playwright-report/
+coverage/
+
+# Browser validation state and output
+scripts/_edge_cdp_profile/
+scripts/_check_*.png
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+~$*
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Generated dashboard artifacts and source data
+*.xlsx
+*.xls
+*.csv
+*全链路投放看板*.html

@@ -1,5 +1,6 @@
 const { test, expect } = require("@playwright/test");
 const fs = require("node:fs");
+const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 const dashboardPath = process.env.DASHBOARD_PATH;
@@ -38,12 +39,35 @@ test.describe("single-note conversion-rate comparison", () => {
       await page.goto(pathToFileURL(dashboardPath).href);
 
       expect(noteId).toBeTruthy();
+      await expect(page.locator("#trendKpis .trend-kpi")).toHaveCount(6);
+      const totalRead = payload.trends_all.reduce((sum, row) => sum + (row[5] || 0), 0);
+      const readCard = page.locator("#trendKpis .trend-kpi").filter({ hasText: "总阅读UV（全部）" });
+      await expect(readCard).toHaveCount(1);
+      await expect(readCard.locator(".trend-kpi-val")).toContainText(totalRead.toLocaleString("zh-CN"));
+      const summaryOverflow = await page.locator("#trendKpis .trend-kpi").evaluateAll(items =>
+        items.some(item => {
+          const box = item.getBoundingClientRect();
+          return Array.from(item.children).some(child => {
+            const childBox = child.getBoundingClientRect();
+            return childBox.left < box.left - 1 || childBox.right > box.right + 1;
+          });
+        })
+      );
+      expect(summaryOverflow).toBe(false);
+      await page.screenshot({
+        path: path.join(__dirname, "..", "scripts", `_check_trend_summary_${viewport.name}.png`),
+        fullPage: true,
+      });
 
       const search = page.locator("#trendSearch");
       await search.fill(noteId);
       await search.press("Enter");
       const cards = page.locator("#trendKpis .trend-kpi");
       await expect(cards).toHaveCount(6);
+      const selectedNote = payload.notes.find(item => item.note_id === noteId);
+      const singleReadCard = cards.filter({ hasText: "总阅读UV" });
+      await expect(singleReadCard).toHaveCount(1);
+      await expect(singleReadCard.locator(".trend-kpi-val")).toContainText(selectedNote.read_uv_funnel.toLocaleString("zh-CN"));
       await expect(page.locator("#trendKpis .trend-kpi-average")).toHaveCount(3);
       const averageParents = await page.locator("#trendKpis .trend-kpi-average").evaluateAll(items =>
         items.map(item => item.parentElement.className)
@@ -62,7 +86,7 @@ test.describe("single-note conversion-rate comparison", () => {
       const averages = await page.locator("#trendKpis .trend-kpi-average").allTextContents();
       for (let index = 0; index < rateSpecs.length; index += 1) {
         const spec = rateSpecs[index];
-        const note = payload.notes.find(item => item.note_id === noteId);
+        const note = selectedNote;
         const mean = arithmeticMean(spec.key);
         const current = note[spec.numerator] / note[spec.denominator];
         expect(note[spec.key]).toBeCloseTo(current, 12);
