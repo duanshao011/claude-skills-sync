@@ -1,0 +1,11 @@
+{
+  "currency": "CNY",
+  "total": 120000,
+  "allocation": {
+    "xiaohongshu": 70000,
+    "bilibili": 30000,
+    "reserve": 20000
+  },
+  "approved": true,
+  "approved_at": "2026-08-19"
+}

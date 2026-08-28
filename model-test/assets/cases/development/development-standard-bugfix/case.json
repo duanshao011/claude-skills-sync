@@ -1,0 +1,18 @@
+{
+  "id": "development-standard-bugfix",
+  "dimension": "development",
+  "dimension_label": "项目开发",
+  "level": "standard",
+  "title": "理解现有微型项目并修复筛选与金额计算",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["code"],
+  "submission_files": ["app/index.html", "app/app.js", "app/styles.css"],
+  "checks": [
+    {"type": "file_exists", "path": "app/index.html", "label": "页面入口"},
+    {"type": "file_exists", "path": "app/app.js", "label": "功能脚本"},
+    {"type": "case_command", "command": ["python", "validator.py"], "timeout_seconds": 30, "label": "隐藏功能测试"}
+  ]
+}

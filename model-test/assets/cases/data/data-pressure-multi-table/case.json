@@ -1,0 +1,21 @@
+{
+  "id": "data-pressure-multi-table",
+  "dimension": "data",
+  "dimension_label": "数据分析",
+  "level": "pressure",
+  "title": "处理多表关联、重复键和渠道口径陷阱",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["spreadsheet"],
+  "submission_files": ["answers.json", "analysis.md", "quality-log.md"],
+  "checks": [
+    {"type": "file_exists", "path": "answers.json", "label": "计算答案"},
+    {"type": "file_exists", "path": "analysis.md", "label": "业务分析"},
+    {"type": "file_exists", "path": "quality-log.md", "label": "数据质量记录"},
+    {"type": "json_match", "path": "answers.json", "expected_file": "expected.json", "keys": ["traffic_rows_raw", "traffic_rows_deduplicated", "order_rows_raw", "order_rows_deduplicated", "total_impressions", "total_clicks", "total_store_visits", "total_spend", "total_orders", "total_revenue", "overall_ctr", "visit_rate", "overall_roas", "best_visit_rate_note", "lowest_cpo_note", "risk_note", "unmatched_spend_rows"], "tolerance": 0.000001, "label": "多表关键计算"},
+    {"type": "contains_all", "path": "quality-log.md", "values": ["流量表", "订单表", "渠道", "空格"], "label": "质量问题识别"},
+    {"type": "text_length", "path": "analysis.md", "min": 500, "max": 1800, "label": "分析篇幅"}
+  ]
+}

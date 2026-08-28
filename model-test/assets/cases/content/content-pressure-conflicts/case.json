@@ -1,0 +1,20 @@
+{
+  "id": "content-pressure-conflicts",
+  "dimension": "content",
+  "dimension_label": "内容创作与改稿",
+  "level": "pressure",
+  "title": "从冲突素材中完成内容策略与成稿",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": [],
+  "submission_files": ["campaign.md", "fact-check.md"],
+  "checks": [
+    {"type": "file_exists", "path": "campaign.md", "label": "内容方案"},
+    {"type": "file_exists", "path": "fact-check.md", "label": "事实核对"},
+    {"type": "text_length", "path": "campaign.md", "min": 900, "max": 1900, "label": "方案篇幅"},
+    {"type": "contains_all", "path": "fact-check.md", "values": ["8.7克", "9.1克", "8小时", "10小时", "无法确认"], "label": "冲突识别"},
+    {"type": "contains_none", "path": "campaign.md", "values": ["国家级降噪认证", "续航10小时", "单耳8.7克"], "severity": "error", "label": "未确认事实未进入成稿"}
+  ]
+}

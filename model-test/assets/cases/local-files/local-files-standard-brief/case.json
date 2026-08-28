@@ -1,0 +1,19 @@
+{
+  "id": "local-files-standard-brief",
+  "dimension": "local-files",
+  "dimension_label": "本地文件任务",
+  "level": "standard",
+  "title": "跨文件提取最终预算、排期和负责人",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["files"],
+  "submission_files": ["summary.md"],
+  "checks": [
+    {"type": "file_exists", "path": "summary.md", "label": "汇总文件"},
+    {"type": "contains_all", "path": "summary.md", "values": ["120000", "70000", "30000", "20000", "2026-09-05", "2026-09-12", "林朔"], "label": "关键事实"},
+    {"type": "regex_count", "path": "summary.md", "pattern": "input/|brief.md|budget.json|meeting.txt", "min": 3, "label": "来源标注"},
+    {"type": "text_length", "path": "summary.md", "min": 300, "max": 1000, "label": "汇总篇幅"}
+  ]
+}

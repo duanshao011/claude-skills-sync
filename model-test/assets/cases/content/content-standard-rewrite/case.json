@@ -1,0 +1,20 @@
+{
+  "id": "content-standard-rewrite",
+  "dimension": "content",
+  "dimension_label": "内容创作与改稿",
+  "level": "standard",
+  "title": "把生硬产品初稿改成可发布的小红书内容",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": [],
+  "submission_files": ["article.md"],
+  "checks": [
+    {"type": "file_exists", "path": "article.md", "label": "文章文件"},
+    {"type": "text_length", "path": "article.md", "min": 550, "max": 1100, "label": "篇幅"},
+    {"type": "contains_all", "path": "article.md", "values": ["39元", "7天", "杭州"], "label": "关键事实"},
+    {"type": "contains_none", "path": "article.md", "values": ["总而言之", "综上所述", "值得注意的是", "不容错过"], "severity": "warning", "label": "模板化表达"},
+    {"type": "regex_count", "path": "article.md", "pattern": "^# ", "min": 1, "max": 1, "label": "标题数量"}
+  ]
+}

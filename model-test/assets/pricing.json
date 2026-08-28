@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0",
+  "currency": "USD",
+  "note": "Only add prices confirmed for the exact provider and model. Values are USD per one million tokens.",
+  "models": {}
+}

@@ -1,0 +1,19 @@
+{
+  "traffic_rows_raw": 13,
+  "traffic_rows_deduplicated": 12,
+  "order_rows_raw": 10,
+  "order_rows_deduplicated": 9,
+  "total_impressions": 15700,
+  "total_clicks": 913,
+  "total_store_visits": 276,
+  "total_spend": 4810,
+  "total_orders": 9,
+  "total_revenue": 1961,
+  "overall_ctr": 0.058152866242038215,
+  "visit_rate": 0.3023001095290252,
+  "overall_roas": 0.4076923076923077,
+  "best_visit_rate_note": "N101",
+  "lowest_cpo_note": "N103",
+  "risk_note": "N104",
+  "unmatched_spend_rows": 0
+}

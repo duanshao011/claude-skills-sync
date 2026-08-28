@@ -1,0 +1,20 @@
+{
+  "id": "web-standard-product-facts",
+  "dimension": "web-verification",
+  "dimension_label": "联网搜索与事实核验",
+  "level": "standard",
+  "title": "核验AI Agent产品能力陈述",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["web"],
+  "submission_files": ["verdicts.json", "evidence.md"],
+  "checks": [
+    {"type": "file_exists", "path": "verdicts.json", "label": "核验结果"},
+    {"type": "file_exists", "path": "evidence.md", "label": "证据说明"},
+    {"type": "json_keys", "path": "verdicts.json", "keys": ["cutoff_date", "claims.0.id", "claims.0.verdict", "claims.0.sources", "claims.3.verdict"], "label": "结果结构"},
+    {"type": "url_count", "path": "evidence.md", "min": 4, "label": "官方来源"},
+    {"type": "contains_all", "path": "evidence.md", "values": ["无法确认", "截止"], "severity": "warning", "label": "不确定性说明"}
+  ]
+}

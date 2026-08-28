@@ -1,0 +1,20 @@
+{
+  "id": "skill-pressure-repair",
+  "dimension": "skill-building",
+  "dimension_label": "Skill与工作流构建",
+  "level": "pressure",
+  "title": "诊断并修复一个臃肿失效的文件简报Skill",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["files", "code"],
+  "submission_files": ["file-brief/SKILL.md", "file-brief/references/workflow.md", "file-brief/scripts/check_input.py"],
+  "checks": [
+    {"type": "file_exists", "path": "file-brief/SKILL.md", "label": "修复后入口"},
+    {"type": "file_exists", "path": "file-brief/references/workflow.md", "label": "按需流程"},
+    {"type": "file_exists", "path": "file-brief/scripts/check_input.py", "label": "输入检查脚本"},
+    {"type": "contains_none", "path": "file-brief/SKILL.md", "values": ["万能", "任何任务", "full-rules.md", "TODO"], "label": "错误范围与失效引用"},
+    {"type": "case_command", "command": ["python", "validator.py"], "timeout_seconds": 30, "label": "修复结果验证"}
+  ]
+}

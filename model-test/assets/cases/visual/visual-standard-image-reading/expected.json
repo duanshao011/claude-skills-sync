@@ -1,0 +1,17 @@
+{
+  "campaign_name": "秋日通勤计划",
+  "launch_date": "2026-09-03",
+  "owner": "林朔",
+  "total_budget": 86500,
+  "channels": {
+    "xiaohongshu": 45000,
+    "bilibili": 26500,
+    "douyin": 15000
+  },
+  "status_counts": {
+    "green": 2,
+    "amber": 1,
+    "red": 1
+  },
+  "largest_budget_channel": "小红书"
+}

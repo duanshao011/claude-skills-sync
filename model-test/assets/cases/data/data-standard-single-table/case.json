@@ -1,0 +1,20 @@
+{
+  "id": "data-standard-single-table",
+  "dimension": "data",
+  "dimension_label": "数据分析",
+  "level": "standard",
+  "title": "清洗单表营销数据并给出业务结论",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["spreadsheet"],
+  "submission_files": ["answers.json", "analysis.md"],
+  "checks": [
+    {"type": "file_exists", "path": "answers.json", "label": "计算答案"},
+    {"type": "file_exists", "path": "analysis.md", "label": "分析结论"},
+    {"type": "json_match", "path": "answers.json", "expected_file": "expected.json", "keys": ["raw_rows", "deduplicated_rows", "duplicate_note_id", "total_impressions", "total_clicks", "total_spend", "total_orders", "total_revenue", "overall_ctr", "overall_cpc", "overall_roas", "best_ctr_note", "risk_note"], "tolerance": 0.000001, "label": "关键计算"},
+    {"type": "contains_all", "path": "analysis.md", "values": ["N002", "N006", "重复"], "label": "异常与重点"},
+    {"type": "text_length", "path": "analysis.md", "min": 350, "max": 1300, "label": "分析篇幅"}
+  ]
+}

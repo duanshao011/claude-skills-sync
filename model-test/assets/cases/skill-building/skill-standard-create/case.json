@@ -1,0 +1,18 @@
+{
+  "id": "skill-standard-create",
+  "dimension": "skill-building",
+  "dimension_label": "Skill与工作流构建",
+  "level": "standard",
+  "title": "把固定周复盘流程封装成可调用Skill",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["files", "code"],
+  "submission_files": ["weekly-review/SKILL.md"],
+  "checks": [
+    {"type": "file_exists", "path": "weekly-review/SKILL.md", "label": "Skill入口"},
+    {"type": "contains_all", "path": "weekly-review/SKILL.md", "values": ["name:", "description:", "输入", "输出", "证据"], "label": "核心指令"},
+    {"type": "case_command", "command": ["python", "validator.py"], "timeout_seconds": 30, "label": "Skill结构检查"}
+  ]
+}

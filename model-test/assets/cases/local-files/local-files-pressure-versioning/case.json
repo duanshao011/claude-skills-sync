@@ -1,0 +1,20 @@
+{
+  "id": "local-files-pressure-versioning",
+  "dimension": "local-files",
+  "dimension_label": "本地文件任务",
+  "level": "pressure",
+  "title": "从相似版本和冲突记录中还原最终方案",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["files"],
+  "submission_files": ["decision.md", "conflicts.md"],
+  "checks": [
+    {"type": "file_exists", "path": "decision.md", "label": "最终方案"},
+    {"type": "file_exists", "path": "conflicts.md", "label": "冲突记录"},
+    {"type": "contains_all", "path": "decision.md", "values": ["168000", "2026-10-08", "2026-10-18", "周砚", "小红书", "B站"], "label": "最终事实"},
+    {"type": "contains_all", "path": "conflicts.md", "values": ["旧", "草案", "终版", "不采用"], "label": "版本判断"},
+    {"type": "contains_none", "path": "decision.md", "values": ["150000", "2026-10-01", "陈河", "抖音直播"], "label": "旧信息排除"}
+  ]
+}

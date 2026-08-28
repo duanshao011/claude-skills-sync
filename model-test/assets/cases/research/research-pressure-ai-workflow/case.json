@@ -1,0 +1,21 @@
+{
+  "id": "research-pressure-ai-workflow",
+  "dimension": "research",
+  "dimension_label": "调研分析",
+  "level": "pressure",
+  "title": "从动态官方资料中形成AI工作流选型报告",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["web"],
+  "submission_files": ["report.md", "sources.json"],
+  "checks": [
+    {"type": "file_exists", "path": "report.md", "label": "选型报告"},
+    {"type": "file_exists", "path": "sources.json", "label": "来源清单"},
+    {"type": "text_length", "path": "report.md", "min": 1500, "max": 3800, "label": "报告篇幅"},
+    {"type": "contains_all", "path": "report.md", "values": ["事实", "推断", "未知", "建议", "风险"], "label": "证据分层"},
+    {"type": "url_count", "path": "report.md", "min": 8, "label": "报告来源"},
+    {"type": "json_keys", "path": "sources.json", "keys": ["cutoff_date", "sources"], "label": "来源结构"}
+  ]
+}

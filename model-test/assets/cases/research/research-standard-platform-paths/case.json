@@ -1,0 +1,19 @@
+{
+  "id": "research-standard-platform-paths",
+  "dimension": "research",
+  "dimension_label": "调研分析",
+  "level": "standard",
+  "title": "调研三平台品牌内容合作与投放路径",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["web"],
+  "submission_files": ["report.md"],
+  "checks": [
+    {"type": "file_exists", "path": "report.md", "label": "调研报告"},
+    {"type": "text_length", "path": "report.md", "min": 900, "max": 2600, "label": "报告篇幅"},
+    {"type": "contains_all", "path": "report.md", "values": ["小红书", "抖音", "B站", "结论", "限制"], "label": "范围覆盖"},
+    {"type": "url_count", "path": "report.md", "min": 5, "label": "来源链接"}
+  ]
+}

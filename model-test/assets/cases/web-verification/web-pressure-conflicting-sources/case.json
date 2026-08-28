@@ -1,0 +1,21 @@
+{
+  "id": "web-pressure-conflicting-sources",
+  "dimension": "web-verification",
+  "dimension_label": "联网搜索与事实核验",
+  "level": "pressure",
+  "title": "追溯原始来源并处理时效冲突",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["web"],
+  "submission_files": ["fact-check.md", "source-map.json"],
+  "checks": [
+    {"type": "file_exists", "path": "fact-check.md", "label": "核验报告"},
+    {"type": "file_exists", "path": "source-map.json", "label": "来源映射"},
+    {"type": "text_length", "path": "fact-check.md", "min": 1200, "max": 3200, "label": "报告篇幅"},
+    {"type": "url_count", "path": "fact-check.md", "min": 8, "label": "证据链接"},
+    {"type": "contains_all", "path": "fact-check.md", "values": ["原始来源", "发布日期", "冲突", "无法确认"], "label": "核验方法"},
+    {"type": "json_keys", "path": "source-map.json", "keys": ["cutoff_date", "claims"], "label": "来源映射结构"}
+  ]
+}

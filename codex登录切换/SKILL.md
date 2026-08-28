@@ -42,8 +42,25 @@ description: 切换 Codex 的登录方式——ChatGPT 个人订阅 或 公司�
    Copy-Item "$env:USERPROFILE\.codex\config.company.toml" "$env:USERPROFILE\.codex\config.toml" -Force
    ```
 2. 验证配置生效：确认 `config.toml` 中 `model_provider = "company"` 未被注释
-3. **不需要**任何登录操作，也不用动 ChatGPT 登录态——中转配置自带 api_key，订阅登录留着不影响
-4. 提醒博哥完整重启 codex（见下方「切换后必做」）
+3. **检查密钥环境变量（必做，否则报 `Missing environment variable: OPENAI_API_KEY`）**：
+   中转 provider 配置里有 `env_key = "OPENAI_API_KEY"`，codex 运行时从**用户级环境变量**读 key，配置文件里的 `api_key` 字段不生效。切换后检查：
+   ```powershell
+   [bool][Environment]::GetEnvironmentVariable('OPENAI_API_KEY','User')
+   ```
+   - 返回 `True` → 正常，继续
+   - 返回 `False` → 从备份文件恢复（不回显密钥内容）：
+     ```powershell
+     $key = (Get-Content "$env:USERPROFILE\openai_api_key_backup.txt" -Raw).Trim()
+     [Environment]::SetEnvironmentVariable('OPENAI_API_KEY', $key, 'User')
+     ```
+4. **验证连通（终端实测，别只看配置）**：跑一次最小请求确认中转可用：
+   ```powershell
+   $env:OPENAI_API_KEY = [Environment]::GetEnvironmentVariable('OPENAI_API_KEY','User')
+   "只回复两个字：在线" | codex exec --skip-git-repo-check - 2>&1 | Select-Object -Last 3
+   ```
+   返回「在线」即通；失败把报错给博哥看。
+5. **不需要**任何登录操作，也不用动 ChatGPT 登录态——订阅登录留着不影响
+6. 提醒博哥完整重启 codex（见下方「切换后必做」）——环境变量也是新进程才读得到
 
 ## 切换后必做
 
@@ -61,5 +78,6 @@ description: 切换 Codex 的登录方式——ChatGPT 个人订阅 或 公司�
 
 - codex 桌面端会自动往 `config.toml` 写设置（主题、插件等），时间久了两个快照会和实际配置有差异。如果博哥反馈切换后桌面端某些设置「倒退」了，先把当前 `config.toml` 的新设置合并进对应快照再切换，不要直接覆盖了事。
 - 切到订阅版后如果提示模型不可用，让博哥在 codex 里 `/model` 换一个订阅可用的模型即可，不用改配置文件。
-- 备用文件位置（2026-08-27 备份的原始 key）：`~\openai_api_key_backup.txt`
+- 备用文件位置（2026-08-27 备份的原始 key）：`~\openai_api_key_backup.txt`。这个文件是用户级环境变量 `OPENAI_API_KEY` 的唯一恢复来源，不要删。
+- 桌面端报 `Missing environment variable: OPENAI_API_KEY` = 用户级环境变量丢了（2026-08-27 出过一次），按「切换到公司 API 中转」第 3 步从备份恢复即可。
 - 桌面端若报「Unable to locate the Codex CLI binary」：这是 Store 版 App 的包权限 bug，已通过用户级环境变量 `CODEX_CLI_PATH = %LOCALAPPDATA%\OpenAI\Codex\bin\d0097be4feba73d0\codex.exe` 绕过，此变量不要删。

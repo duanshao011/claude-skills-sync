@@ -1,0 +1,19 @@
+{
+  "id": "visual-pressure-frontend-redesign",
+  "dimension": "visual",
+  "dimension_label": "图片理解与前端审美",
+  "level": "pressure",
+  "title": "把杂乱活动页重做成有成品感的单页",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["code", "browser"],
+  "submission_files": ["site/index.html", "site/styles.css", "site/app.js"],
+  "checks": [
+    {"type": "file_exists", "path": "site/index.html", "label": "页面入口"},
+    {"type": "file_exists", "path": "site/styles.css", "label": "页面样式"},
+    {"type": "file_exists", "path": "site/app.js", "label": "交互脚本"},
+    {"type": "case_command", "command": ["python", "validator.py"], "timeout_seconds": 30, "label": "页面结构与可用性"}
+  ]
+}

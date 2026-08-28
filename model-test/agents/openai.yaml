@@ -1,0 +1,5 @@
+interface:
+  display_name: "模型测试"
+  short_description: "用真实工作案例测试当前模型的产出、耗时、Token与费用"
+  default_prompt: "使用 $model-test 快速测试当前模型，并生成实际产物与成本报告。"
+

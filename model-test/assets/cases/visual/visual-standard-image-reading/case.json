@@ -1,0 +1,19 @@
+{
+  "id": "visual-standard-image-reading",
+  "dimension": "visual",
+  "dimension_label": "图片理解与前端审美",
+  "level": "standard",
+  "title": "读取信息密集型营销看板图片",
+  "version": "1.0.0",
+  "enabled": true,
+  "task_file": "task.md",
+  "input_dir": "input",
+  "capabilities": ["image"],
+  "submission_files": ["answers.json", "observations.md"],
+  "checks": [
+    {"type": "file_exists", "path": "answers.json", "label": "图片答案"},
+    {"type": "file_exists", "path": "observations.md", "label": "观察说明"},
+    {"type": "json_match", "path": "answers.json", "expected_file": "expected.json", "keys": ["campaign_name", "launch_date", "owner", "total_budget", "channels.xiaohongshu", "channels.bilibili", "channels.douyin", "status_counts.green", "status_counts.amber", "status_counts.red", "largest_budget_channel"], "tolerance": 0, "label": "图片事实识别"},
+    {"type": "contains_all", "path": "observations.md", "values": ["确定", "不确定"], "severity": "warning", "label": "置信度表达"}
+  ]
+}
