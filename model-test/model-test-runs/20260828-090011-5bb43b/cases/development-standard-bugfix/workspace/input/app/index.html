@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>投放任务</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1>本周投放任务</h1>
+    <label>状态
+      <select id="status-filter">
+        <option value="all">全部</option>
+        <option value="active">进行中</option>
+        <option value="paused">已暂停</option>
+      </select>
+    </label>
+    <p>总花费：<strong id="total-spend"></strong></p>
+    <ul id="task-list"></ul>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

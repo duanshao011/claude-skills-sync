@@ -1,0 +1,621 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260828-090011-5bb43b",
+  "agent": "claude",
+  "model": null,
+  "model_label": "GLM-5.3 Flash",
+  "mode": "quick",
+  "dimensions": null,
+  "started_at": "2026-08-28T01:00:11+00:00",
+  "ended_at": "2026-08-28T03:52:19+00:00",
+  "isolation": "sequential-child-process",
+  "cases": [
+    {
+      "id": "content-standard-rewrite",
+      "dimension": "content",
+      "dimension_label": "内容创作与改稿",
+      "level": "standard",
+      "title": "把生硬产品初稿改成可发布的小红书内容",
+      "version": "1.0.0",
+      "case_source": "C:\\Users\\duansb\\.claude\\skills\\model-test\\assets\\cases\\content\\content-standard-rewrite",
+      "workspace": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\content-standard-rewrite\\workspace",
+      "submission": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\content-standard-rewrite\\workspace\\submission",
+      "status": "completed",
+      "started_at": "2026-08-28T01:56:46+00:00",
+      "ended_at": "2026-08-28T01:59:58+00:00",
+      "duration_seconds": 191.305,
+      "telemetry": {
+        "tokens": {
+          "status": "tool_reported",
+          "total": 226988,
+          "input": 56655,
+          "output": 1693,
+          "cache_creation": 0,
+          "cache_read": 168640,
+          "source": "claude --output-format json"
+        },
+        "cost": {
+          "status": "tool_reported",
+          "value": 0.41259,
+          "currency": "USD",
+          "source": "claude result total_cost_usd"
+        },
+        "session_id": "f88a0ace-eb8c-4335-856a-d345862bcdee",
+        "turns": 10,
+        "api_duration_ms": 90139
+      },
+      "validation": {
+        "case_id": "content-standard-rewrite",
+        "checked_at": "2026-08-28T01:59:58+00:00",
+        "status": "passed",
+        "error_count": 0,
+        "warning_count": 0,
+        "checks": [
+          {
+            "type": "file_exists",
+            "label": "文章文件",
+            "severity": "error",
+            "passed": true,
+            "detail": "article.md: 存在"
+          },
+          {
+            "type": "text_length",
+            "label": "篇幅",
+            "severity": "error",
+            "passed": true,
+            "detail": "非空白字符 756，要求 550-1100"
+          },
+          {
+            "type": "contains_all",
+            "label": "关键事实",
+            "severity": "error",
+            "passed": true,
+            "detail": "全部出现"
+          },
+          {
+            "type": "contains_none",
+            "label": "模板化表达",
+            "severity": "warning",
+            "passed": true,
+            "detail": "未发现禁用项"
+          },
+          {
+            "type": "regex_count",
+            "label": "标题数量",
+            "severity": "error",
+            "passed": true,
+            "detail": "匹配 1 次，要求 1-1"
+          }
+        ]
+      },
+      "error": "找不到 Agent 命令：None",
+      "exit_code": 0
+    },
+    {
+      "id": "research-standard-platform-paths",
+      "dimension": "research",
+      "dimension_label": "调研分析",
+      "level": "standard",
+      "title": "调研三平台品牌内容合作与投放路径",
+      "version": "1.0.0",
+      "case_source": "C:\\Users\\duansb\\.claude\\skills\\model-test\\assets\\cases\\research\\research-standard-platform-paths",
+      "workspace": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\research-standard-platform-paths\\workspace",
+      "submission": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\research-standard-platform-paths\\workspace\\submission",
+      "status": "completed",
+      "started_at": "2026-08-28T01:59:58+00:00",
+      "ended_at": "2026-08-28T02:12:50+00:00",
+      "duration_seconds": 772.299,
+      "telemetry": {
+        "tokens": {
+          "status": "tool_reported",
+          "total": 684129,
+          "input": 84541,
+          "output": 9892,
+          "cache_creation": 0,
+          "cache_read": 589696,
+          "source": "claude --output-format json"
+        },
+        "cost": {
+          "status": "tool_reported",
+          "value": 1.097005,
+          "currency": "USD",
+          "source": "claude result total_cost_usd"
+        },
+        "session_id": "cc248660-3289-4e90-907f-294bad06ac97",
+        "turns": 24,
+        "api_duration_ms": 482171
+      },
+      "validation": {
+        "case_id": "research-standard-platform-paths",
+        "checked_at": "2026-08-28T02:12:50+00:00",
+        "status": "failed",
+        "error_count": 1,
+        "warning_count": 0,
+        "checks": [
+          {
+            "type": "file_exists",
+            "label": "调研报告",
+            "severity": "error",
+            "passed": true,
+            "detail": "report.md: 存在"
+          },
+          {
+            "type": "text_length",
+            "label": "报告篇幅",
+            "severity": "error",
+            "passed": false,
+            "detail": "非空白字符 4534，要求 900-2600"
+          },
+          {
+            "type": "contains_all",
+            "label": "范围覆盖",
+            "severity": "error",
+            "passed": true,
+            "detail": "全部出现"
+          },
+          {
+            "type": "url_count",
+            "label": "来源链接",
+            "severity": "error",
+            "passed": true,
+            "detail": "链接 17 个，至少 5 个"
+          }
+        ]
+      },
+      "error": "找不到 Agent 命令：None",
+      "exit_code": 0
+    },
+    {
+      "id": "data-standard-single-table",
+      "dimension": "data",
+      "dimension_label": "数据分析",
+      "level": "standard",
+      "title": "清洗单表营销数据并给出业务结论",
+      "version": "1.0.0",
+      "case_source": "C:\\Users\\duansb\\.claude\\skills\\model-test\\assets\\cases\\data\\data-standard-single-table",
+      "workspace": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\data-standard-single-table\\workspace",
+      "submission": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\data-standard-single-table\\workspace\\submission",
+      "status": "completed",
+      "started_at": "2026-08-28T02:12:50+00:00",
+      "ended_at": "2026-08-28T02:16:13+00:00",
+      "duration_seconds": 203.467,
+      "telemetry": {
+        "tokens": {
+          "status": "tool_reported",
+          "total": 227326,
+          "input": 41433,
+          "output": 2469,
+          "cache_creation": 0,
+          "cache_read": 183424,
+          "source": "claude --output-format json"
+        },
+        "cost": {
+          "status": "tool_reported",
+          "value": 0.36585200000000007,
+          "currency": "USD",
+          "source": "claude result total_cost_usd"
+        },
+        "session_id": "5fbfea34-a3c5-4766-95fc-cdf75ee1a9cf",
+        "turns": 7,
+        "api_duration_ms": 101000
+      },
+      "validation": {
+        "case_id": "data-standard-single-table",
+        "checked_at": "2026-08-28T02:16:13+00:00",
+        "status": "failed",
+        "error_count": 1,
+        "warning_count": 0,
+        "checks": [
+          {
+            "type": "file_exists",
+            "label": "计算答案",
+            "severity": "error",
+            "passed": true,
+            "detail": "answers.json: 存在"
+          },
+          {
+            "type": "file_exists",
+            "label": "分析结论",
+            "severity": "error",
+            "passed": true,
+            "detail": "analysis.md: 存在"
+          },
+          {
+            "type": "json_match",
+            "label": "关键计算",
+            "severity": "error",
+            "passed": false,
+            "detail": "best_ctr_note: {'note_id': 'N002', 'ctr': 0.065, 'spend': 1040} != 'N002'；risk_note: {'note_id': 'N006', 'spend': 120, 'orders': 0} != 'N006'"
+          },
+          {
+            "type": "contains_all",
+            "label": "异常与重点",
+            "severity": "error",
+            "passed": true,
+            "detail": "全部出现"
+          },
+          {
+            "type": "text_length",
+            "label": "分析篇幅",
+            "severity": "error",
+            "passed": true,
+            "detail": "非空白字符 1206，要求 350-1300"
+          }
+        ]
+      },
+      "error": "找不到 Agent 命令：None",
+      "exit_code": 0
+    },
+    {
+      "id": "local-files-standard-brief",
+      "dimension": "local-files",
+      "dimension_label": "本地文件任务",
+      "level": "standard",
+      "title": "跨文件提取最终预算、排期和负责人",
+      "version": "1.0.0",
+      "case_source": "C:\\Users\\duansb\\.claude\\skills\\model-test\\assets\\cases\\local-files\\local-files-standard-brief",
+      "workspace": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\local-files-standard-brief\\workspace",
+      "submission": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\local-files-standard-brief\\workspace\\submission",
+      "status": "completed",
+      "started_at": "2026-08-28T02:16:13+00:00",
+      "ended_at": "2026-08-28T02:17:51+00:00",
+      "duration_seconds": 97.49,
+      "telemetry": {
+        "tokens": {
+          "status": "tool_reported",
+          "total": 161553,
+          "input": 40952,
+          "output": 1689,
+          "cache_creation": 0,
+          "cache_read": 118912,
+          "source": "claude --output-format json"
+        },
+        "cost": {
+          "status": "tool_reported",
+          "value": 0.308523,
+          "currency": "USD",
+          "source": "claude result total_cost_usd"
+        },
+        "session_id": "99f37094-5f69-4fac-b29b-5463543809ad",
+        "turns": 9,
+        "api_duration_ms": 64620
+      },
+      "validation": {
+        "case_id": "local-files-standard-brief",
+        "checked_at": "2026-08-28T02:17:51+00:00",
+        "status": "failed",
+        "error_count": 2,
+        "warning_count": 0,
+        "checks": [
+          {
+            "type": "file_exists",
+            "label": "汇总文件",
+            "severity": "error",
+            "passed": true,
+            "detail": "summary.md: 存在"
+          },
+          {
+            "type": "contains_all",
+            "label": "关键事实",
+            "severity": "error",
+            "passed": false,
+            "detail": "缺少：70000, 30000"
+          },
+          {
+            "type": "regex_count",
+            "label": "来源标注",
+            "severity": "error",
+            "passed": true,
+            "detail": "匹配 18 次，要求 3-1000000000"
+          },
+          {
+            "type": "text_length",
+            "label": "汇总篇幅",
+            "severity": "error",
+            "passed": false,
+            "detail": "非空白字符 1115，要求 300-1000"
+          }
+        ]
+      },
+      "error": "找不到 Agent 命令：None",
+      "exit_code": 0
+    },
+    {
+      "id": "development-standard-bugfix",
+      "dimension": "development",
+      "dimension_label": "项目开发",
+      "level": "standard",
+      "title": "理解现有微型项目并修复筛选与金额计算",
+      "version": "1.0.0",
+      "case_source": "C:\\Users\\duansb\\.claude\\skills\\model-test\\assets\\cases\\development\\development-standard-bugfix",
+      "workspace": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\development-standard-bugfix\\workspace",
+      "submission": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\development-standard-bugfix\\workspace\\submission",
+      "status": "completed",
+      "started_at": "2026-08-28T02:17:51+00:00",
+      "ended_at": "2026-08-28T02:21:57+00:00",
+      "duration_seconds": 245.618,
+      "telemetry": {
+        "tokens": {
+          "status": "tool_reported",
+          "total": 291026,
+          "input": 10465,
+          "output": 1521,
+          "cache_creation": 0,
+          "cache_read": 279040,
+          "source": "claude --output-format json"
+        },
+        "cost": {
+          "status": "tool_reported",
+          "value": 0.23549500000000004,
+          "currency": "USD",
+          "source": "claude result total_cost_usd"
+        },
+        "session_id": "5f22d0bc-917d-46ac-ab68-e6d17a5c21eb",
+        "turns": 11,
+        "api_duration_ms": 149498
+      },
+      "validation": {
+        "case_id": "development-standard-bugfix",
+        "checked_at": "2026-08-28T02:21:57+00:00",
+        "status": "passed",
+        "error_count": 0,
+        "warning_count": 0,
+        "checks": [
+          {
+            "type": "file_exists",
+            "label": "页面入口",
+            "severity": "error",
+            "passed": true,
+            "detail": "app/index.html: 存在"
+          },
+          {
+            "type": "file_exists",
+            "label": "功能脚本",
+            "severity": "error",
+            "passed": true,
+            "detail": "app/app.js: 存在"
+          },
+          {
+            "type": "case_command",
+            "label": "隐藏功能测试",
+            "severity": "error",
+            "passed": true,
+            "detail": "退出码 0\nfunctional checks passed"
+          }
+        ]
+      },
+      "error": "找不到 Agent 命令：None",
+      "exit_code": 0
+    },
+    {
+      "id": "web-standard-product-facts",
+      "dimension": "web-verification",
+      "dimension_label": "联网搜索与事实核验",
+      "level": "standard",
+      "title": "核验AI Agent产品能力陈述",
+      "version": "1.0.0",
+      "case_source": "C:\\Users\\duansb\\.claude\\skills\\model-test\\assets\\cases\\web-verification\\web-standard-product-facts",
+      "workspace": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\web-standard-product-facts\\workspace",
+      "submission": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\web-standard-product-facts\\workspace\\submission",
+      "status": "completed",
+      "started_at": "2026-08-28T02:21:57+00:00",
+      "ended_at": "2026-08-28T02:36:58+00:00",
+      "duration_seconds": 901.459,
+      "telemetry": {
+        "tokens": {
+          "status": "tool_reported",
+          "total": 1058301,
+          "input": 34712,
+          "output": 9573,
+          "cache_creation": 0,
+          "cache_read": 1014016,
+          "source": "claude --output-format json"
+        },
+        "cost": {
+          "status": "tool_reported",
+          "value": 1.045033,
+          "currency": "USD",
+          "source": "claude result total_cost_usd"
+        },
+        "session_id": "eca36433-f1e1-4d5e-a911-00bcf9470d1e",
+        "turns": 30,
+        "api_duration_ms": 459209
+      },
+      "validation": {
+        "case_id": "web-standard-product-facts",
+        "checked_at": "2026-08-28T02:36:58+00:00",
+        "status": "passed",
+        "error_count": 0,
+        "warning_count": 1,
+        "checks": [
+          {
+            "type": "file_exists",
+            "label": "核验结果",
+            "severity": "error",
+            "passed": true,
+            "detail": "verdicts.json: 存在"
+          },
+          {
+            "type": "file_exists",
+            "label": "证据说明",
+            "severity": "error",
+            "passed": true,
+            "detail": "evidence.md: 存在"
+          },
+          {
+            "type": "json_keys",
+            "label": "结果结构",
+            "severity": "error",
+            "passed": true,
+            "detail": "字段齐全"
+          },
+          {
+            "type": "url_count",
+            "label": "官方来源",
+            "severity": "error",
+            "passed": true,
+            "detail": "链接 7 个，至少 4 个"
+          },
+          {
+            "type": "contains_all",
+            "label": "不确定性说明",
+            "severity": "warning",
+            "passed": false,
+            "detail": "缺少：截止"
+          }
+        ]
+      },
+      "error": "找不到 Agent 命令：None",
+      "exit_code": 0
+    },
+    {
+      "id": "skill-standard-create",
+      "dimension": "skill-building",
+      "dimension_label": "Skill与工作流构建",
+      "level": "standard",
+      "title": "把固定周复盘流程封装成可调用Skill",
+      "version": "1.0.0",
+      "case_source": "C:\\Users\\duansb\\.claude\\skills\\model-test\\assets\\cases\\skill-building\\skill-standard-create",
+      "workspace": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\skill-standard-create\\workspace",
+      "submission": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\skill-standard-create\\workspace\\submission",
+      "status": "completed",
+      "started_at": "2026-08-28T03:41:31+00:00",
+      "ended_at": "2026-08-28T03:50:08+00:00",
+      "duration_seconds": 516.917,
+      "telemetry": {
+        "tokens": {
+          "status": "tool_reported",
+          "total": 352201,
+          "input": 45962,
+          "output": 6015,
+          "cache_creation": 0,
+          "cache_read": 300224,
+          "source": "claude --output-format json"
+        },
+        "cost": {
+          "status": "tool_reported",
+          "value": 0.8462439999999999,
+          "currency": "USD",
+          "source": "claude result total_cost_usd"
+        },
+        "session_id": "087dd6b1-feae-4447-8cdf-945601f8c8c6",
+        "turns": 12,
+        "api_duration_ms": 334888
+      },
+      "validation": {
+        "case_id": "skill-standard-create",
+        "checked_at": "2026-08-28T03:50:08+00:00",
+        "status": "passed",
+        "error_count": 0,
+        "warning_count": 0,
+        "checks": [
+          {
+            "type": "file_exists",
+            "label": "Skill入口",
+            "severity": "error",
+            "passed": true,
+            "detail": "weekly-review/SKILL.md: 存在"
+          },
+          {
+            "type": "contains_all",
+            "label": "核心指令",
+            "severity": "error",
+            "passed": true,
+            "detail": "全部出现"
+          },
+          {
+            "type": "case_command",
+            "label": "Skill结构检查",
+            "severity": "error",
+            "passed": true,
+            "detail": "退出码 0\nskill structure passed"
+          }
+        ]
+      },
+      "error": "找不到 Agent 命令：None",
+      "exit_code": 0
+    },
+    {
+      "id": "visual-standard-image-reading",
+      "dimension": "visual",
+      "dimension_label": "图片理解与前端审美",
+      "level": "standard",
+      "title": "读取信息密集型营销看板图片",
+      "version": "1.0.0",
+      "case_source": "C:\\Users\\duansb\\.claude\\skills\\model-test\\assets\\cases\\visual\\visual-standard-image-reading",
+      "workspace": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\visual-standard-image-reading\\workspace",
+      "submission": "C:\\Users\\duansb\\.claude\\skills\\model-test\\model-test-runs\\20260828-090011-5bb43b\\cases\\visual-standard-image-reading\\workspace\\submission",
+      "status": "completed",
+      "started_at": "2026-08-28T03:50:08+00:00",
+      "ended_at": "2026-08-28T03:52:19+00:00",
+      "duration_seconds": 130.957,
+      "telemetry": {
+        "tokens": {
+          "status": "tool_reported",
+          "total": 225265,
+          "input": 59453,
+          "output": 1332,
+          "cache_creation": 0,
+          "cache_read": 164480,
+          "source": "claude --output-format json"
+        },
+        "cost": {
+          "status": "tool_reported",
+          "value": 0.418405,
+          "currency": "USD",
+          "source": "claude result total_cost_usd"
+        },
+        "session_id": "4c6fdb57-e752-4422-970e-5c04923257bf",
+        "turns": 8,
+        "api_duration_ms": 57512
+      },
+      "validation": {
+        "case_id": "visual-standard-image-reading",
+        "checked_at": "2026-08-28T03:52:19+00:00",
+        "status": "failed",
+        "error_count": 1,
+        "warning_count": 0,
+        "checks": [
+          {
+            "type": "file_exists",
+            "label": "图片答案",
+            "severity": "error",
+            "passed": true,
+            "detail": "answers.json: 存在"
+          },
+          {
+            "type": "file_exists",
+            "label": "观察说明",
+            "severity": "error",
+            "passed": true,
+            "detail": "observations.md: 存在"
+          },
+          {
+            "type": "json_match",
+            "label": "图片事实识别",
+            "severity": "error",
+            "passed": false,
+            "detail": "channels.xiaohongshu=缺失；channels.bilibili=缺失；channels.douyin=缺失"
+          },
+          {
+            "type": "contains_all",
+            "label": "置信度表达",
+            "severity": "warning",
+            "passed": true,
+            "detail": "全部出现"
+          }
+        ]
+      },
+      "error": "找不到 Agent 命令：None",
+      "exit_code": 0
+    }
+  ],
+  "summary": {
+    "duration_seconds": 3059.512,
+    "tokens_total": 3226789,
+    "cost_total": 4.729147,
+    "currency": "USD",
+    "completed": 8,
+    "failed": 0
+  }
+}

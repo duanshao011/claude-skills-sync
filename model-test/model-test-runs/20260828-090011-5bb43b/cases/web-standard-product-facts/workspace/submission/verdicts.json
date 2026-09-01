@@ -1,0 +1,39 @@
+{
+  "cutoff_date": "2026-08-28",
+  "claims": [
+    {
+      "id": "C1",
+      "verdict": "确认",
+      "reason": "Claude Code 官方 CLI 参考文档明确记载：非交互（print）模式支持 --output-format 标志，可选值包含 json 和 stream-json，即机器可读 JSON 输出；另有 --json-schema 可在 print 模式下输出经 schema 校验的 JSON（示例：claude -p --json-schema '{\"type\":\"object\"}' \"query\"）。条件：--output-format 仅适用于 print 模式（claude -p），不适用于交互模式；部分高级流式特性（如 --include-partial-messages）要求 stream-json 格式并配合 --verbose。",
+      "sources": [
+        "https://code.claude.com/docs/en/cli-reference（页面标题：CLI reference，访问日期 2026-08-28）"
+      ]
+    },
+    {
+      "id": "C2",
+      "verdict": "确认",
+      "reason": "Codex CLI 官方命令行帮助（本机安装的 codex-cli 0.149.1 执行 `codex exec --help` 的实际输出）明确记载：非交互子命令 `codex exec` 支持 `-m, --model <MODEL>`（\"Model the agent should use\"）和 `-C, --cd <DIR>`（\"Tell the agent to use the specified directory as its working root\"）。条件：依赖版本（本次核验基于 0.149.1）；两个标志位于 `codex exec` 非交互子命令上。官方 GitHub 仓库 docs/exec.md 将非交互模式文档指向 developers.openai.com/codex/noninteractive，该页面在本次网络环境下返回 403，未能直接读取，故以官方 CLI 帮助文本为准。",
+      "sources": [
+        "codex exec --help（codex-cli 0.149.1 官方内置帮助文本，本机运行，访问日期 2026-08-28）",
+        "https://github.com/openai/codex/blob/main/docs/exec.md（页面标题：codex/docs/exec.md at main · openai/codex · GitHub，内容为指向官方非交互文档的链接，访问日期 2026-08-28）"
+      ]
+    },
+    {
+      "id": "C3",
+      "verdict": "错误",
+      "reason": "双方官方文档显示的加载规则和界面配置均不相同，'完全相同'不成立。加载目录不同：Claude Code 从 ~/.claude/skills/、项目 .claude/skills/（含嵌套目录的目录限定名）、企业托管设置和插件 <plugin>/skills/ 加载；Codex 从仓库各层 .agents/skills/、用户 ~/.agents/skills/、管理员 /etc/codex/skills/ 及系统内置位置加载。界面配置不同：Claude Code 以 /skill-name 斜杠命令调用，冲突解析规则写入文档，开关走 settings（如 disableBundledSkills、skillOverrides），并有 Claude Code 专有 frontmatter 扩展（invocation control、subagent 执行、动态上下文注入）；Codex 以 /skills 命令或 $ 提及调用，禁用开关写在 ~/.codex/config.toml 的 [[skills.config]]，UI 元数据走 agents/openai.yaml（display_name、brand_color、policy.allow_implicit_invocation 等）。两者只是都遵循 Agent Skills 开放标准的 SKILL.md 文件格式（Claude Code 文档原话为 'extends the standard with additional features'），格式兼容不等于加载规则与界面配置相同。",
+      "sources": [
+        "https://code.claude.com/docs/en/skills（页面标题：Extend Claude with skills，访问日期 2026-08-28）",
+        "https://developers.openai.com/codex/skills（页面标题：Skills – OpenAI Codex，访问日期 2026-08-28；该站对当前环境直连返回 403，内容经只读代理抓取官方页面原文获得）"
+      ]
+    },
+    {
+      "id": "C4",
+      "verdict": "错误",
+      "reason": "官方成本文档直接否定了'知道 Token 数量就一定能得到最终实际账单费用'：(1) Claude Code 本地按标准牌价由 token 数计算的金额'不反映促销价或合同折扣，可能与实际账单不同'，权威账单以 Claude Console Usage 页为准；(2) 计费不只取决于 token 总数——缓存读、缓存写 token 与普通输入输出 token 牌价不同，同一 token 数在不同模型上费用也不同；(3) 订阅用户（Pro/Max/Team/Enterprise）按席位额度计费，额度内用量'不以美元计量'，与 token 数无直接换算关系；(4) 经云厂商（Bedrock 等）接入时按云厂商账单计费。因此仅知道 token 数量不足以确定最终实际账单费用。",
+      "sources": [
+        "https://code.claude.com/docs/en/costs（页面标题：Manage costs effectively，访问日期 2026-08-28）"
+      ]
+    }
+  ]
+}

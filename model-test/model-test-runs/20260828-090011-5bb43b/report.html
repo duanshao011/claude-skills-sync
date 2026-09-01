@@ -1,0 +1,1696 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GLM-5.3 Flash 模型测试</title>
+  <style>
+:root{color-scheme:light;--bg:#f4f6f4;--surface:#ffffff;--surface-soft:#edf2ef;--text:#17201d;--muted:#64716c;--line:#d9e0dc;--accent:#315a52;--accent-soft:#dfece7;--danger:#9a3f36;--danger-soft:#f8e8e5;--radius:14px;font-family:"Segoe UI Variable","Microsoft YaHei UI","PingFang SC",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);line-height:1.6}button,textarea{font:inherit}a{color:var(--accent);text-underline-offset:3px}.shell{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:48px 0 80px}.top{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(320px,.7fr);gap:48px;align-items:end;padding-bottom:28px;border-bottom:1px solid var(--line)}.top h1{font-size:clamp(34px,5vw,58px);line-height:1.05;letter-spacing:-.045em;margin:0 0 14px}.meta{color:var(--muted);margin:0}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}.metrics>div{background:var(--surface);padding:18px}.metrics span,.dimension-totals span{display:block;color:var(--muted);font-size:13px;margin-bottom:4px}.metrics strong,.dimension-totals strong{font-variant-numeric:tabular-nums;font-size:19px}.metrics.compact{margin:18px 0 22px}.metrics.compact>div{background:var(--surface-soft);padding:12px 14px}.metrics.compact strong{font-size:16px}.dimension{margin-top:34px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}.dimension-head{display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center;padding:24px 28px;border-bottom:1px solid var(--line)}.dimension-head h2{font-size:24px;letter-spacing:-.02em;margin:0}.dimension-head p{color:var(--muted);font-size:13px;margin:2px 0 0}.dimension-totals{display:grid;grid-template-columns:repeat(3,minmax(110px,1fr));gap:24px}.dimension-totals strong{font-size:15px}.case-tabs{display:flex;gap:6px;padding:18px 28px 0}.tab-button{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:9px;padding:8px 14px;cursor:pointer}.tab-button.active{background:var(--accent);color:white;border-color:var(--accent)}.tab-button:focus-visible,.review-buttons button:focus-visible,summary:focus-visible{outline:3px solid #84a99f;outline-offset:2px}.case-panel{display:none;padding:22px 28px 28px}.case-panel.active{display:block}.case-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}.case-heading h3{font-size:20px;margin:4px 0 0}.level-label{font-size:12px;color:var(--muted)}.status{color:var(--danger);background:var(--danger-soft);padding:5px 9px;border-radius:7px;font-size:12px}.artifact-list{display:grid;gap:14px}.artifact{border-top:1px solid var(--line);padding-top:16px}.artifact-head{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:12px}.artifact-head strong{overflow-wrap:anywhere}.artifact-head a{white-space:nowrap;font-size:13px}.artifact pre,.task-detail pre,.technical pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f9f8;border:1px solid var(--line);border-radius:10px;padding:18px;max-height:520px;overflow:auto;font-family:"Cascadia Mono","Microsoft YaHei UI",monospace;font-size:13px;line-height:1.65}.clip-note,.empty{color:var(--muted);font-size:13px}.task-detail,.technical{margin-top:16px}.task-detail summary,.technical summary,.review summary{cursor:pointer;color:var(--muted);font-size:13px}.alert{background:var(--danger-soft);border-left:3px solid var(--danger);padding:14px 16px;margin:0 0 22px}.alert-title{font-weight:700}.alert ul{margin:8px 0 0;padding-left:20px}.alert li span{display:block;color:#684b46;font-size:13px}.review{border-top:1px solid var(--line);padding:22px 28px 26px;background:#fbfcfb}.review-head{display:flex;align-items:baseline;gap:12px}.review-head span{font-size:13px;color:var(--muted)}.review-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.review-buttons button{border:1px solid var(--line);border-radius:9px;background:white;color:var(--text);padding:10px;cursor:pointer}.review-buttons button:hover{border-color:#8ba59e}.review-buttons button.selected{background:var(--accent);border-color:var(--accent);color:white}.review textarea{width:100%;margin-top:10px;border:1px solid var(--line);border-radius:9px;padding:12px;resize:vertical;color:var(--text)}.footer-actions{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-top:28px}.export{border:0;border-radius:9px;background:var(--accent);color:white;padding:11px 16px;cursor:pointer}.save-state{color:var(--muted);font-size:13px}@media(max-width:760px){.shell{width:min(100% - 20px,1120px);padding-top:28px}.top{grid-template-columns:1fr;gap:24px}.metrics{grid-template-columns:1fr}.dimension-head{grid-template-columns:1fr;padding:20px}.dimension-totals{grid-template-columns:repeat(3,1fr);gap:10px}.dimension-totals strong{font-size:13px}.case-tabs{padding:16px 20px 0}.case-panel{padding:20px}.review{padding:20px}.review-buttons{grid-template-columns:1fr 1fr}.artifact-head{align-items:flex-start;flex-direction:column;gap:6px}.footer-actions{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div>
+        <h1>GLM-5.3 Flash</h1>
+        <p class="meta">Claude / quick / 2026-08-28T01:00:11+00:00</p>
+      </div>
+      <div class="metrics" aria-label="本次测试总成本">
+        <div><span>总耗时</span><strong>51分0秒</strong></div>
+        <div><span>总 Token</span><strong>3,226,789</strong></div>
+        <div><span>总费用</span><strong>$4.7291</strong></div>
+      </div>
+    </header>
+    <section class="dimension" id="dimension-content" data-dimension="content">
+      <header class="dimension-head">
+        <div>
+          <h2>内容创作与改稿</h2>
+          <p>1 个案例</p>
+        </div>
+        <div class="dimension-totals">
+          <div><span>耗时</span><strong>3分11秒</strong></div>
+          <div><span>Token</span><strong>226,988</strong></div>
+          <div><span>费用</span><strong>$0.4126</strong></div>
+        </div>
+      </header>
+      
+      <section class="case-panel active" data-level="standard">
+      <div class="case-heading">
+        <div>
+          <span class="level-label">常规任务</span>
+          <h3>把生硬产品初稿改成可发布的小红书内容</h3>
+        </div>
+        
+      </div>
+      <div class="metrics compact">
+        <div><span>耗时</span><strong>3分11秒</strong></div>
+        <div><span>Token</span><strong>226,988</strong></div>
+        <div><span>费用</span><strong>$0.4126</strong></div>
+      </div>
+      
+      <div class="artifact-list"><article class="artifact is-primary">
+              <div class="artifact-head">
+                <strong>article.md</strong>
+                <a href="cases/content-standard-rewrite/workspace/submission/article.md" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre># 加班到十点，肩膀硬得像块板子，我最近就这么对付
+
+说出来有点不好意思，我一个天天对着电脑改方案的人，晚上回家的标配动作是：包一扔，人往沙发上一瘫，然后自己伸手去捏后颈，捏两下，龇牙咧嘴。
+
+不是什么大毛病，就是那种坐了一整天的僵。脖子往后仰一下，咔的一声，肩胛骨附近酸得发紧。推拿也去过，一次一百多，来回路上还得一个多小时，加班到十点的人根本排不进日程。
+
+后来同事看我上班中途老用脖子画圈，随手塞给我一片松间热敷贴，说你贴着试试。
+
+我的用法很简单：到家洗完澡，把它贴在睡衣外面，正好盖住后颈到肩的位置。它是蒸汽热敷的那种，撕开之后慢慢热起来，大概能持续发热30分钟。这30分钟我一般就是窝在沙发上看剧，或者干脆闭着眼躺着，热气敷在僵掉的那块地方，整个肩膀一点点松下来。那半小时基本就是一天里最不紧绷的半小时。
+
+有几个细节提醒一下，都是我自己用过才知道的：
+
+它要贴在衣物外侧，不要直接贴皮肤，热敷贴贴在皮肤上容易低温烫伤，这个别省事。
+
+它是发热让你舒服一点的东西，不是医疗器械，颈椎病什么的它治不了，该看医生还是要看医生。我把它理解成&quot;下班后的热毛巾升级版&quot;——不用我去烧热水拧毛巾，也不用毛巾敷到一半凉了再爬起来去换热水的。
+
+如果你在杭州，可以先不买。杭州有3个线下体验点，在小程序上能查到地址，路过的时候去感受一下热度和蒸汽的感觉，觉得合适再说。
+
+觉得合适的话，可以先拿体验装试试：39元一共7片，正好连续7天，每晚洗完澡贴一片。一周刚好是工作日最熬人的节奏，每天那30分钟能不能让你松下来，自己身体会告诉你。像我现在，包还没放下，先撕一片贴上，已经成了下班仪式感的一部分。
+
+长期伏案的应该都懂那种感觉：白天deadline压着不敢动，晚上肩膀酸得不想动。与其硬扛，不如每天给自己留30分钟热敷的时间，就当是跟自己这副身体和解一下。
+</pre>
+            </article></div>
+      <details class="task-detail">
+        <summary>查看原始任务</summary>
+        <pre># 任务
+
+你是品牌内容营销负责人。请阅读 `input/` 中的产品事实、发布 brief 和生硬初稿，把它改成一篇可以交给小红书企业号编辑继续发布的内容。
+
+## 交付要求
+
+- 在 `submission/article.md` 中交付。
+- 第一行是标题，使用一级标题。
+- 正文控制在约600-900个中文字符。
+- 面向长期伏案、晚上肩颈容易僵硬的普通上班族。
+- 保留所有能被素材支持的核心事实，不补造功效、用户反馈或认证。
+- 内容需要自然、具体、有生活感，不写成产品说明书。
+- 不解释你的写作过程。
+</pre>
+      </details>
+      <details class="technical">
+      <summary>技术详情</summary>
+      <pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;started_at&quot;: &quot;2026-08-28T01:56:46+00:00&quot;,
+  &quot;ended_at&quot;: &quot;2026-08-28T01:59:58+00:00&quot;,
+  &quot;telemetry&quot;: {
+    &quot;tokens&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;total&quot;: 226988,
+      &quot;input&quot;: 56655,
+      &quot;output&quot;: 1693,
+      &quot;cache_creation&quot;: 0,
+      &quot;cache_read&quot;: 168640,
+      &quot;source&quot;: &quot;claude --output-format json&quot;
+    },
+    &quot;cost&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;value&quot;: 0.41259,
+      &quot;currency&quot;: &quot;USD&quot;,
+      &quot;source&quot;: &quot;claude result total_cost_usd&quot;
+    },
+    &quot;session_id&quot;: &quot;f88a0ace-eb8c-4335-856a-d345862bcdee&quot;,
+    &quot;turns&quot;: 10,
+    &quot;api_duration_ms&quot;: 90139
+  },
+  &quot;validation&quot;: {
+    &quot;case_id&quot;: &quot;content-standard-rewrite&quot;,
+    &quot;checked_at&quot;: &quot;2026-08-28T01:59:58+00:00&quot;,
+    &quot;status&quot;: &quot;passed&quot;,
+    &quot;error_count&quot;: 0,
+    &quot;warning_count&quot;: 0,
+    &quot;checks&quot;: [
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;文章文件&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;article.md: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;text_length&quot;,
+        &quot;label&quot;: &quot;篇幅&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;非空白字符 756，要求 550-1100&quot;
+      },
+      {
+        &quot;type&quot;: &quot;contains_all&quot;,
+        &quot;label&quot;: &quot;关键事实&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;全部出现&quot;
+      },
+      {
+        &quot;type&quot;: &quot;contains_none&quot;,
+        &quot;label&quot;: &quot;模板化表达&quot;,
+        &quot;severity&quot;: &quot;warning&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;未发现禁用项&quot;
+      },
+      {
+        &quot;type&quot;: &quot;regex_count&quot;,
+        &quot;label&quot;: &quot;标题数量&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;匹配 1 次，要求 1-1&quot;
+      }
+    ]
+  },
+  &quot;error&quot;: &quot;找不到 Agent 命令：None&quot;
+}</pre>
+    </details>
+    </section>
+      <div class="review" aria-label="我的判断">
+        <div class="review-head"><strong>我的判断</strong><span>看完实际产物后选择</span></div>
+        <div class="review-buttons"><button type="button" data-review="直接可用">直接可用</button><button type="button" data-review="小改可用">小改可用</button><button type="button" data-review="需要大改">需要大改</button><button type="button" data-review="不会使用">不会使用</button></div>
+        <details>
+          <summary>添加备注</summary>
+          <textarea rows="3" placeholder="可选，记录好在哪里或问题是什么"></textarea>
+        </details>
+      </div>
+    </section><section class="dimension" id="dimension-research" data-dimension="research">
+      <header class="dimension-head">
+        <div>
+          <h2>调研分析</h2>
+          <p>1 个案例</p>
+        </div>
+        <div class="dimension-totals">
+          <div><span>耗时</span><strong>12分52秒</strong></div>
+          <div><span>Token</span><strong>684,129</strong></div>
+          <div><span>费用</span><strong>$1.0970</strong></div>
+        </div>
+      </header>
+      
+      <section class="case-panel active" data-level="standard">
+      <div class="case-heading">
+        <div>
+          <span class="level-label">常规任务</span>
+          <h3>调研三平台品牌内容合作与投放路径</h3>
+        </div>
+        
+      </div>
+      <div class="metrics compact">
+        <div><span>耗时</span><strong>12分52秒</strong></div>
+        <div><span>Token</span><strong>684,129</strong></div>
+        <div><span>费用</span><strong>$1.0970</strong></div>
+      </div>
+      <aside class="alert">
+      <div class="alert-title">发现 1 项客观问题</div>
+      <ul><li><strong>报告篇幅</strong><span>非空白字符 4534，要求 900-2600</span></li></ul>
+    </aside>
+      <div class="artifact-list"><article class="artifact is-primary">
+              <div class="artifact-head">
+                <strong>report.md</strong>
+                <a href="cases/research-standard-platform-paths/workspace/submission/report.md" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre># 三平台品牌内容合作路径速查报告
+
+&gt; 面向：内容营销同事 ｜ 更新日期：2026-08-28 ｜ 所有结论均以可打开的来源链接佐证，不确定项已单独标注。
+
+---
+
+## 一、结论速览
+
+| | 小红书 | 抖音 | B站 |
+|---|---|---|---|
+| 官方合作/投放入口 | 蒲公英（达人商单）＋ 聚光（广告投流） | 巨量星图（达人商单）＋ 巨量千川/随心推（投流） | 花火（达人商单）＋ 商业起飞等（投流） |
+| 品牌侧前提 | 先认证企业专业号，再用专业号登录蒲公英 | 注册星图客户账号（资质认证＋对公验证） | 花火注册 → 企业/行业资质认证（可绑定蓝V加速） |
+| 撮合方式 | 品牌邀约/招募，平台内报备+结算 | 指派任务、招募任务（1万元起投）、投稿任务、素材任务 | UP主广场询单 → 私信 → 线上合同 → 结算 |
+| 进店/成交链路 | 站内店铺；站外淘宝天猫经&quot;红猫计划&quot;广告挂链（试点开放中） | 千川闭环购物车 / 精选联盟挂车 | 悬赏计划带货、小店 |
+| 中小团队最低试水门槛 | 蒲公英免费入驻，按单结算 | 招募任务1万元起 | 花火入驻免费，按单结算 |
+
+---
+
+## 二、小红书
+
+### 入口
+1. **蒲公英平台（pgy.xiaohongshu.com）**：品牌与博主商业合作的官方平台。品牌侧流程：先到小红书专业号平台完成企业资质认证 → 用专业号信息登录蒲公英 → 找博主、发任务、审内容、看数据、结算。走代理需另在&quot;合作伙伴平台&quot;入驻；找买手带货走电商官网入驻后开通分销。
+   来源：https://pgy.xiaohongshu.com/role-introduce?needLogout=needLogout （官方页，浏览器直接打开需登录）
+2. **聚光平台（ad.xiaohongshu.com）**：官方一站式广告投放平台（搜索+信息流），用于给合作笔记加热、放大曝光。页面已验证可访问，开户操作需登录后台。
+
+### 授权 / 审核 / 商品链路注意点
+- **必须报备**：品牌合作的笔记须经蒲公英报备并添加&quot;商业合作&quot;声明，私下合作（水下笔记）有限流、下架风险；小红书《社区公约》要求创作者&quot;申明利益相关&quot;。该规则的官方页面在登录墙内，第三方口径高度一致，建议以蒲公英后台规则中心为准。
+- **站外成交**：2025年5月起&quot;红猫计划&quot;开放笔记下方&quot;广告挂链&quot;，可直跳淘宝天猫店铺/商品，全链路数据在淘宝&quot;种草星河&quot;平台观测；目前面向部分试点/优质品牌开放，非全部品牌可用。来源：https://m.huanqiu.com/article/4Ma7DTDkrcX 、https://static.nfnews.com/content/202505/07/c11266114.html?enterColumnId=5944
+- 蒲公英入驻本身免费；有第三方称平台收取约10%服务费——**未获官方页面证实**，以下单结算页为准。
+
+### 确认 vs 受限
+- ✅ 可确认：蒲公英是官方撮合/报备平台；品牌侧需企业专业号；聚光为官方投放后台。
+- ⚠️ 受账户权限/行业影响：特殊行业需额外行业资质（以专业号/聚光认证页提示为准）；&quot;广告挂链&quot;跳淘宝天猫目前试点开放，能否开通以平台审批为准。
+
+---
+
+## 三、抖音
+
+### 入口
+1. **巨量星图（www.xingtu.cn）**：抖音官方达人营销平台，品牌（客户）侧注册需资质认证、对公验证。帮助中心：https://www.xingtu.cn/help-center/demander/126583
+2. **巨量千川 / 小店随心推**：电商投流平台，入口 qianchuan.oceanengine.com 或抖店后台&quot;推广&quot;，用于给合作达人的视频投流。官方协议见：https://school.jinritemai.com/doudian/web/articlev0/aHZCbcQG8ZR8
+
+### 可用的合作模式（官方帮助中心已核实）
+- **招募任务-一口价**：批量合作中腰尾达人（1K–500W粉），单次任务**1万元起投**，达人自主折扣报价最低可到一口价2折，平台服务费5%；可一次下单批量合作，支持视频一键推送到千川等平台投放。来源：https://www.xingtu.cn/help-center/demander/126583
+- **指派任务**：定向邀约指定达人，一口价结算；下单时可单独增加一笔&quot;素材授权费&quot;（也可免费授权），合并支付。来源：https://www.xingtu.cn/help-center/author/139123
+- **素材任务**：达人不出镜发布、仅交付素材+肖像授权书，适合TVC/投放素材，首期限明星或500万粉以上达人。来源：https://www.xingtu.cn/help-center/demander/206682
+- **星川任务（千川星选）**：星图与千川联合产品，达人产出的带货素材直接在品牌官方/自运营账号下投放。来源：https://www.xingtu.cn/help-center/author/185745
+
+### 授权 / 审核 / 商品链路注意点（本平台规则最细，重点看）
+- **投流授权必须下单时勾选**：发单时启用「视频推送至投放平台」并勾选千川/DOU+/本地推/巨量营销，否则视频无法通过星图推送投流。**默认授权时长30天，上限365天**，到期需重新发起授权。来源：https://www.xingtu.cn/help-center/demander/114316
+- 千川仅支持**闭环购物车**组件；推500个账户内免费；推送账户主体不强制与下单主体一致，但账户需完成对应平台资质认证。
+- **内容审核**：客户自审模式下，达人上传视频后**3天内未确认即自动通过发布**，务必盯审核；也可选平台代审。招募任务视频发布90天后不能再推送投流。
+- **报备合规**：商单须走星图并由达人做商业标识；《互联网广告管理办法》要求广告内容可识别，未标&quot;广告&quot;的商单有市场监管处罚风险（第三方合规分析，供参考）：https://www.byerisk.com/blog/douyin-xingtu-ad-filing-compliance ；星图官方《内容管理规范》：https://www.xingtu.cn/help-center/mcn/136204
+- **行业限制**：「三品一械」（药品/医疗器械/保健食品/特殊化妆品等）客户**不可用**招募任务和投稿任务，只能加白合作指派任务。来源：126583 同页。
+
+### 确认 vs 受限
+- ✅ 可确认：以上任务模式、起投门槛、服务费、授权时长均出自星图官方帮助中心，2026年8月仍在更新。
+- ⚠️ 受账户/行业影响：星图客户注册需对公验证；三品一械等行业被排除在部分任务外；千川投放需有抖音小店（或按平台规则开通）。
+
+---
+
+## 四、B站
+
+### 入口
+1. **花火平台（huahuo.bilibili.com）**：B站官方UP主商业合作平台。品牌主流程：注册（可用B站账号或手机号，蓝V账号可授权继承认证信息加速）→ 企业资质+行业资质认证 → 解锁UP主广场 → 询单私信 → 线上签合同 → 审核UP主脚本/样片 → 发布 → 平台结算。来源（官方入驻指南）：https://www.bilibili.com/blackboard/activity-KdgoH1DKVh.html ；平台介绍：https://e.bilibili.com/observe/observe_40.html
+2. **投流工具**：花火合作内容可叠加**商业起飞**（内容加热）、**邀约广告**（视频框内/框下转化位）、**联合投稿**（品牌官号与UP主联合发布）。
+3. **带货**：**悬赏计划**是B站官方带货服务，UP主可通过评论区、橱窗、直播等位带货拿分成。来源（官方UP主营销地图）：https://www.bilibili.com/blackboard/activity-BPiQy33YHl.html
+
+### 授权 / 审核 / 商品链路注意点
+- UP主侧入驻门槛（决定你能选到谁）：实名认证+18岁+**粉丝≥1万**+电磁力信用分≥60；未达标但已有商机的可申请特殊入驻。来源：https://m.bilibili.com/opus/672301384317534227 、https://www.bilibili.com/blackboard/activity-C1aZCOqlAI.html
+- **影响**：1万粉门槛意味着B站腰尾部达人供给比抖音（招募任务1K粉起）明显少，小UP主若未入驻花火，只能走特殊入驻流程，周期不可控。
+- 合同、内容审核（脚本/样片）均在花火线上流程内完成，未经花火的商单同样有违规推广风险。
+- 花火品牌侧入驻免费；**当前服务费率未获官方页面证实**（上线初期曾限时免收），以下单页为准。
+
+### 确认 vs 受限
+- ✅ 可确认：花火是官方平台、品牌侧流程、UP主入驻门槛、起飞/邀约/联合投稿/悬赏计划均为官方页面或官方公告。
+- ⚠️ 受限：部分官方页（入驻指南、UP主营销地图）需浏览器正常渲染/登录才可见全文；行业资质按行业提交，金融、医疗等特行业审核更严。
+
+---
+
+## 五、给中小品牌团队的选择建议
+
+结合你们的情况（月合作10–20位达人、关心曝光/主页/进店/成交、无法务、预算有限、不买系统）：
+
+1. **主力放抖音，首选&quot;招募任务&quot;**。1万元起投、批量合作中小达人、折扣价、下单即完成报备和授权推送，是三个平台里对中小预算最友好的标准品。有抖音小店就同步勾选千川授权（注意默认授权只有30天，投得久的视频要提前续期）。
+2. **小红书走&quot;蒲公英报备 + 聚光加热&quot;**。先完成企业专业号认证（这是蒲公英和聚光的共同前提），合作走蒲公英报备避免限流；表现好的笔记用聚光追投。若成交主力在淘宝天猫，尽早申请&quot;广告挂链&quot;试点，打通进店/成交数据。
+3. **B站按品类决定，不要当主阵地**。花火流程最完整（合同+样片审核），但达人门槛1万粉、单条内容制作周期长，适合客单价高、决策链长的品类做深度内容；纯曝光/快转化场景效率不如前两者。
+4. **合规底线三件事**（没有法务也能执行）：所有商单一律走官方平台下单报备；要求达人内容带商业标识/&quot;广告&quot;声明；投放授权一律在平台内完成并记录授权到期日。
+5. **不要先买系统**。三平台的达人筛选、报备、审核、结算、数据都能在官方后台完成，先用官方功能跑一个完整月度周期，再看是否需要第三方数据工具补充选号。
+
+---
+
+## 六、来源与核验说明
+
+- 官方页面（本次直接抓取正文核实）：星图招募任务、星图视频推送授权、星图素材任务三篇帮助中心文档；B站营销官网花火介绍页。
+- 官方页面（URL存在、内容经检索获取但需登录/JS渲染）：蒲公英入驻页、花火品牌主入驻指南、UP主入驻指南、UP主营销地图、抖音电商学习中心千川服务协议。
+- 权威媒体报道：环球网/南方+（红猫计划）、界面新闻（花火上线公告）。
+- 第三方信息（已在文中标注、不作为确认依据）：蒲公英10%服务费、花火当前服务费率、星图未报备的处罚案例。
+- 检索日：2026-08-28。平台规则更新频繁，执行前请以各平台后台规则中心最新版本为准。
+</pre>
+            </article></div>
+      <details class="task-detail">
+        <summary>查看原始任务</summary>
+        <pre># 任务
+
+你在品牌内容团队工作，需要快速弄清小红书、抖音和B站当前公开的品牌内容合作与投放路径。
+
+请联网查找截至测试当天仍可访问的资料，优先使用平台官方产品页、帮助中心、规则中心和官方公告。不要把搜索摘要当成证据。
+
+## 交付要求
+
+在 `submission/report.md` 中交付一份给内容营销同事看的简明报告，至少包含：
+
+- 三个平台各自可用的合作或投放入口。
+- 品牌自主投放达人内容时需要注意的授权、审核或商品链路条件。
+- 哪些结论可以确认，哪些受账户权限、行业或版本影响。
+- 给一个中小品牌团队的选择建议。
+- 每个关键结论附近附可直接打开的来源链接。
+
+报告不需要写行业背景，优先回答“现在可以怎么做”。
+</pre>
+      </details>
+      <details class="technical">
+      <summary>技术详情</summary>
+      <pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;started_at&quot;: &quot;2026-08-28T01:59:58+00:00&quot;,
+  &quot;ended_at&quot;: &quot;2026-08-28T02:12:50+00:00&quot;,
+  &quot;telemetry&quot;: {
+    &quot;tokens&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;total&quot;: 684129,
+      &quot;input&quot;: 84541,
+      &quot;output&quot;: 9892,
+      &quot;cache_creation&quot;: 0,
+      &quot;cache_read&quot;: 589696,
+      &quot;source&quot;: &quot;claude --output-format json&quot;
+    },
+    &quot;cost&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;value&quot;: 1.097005,
+      &quot;currency&quot;: &quot;USD&quot;,
+      &quot;source&quot;: &quot;claude result total_cost_usd&quot;
+    },
+    &quot;session_id&quot;: &quot;cc248660-3289-4e90-907f-294bad06ac97&quot;,
+    &quot;turns&quot;: 24,
+    &quot;api_duration_ms&quot;: 482171
+  },
+  &quot;validation&quot;: {
+    &quot;case_id&quot;: &quot;research-standard-platform-paths&quot;,
+    &quot;checked_at&quot;: &quot;2026-08-28T02:12:50+00:00&quot;,
+    &quot;status&quot;: &quot;failed&quot;,
+    &quot;error_count&quot;: 1,
+    &quot;warning_count&quot;: 0,
+    &quot;checks&quot;: [
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;调研报告&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;report.md: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;text_length&quot;,
+        &quot;label&quot;: &quot;报告篇幅&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: false,
+        &quot;detail&quot;: &quot;非空白字符 4534，要求 900-2600&quot;
+      },
+      {
+        &quot;type&quot;: &quot;contains_all&quot;,
+        &quot;label&quot;: &quot;范围覆盖&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;全部出现&quot;
+      },
+      {
+        &quot;type&quot;: &quot;url_count&quot;,
+        &quot;label&quot;: &quot;来源链接&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;链接 17 个，至少 5 个&quot;
+      }
+    ]
+  },
+  &quot;error&quot;: &quot;找不到 Agent 命令：None&quot;
+}</pre>
+    </details>
+    </section>
+      <div class="review" aria-label="我的判断">
+        <div class="review-head"><strong>我的判断</strong><span>看完实际产物后选择</span></div>
+        <div class="review-buttons"><button type="button" data-review="直接可用">直接可用</button><button type="button" data-review="小改可用">小改可用</button><button type="button" data-review="需要大改">需要大改</button><button type="button" data-review="不会使用">不会使用</button></div>
+        <details>
+          <summary>添加备注</summary>
+          <textarea rows="3" placeholder="可选，记录好在哪里或问题是什么"></textarea>
+        </details>
+      </div>
+    </section><section class="dimension" id="dimension-data" data-dimension="data">
+      <header class="dimension-head">
+        <div>
+          <h2>数据分析</h2>
+          <p>1 个案例</p>
+        </div>
+        <div class="dimension-totals">
+          <div><span>耗时</span><strong>3分23秒</strong></div>
+          <div><span>Token</span><strong>227,326</strong></div>
+          <div><span>费用</span><strong>$0.3659</strong></div>
+        </div>
+      </header>
+      
+      <section class="case-panel active" data-level="standard">
+      <div class="case-heading">
+        <div>
+          <span class="level-label">常规任务</span>
+          <h3>清洗单表营销数据并给出业务结论</h3>
+        </div>
+        
+      </div>
+      <div class="metrics compact">
+        <div><span>耗时</span><strong>3分23秒</strong></div>
+        <div><span>Token</span><strong>227,326</strong></div>
+        <div><span>费用</span><strong>$0.3659</strong></div>
+      </div>
+      <aside class="alert">
+      <div class="alert-title">发现 1 项客观问题</div>
+      <ul><li><strong>关键计算</strong><span>best_ctr_note: {&#x27;note_id&#x27;: &#x27;N002&#x27;, &#x27;ctr&#x27;: 0.065, &#x27;spend&#x27;: 1040} != &#x27;N002&#x27;；risk_note: {&#x27;note_id&#x27;: &#x27;N006&#x27;, &#x27;spend&#x27;: 120, &#x27;orders&#x27;: 0} != &#x27;N006&#x27;</span></li></ul>
+    </aside>
+      <div class="artifact-list"><article class="artifact is-primary">
+              <div class="artifact-head">
+                <strong>analysis.md</strong>
+                <a href="cases/data-standard-single-table/workspace/submission/analysis.md" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre># 营销笔记表现分析（2026-07-01 至 07-08）
+
+## 一、数据清洗说明
+
+源数据共 9 行，其中 N005（2026-07-05）一行出现两次，且除 note_id 外的所有字段（impressions、clicks、spend、orders、revenue 等）完全一致，属于同一条记录被重复导入，而非两笔真实投放。因此仅删除这一条完全重复的行，去重后共 8 行。
+
+注意：N005 出现两次是因为重复导入，不是同一 note_id 的两笔独立投放，所以不能简单按 note_id 分组求和（那会把 N005 的花费和产出算成两倍）。其余笔记的 note_id 均唯一，未做任何合并。
+
+## 二、整体表现（基于去重后 8 行汇总）
+
+| 指标 | 数值 |
+|---|---|
+| 总曝光 | 70,000 |
+| 总点击 | 2,510 |
+| 总花费 | ¥5,475 |
+| 总订单 | 69 |
+| 总成交额 | ¥20,200 |
+| 整体 CTR | 3.59% |
+| 整体 CPC | ¥2.18 |
+| 整体 ROAS | 3.69 |
+
+所有比率均用去重后的汇总值相除得出，未取单行比率的平均。
+
+## 三、表现最好的笔记：N002
+
+在所有有花费（spend &gt; 0）的笔记中，N002 的 CTR 最高，达 6.5%（8,000 曝光带来 520 次点击）。它同时贡献了最高的单笔记成交额（¥4,800，16 单），ROAS 约 4.62，属于「点击率与转化双优」的笔记，值得作为后续内容的参考样板：分析它的选题、封面和开头钩子为什么能拉动点击，并复制到新一轮内容里。
+
+N004（CTR 5.0%、ROAS 9.6）和 N005（CTR 4.0%、ROAS 4.0）也表现健康，其中 N004 的是低投放高回报型，值得追加预算测试。
+
+## 四、最需要警惕的笔记：N006
+
+N006 有 ¥120 花费、4,000 次曝光，但只带来 60 次点击（CTR 仅 1.5%，为所有笔记最低），且最终 0 订单、0 成交——钱花出去但完全没有转化，是本期唯一「有花费无产出」的笔记，也是明确的风险点（若有多条此类笔记，取花费最高者，本期只有这一条）。
+
+另外 N007 是自然流量笔记（spend = 0，0 点击），不参与付费效率评估，但 9,000 曝光零点击说明内容本身没有驱动点击，可作为内容侧的观察样本而非投放问题。
+
+## 五、下一步建议
+
+1. **停掉或整改 N006**：CTR 过低说明素材与人群不匹配，先暂停花费，避免继续烧无转化流量；如需保留，先换封面/标题做小预算 A/B 测试。
+2. **复制 N002 的打法**：拆解 N002 高点击高转化的要素，应用到下一批笔记；对 N004 这类高 ROAS 的潜力笔记适度加预算，观察放量后效率是否守住。
+3. **关注转化链路而非单点指标**：N003 点击 300 次只出 3 单（点击-订单转化率 1%），点击不差但承接差，建议检查笔记指向的商品页/落地页，而不是继续堆点击。
+4. **修数据源**：N005 的重复行来自导入环节，建议在报表导出或入库时加唯一键校验（note_id + date），避免整体指标被悄悄放大。
+</pre>
+            </article><article class="artifact">
+              <div class="artifact-head">
+                <strong>answers.json</strong>
+                <a href="cases/data-standard-single-table/workspace/submission/answers.json" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre>{
+  &quot;raw_rows&quot;: 9,
+  &quot;deduplicated_rows&quot;: 8,
+  &quot;duplicate_note_id&quot;: &quot;N005&quot;,
+  &quot;total_impressions&quot;: 70000,
+  &quot;total_clicks&quot;: 2510,
+  &quot;total_spend&quot;: 5475,
+  &quot;total_orders&quot;: 69,
+  &quot;total_revenue&quot;: 20200,
+  &quot;overall_ctr&quot;: 0.03585714285714286,
+  &quot;overall_cpc&quot;: 2.1812749003984065,
+  &quot;overall_roas&quot;: 3.6894977168949773,
+  &quot;best_ctr_note&quot;: {
+    &quot;note_id&quot;: &quot;N002&quot;,
+    &quot;ctr&quot;: 0.065,
+    &quot;spend&quot;: 1040
+  },
+  &quot;risk_note&quot;: {
+    &quot;note_id&quot;: &quot;N006&quot;,
+    &quot;spend&quot;: 120,
+    &quot;orders&quot;: 0
+  }
+}
+</pre>
+            </article></div>
+      <details class="task-detail">
+        <summary>查看原始任务</summary>
+        <pre># 任务
+
+请分析 `input/note-performance.xlsx` 中的营销笔记表现数据。源数据里存在一个完全重复的数据行，计算整体指标前需要去重，但不能因为 note_id 相同就随意合并不同记录。
+
+## 指标口径
+
+- CTR = clicks / impressions
+- CPC = spend / clicks
+- ROAS = revenue / spend
+- 所有整体指标都用去重后的汇总值计算，不取单行比率平均值。
+- `best_ctr_note` 只在 spend 大于0的笔记中选择。
+- `risk_note` 选择有花费但订单为0的笔记；如果有多个，选择花费最高者。
+
+## 交付要求
+
+在 `submission/` 生成：
+
+- `answers.json`：至少包含 raw_rows、deduplicated_rows、duplicate_note_id、total_impressions、total_clicks、total_spend、total_orders、total_revenue、overall_ctr、overall_cpc、overall_roas、best_ctr_note、risk_note。
+- `analysis.md`：用业务语言说明数据清洗、表现最好与最需要警惕的笔记，以及下一步建议。
+
+比率在 JSON 中使用小数，不使用带百分号的字符串；金额保留原始货币数值。
+</pre>
+      </details>
+      <details class="technical">
+      <summary>技术详情</summary>
+      <pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;started_at&quot;: &quot;2026-08-28T02:12:50+00:00&quot;,
+  &quot;ended_at&quot;: &quot;2026-08-28T02:16:13+00:00&quot;,
+  &quot;telemetry&quot;: {
+    &quot;tokens&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;total&quot;: 227326,
+      &quot;input&quot;: 41433,
+      &quot;output&quot;: 2469,
+      &quot;cache_creation&quot;: 0,
+      &quot;cache_read&quot;: 183424,
+      &quot;source&quot;: &quot;claude --output-format json&quot;
+    },
+    &quot;cost&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;value&quot;: 0.36585200000000007,
+      &quot;currency&quot;: &quot;USD&quot;,
+      &quot;source&quot;: &quot;claude result total_cost_usd&quot;
+    },
+    &quot;session_id&quot;: &quot;5fbfea34-a3c5-4766-95fc-cdf75ee1a9cf&quot;,
+    &quot;turns&quot;: 7,
+    &quot;api_duration_ms&quot;: 101000
+  },
+  &quot;validation&quot;: {
+    &quot;case_id&quot;: &quot;data-standard-single-table&quot;,
+    &quot;checked_at&quot;: &quot;2026-08-28T02:16:13+00:00&quot;,
+    &quot;status&quot;: &quot;failed&quot;,
+    &quot;error_count&quot;: 1,
+    &quot;warning_count&quot;: 0,
+    &quot;checks&quot;: [
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;计算答案&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;answers.json: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;分析结论&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;analysis.md: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;json_match&quot;,
+        &quot;label&quot;: &quot;关键计算&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: false,
+        &quot;detail&quot;: &quot;best_ctr_note: {&#x27;note_id&#x27;: &#x27;N002&#x27;, &#x27;ctr&#x27;: 0.065, &#x27;spend&#x27;: 1040} != &#x27;N002&#x27;；risk_note: {&#x27;note_id&#x27;: &#x27;N006&#x27;, &#x27;spend&#x27;: 120, &#x27;orders&#x27;: 0} != &#x27;N006&#x27;&quot;
+      },
+      {
+        &quot;type&quot;: &quot;contains_all&quot;,
+        &quot;label&quot;: &quot;异常与重点&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;全部出现&quot;
+      },
+      {
+        &quot;type&quot;: &quot;text_length&quot;,
+        &quot;label&quot;: &quot;分析篇幅&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;非空白字符 1206，要求 350-1300&quot;
+      }
+    ]
+  },
+  &quot;error&quot;: &quot;找不到 Agent 命令：None&quot;
+}</pre>
+    </details>
+    </section>
+      <div class="review" aria-label="我的判断">
+        <div class="review-head"><strong>我的判断</strong><span>看完实际产物后选择</span></div>
+        <div class="review-buttons"><button type="button" data-review="直接可用">直接可用</button><button type="button" data-review="小改可用">小改可用</button><button type="button" data-review="需要大改">需要大改</button><button type="button" data-review="不会使用">不会使用</button></div>
+        <details>
+          <summary>添加备注</summary>
+          <textarea rows="3" placeholder="可选，记录好在哪里或问题是什么"></textarea>
+        </details>
+      </div>
+    </section><section class="dimension" id="dimension-local-files" data-dimension="local-files">
+      <header class="dimension-head">
+        <div>
+          <h2>本地文件任务</h2>
+          <p>1 个案例</p>
+        </div>
+        <div class="dimension-totals">
+          <div><span>耗时</span><strong>1分37秒</strong></div>
+          <div><span>Token</span><strong>161,553</strong></div>
+          <div><span>费用</span><strong>$0.3085</strong></div>
+        </div>
+      </header>
+      
+      <section class="case-panel active" data-level="standard">
+      <div class="case-heading">
+        <div>
+          <span class="level-label">常规任务</span>
+          <h3>跨文件提取最终预算、排期和负责人</h3>
+        </div>
+        
+      </div>
+      <div class="metrics compact">
+        <div><span>耗时</span><strong>1分37秒</strong></div>
+        <div><span>Token</span><strong>161,553</strong></div>
+        <div><span>费用</span><strong>$0.3085</strong></div>
+      </div>
+      <aside class="alert">
+      <div class="alert-title">发现 2 项客观问题</div>
+      <ul><li><strong>关键事实</strong><span>缺少：70000, 30000</span></li><li><strong>汇总篇幅</strong><span>非空白字符 1115，要求 300-1000</span></li></ul>
+    </aside>
+      <div class="artifact-list"><article class="artifact is-primary">
+              <div class="artifact-head">
+                <strong>summary.md</strong>
+                <a href="cases/local-files-standard-brief/workspace/submission/summary.md" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre># 秋日城市漫游 · 项目执行摘要
+
+## 结论（可直接执行）
+
+| 项目 | 结论 | 来源 |
+|---|---|---|
+| 最终预算 | 人民币 120,000 元（已审批通过，审批日 2026-08-19） | finance/budget.json（`total: 120000`，`approved: true`） |
+| 渠道分配 — 小红书 | 人民币 70,000 元 | finance/budget.json（`allocation.xiaohongshu`） |
+| 渠道分配 — B站 | 人民币 30,000 元 | finance/budget.json（`allocation.bilibili`） |
+| 渠道分配 — 预备金 | 人民币 20,000 元 | finance/budget.json（`allocation.reserve`） |
+| 内容上线时间 | 2026-09-05 前达人内容统一上线 | campaign/meeting.txt（2026-08-20 项目会结论第 1 条） |
+| 活动开始时间 | 2026-09-12 正式开始 | campaign/brief.md |
+| 项目负责人 | 林朔（负责最终验收和跨部门同步） | campaign/meeting.txt（2026-08-20 项目会结论第 2 条） |
+
+## 关键背景与约束
+
+- **主要平台**：小红书、B站，两平台均保留，暂不增加第三个平台。（campaign/brief.md；campaign/meeting.txt 第 3 条）
+- **内容方向**：通勤路线、城市周末、轻户外装备。（campaign/brief.md）
+- **项目目标**：正式活动前完成达人内容集中上线，为品牌店铺带来访问。（campaign/brief.md）
+- **预算口径**：2026-08-20 项目会明确以 finance/budget.json 为准，与 budget.json 中的 120,000 元一致，两文件之间无冲突。（campaign/meeting.txt 第 4 条）
+
+## 需要注意的非执行信息
+
+`notes/ideas.md` 为早期讨论记录，文件内已注明&quot;只是早期讨论，不是执行结论&quot;，以下内容**不作为执行依据**：
+
+- 加入抖音直播（未采纳）
+- 预算增至 15 万元制作城市短片（未采纳）
+- 活动推迟到国庆前（未采纳，正式时间仍为 2026-09-12）
+
+## 时间线一览
+
+- 2026-08-19：预算审批通过（finance/budget.json）
+- 2026-08-20：项目会确认上线时间、负责人与平台范围（campaign/meeting.txt）
+- 2026-09-05 前：达人内容统一上线（campaign/meeting.txt）
+- 2026-09-12：活动正式开始（campaign/brief.md）
+</pre>
+            </article></div>
+      <details class="task-detail">
+        <summary>查看原始任务</summary>
+        <pre># 任务
+
+`input/` 是一次品牌秋季内容项目的工作目录。请跨文件找出最终预算、渠道分配、内容上线时间、活动开始时间和项目负责人。
+
+在 `submission/summary.md` 交付一页执行摘要：
+
+- 先给可以直接执行的结论。
+- 金额同时写数字和单位。
+- 日期使用 `YYYY-MM-DD`。
+- 每项重要信息注明来自哪个文件。
+- 如果文件之间没有冲突，不要人为制造问题。
+
+不要修改或重新整理输入目录。
+</pre>
+      </details>
+      <details class="technical">
+      <summary>技术详情</summary>
+      <pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;started_at&quot;: &quot;2026-08-28T02:16:13+00:00&quot;,
+  &quot;ended_at&quot;: &quot;2026-08-28T02:17:51+00:00&quot;,
+  &quot;telemetry&quot;: {
+    &quot;tokens&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;total&quot;: 161553,
+      &quot;input&quot;: 40952,
+      &quot;output&quot;: 1689,
+      &quot;cache_creation&quot;: 0,
+      &quot;cache_read&quot;: 118912,
+      &quot;source&quot;: &quot;claude --output-format json&quot;
+    },
+    &quot;cost&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;value&quot;: 0.308523,
+      &quot;currency&quot;: &quot;USD&quot;,
+      &quot;source&quot;: &quot;claude result total_cost_usd&quot;
+    },
+    &quot;session_id&quot;: &quot;99f37094-5f69-4fac-b29b-5463543809ad&quot;,
+    &quot;turns&quot;: 9,
+    &quot;api_duration_ms&quot;: 64620
+  },
+  &quot;validation&quot;: {
+    &quot;case_id&quot;: &quot;local-files-standard-brief&quot;,
+    &quot;checked_at&quot;: &quot;2026-08-28T02:17:51+00:00&quot;,
+    &quot;status&quot;: &quot;failed&quot;,
+    &quot;error_count&quot;: 2,
+    &quot;warning_count&quot;: 0,
+    &quot;checks&quot;: [
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;汇总文件&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;summary.md: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;contains_all&quot;,
+        &quot;label&quot;: &quot;关键事实&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: false,
+        &quot;detail&quot;: &quot;缺少：70000, 30000&quot;
+      },
+      {
+        &quot;type&quot;: &quot;regex_count&quot;,
+        &quot;label&quot;: &quot;来源标注&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;匹配 18 次，要求 3-1000000000&quot;
+      },
+      {
+        &quot;type&quot;: &quot;text_length&quot;,
+        &quot;label&quot;: &quot;汇总篇幅&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: false,
+        &quot;detail&quot;: &quot;非空白字符 1115，要求 300-1000&quot;
+      }
+    ]
+  },
+  &quot;error&quot;: &quot;找不到 Agent 命令：None&quot;
+}</pre>
+    </details>
+    </section>
+      <div class="review" aria-label="我的判断">
+        <div class="review-head"><strong>我的判断</strong><span>看完实际产物后选择</span></div>
+        <div class="review-buttons"><button type="button" data-review="直接可用">直接可用</button><button type="button" data-review="小改可用">小改可用</button><button type="button" data-review="需要大改">需要大改</button><button type="button" data-review="不会使用">不会使用</button></div>
+        <details>
+          <summary>添加备注</summary>
+          <textarea rows="3" placeholder="可选，记录好在哪里或问题是什么"></textarea>
+        </details>
+      </div>
+    </section><section class="dimension" id="dimension-development" data-dimension="development">
+      <header class="dimension-head">
+        <div>
+          <h2>项目开发</h2>
+          <p>1 个案例</p>
+        </div>
+        <div class="dimension-totals">
+          <div><span>耗时</span><strong>4分6秒</strong></div>
+          <div><span>Token</span><strong>291,026</strong></div>
+          <div><span>费用</span><strong>$0.2355</strong></div>
+        </div>
+      </header>
+      
+      <section class="case-panel active" data-level="standard">
+      <div class="case-heading">
+        <div>
+          <span class="level-label">常规任务</span>
+          <h3>理解现有微型项目并修复筛选与金额计算</h3>
+        </div>
+        
+      </div>
+      <div class="metrics compact">
+        <div><span>耗时</span><strong>4分6秒</strong></div>
+        <div><span>Token</span><strong>291,026</strong></div>
+        <div><span>费用</span><strong>$0.2355</strong></div>
+      </div>
+      
+      <div class="artifact-list"><article class="artifact is-primary">
+              <div class="artifact-head">
+                <strong>app/app.js</strong>
+                <a href="cases/development-standard-bugfix/workspace/submission/app/app.js" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre>const tasks = [
+  { name: &quot;通勤杯首发&quot;, status: &quot;active&quot;, spend: &quot;120.5&quot; },
+  { name: &quot;轻量伞复投&quot;, status: &quot;paused&quot;, spend: &quot;87&quot; },
+  { name: &quot;收纳包加热&quot;, status: &quot;active&quot;, spend: &quot;100&quot; }
+];
+
+function filterTasks(items, status) {
+  if (status === &quot;all&quot;) return items;
+  return items.filter(item =&gt; item.status === status);
+}
+
+function calculateTotal(items) {
+  return items.reduce((sum, item) =&gt; sum + Number(item.spend), 0);
+}
+
+function render(status = &quot;all&quot;) {
+  const visible = filterTasks(tasks, status);
+  document.querySelector(&quot;#task-list&quot;).innerHTML = visible.map(item =&gt; `&lt;li&gt;&lt;span&gt;${item.name}&lt;/span&gt;&lt;span&gt;${item.status}&lt;/span&gt;&lt;/li&gt;`).join(&quot;&quot;);
+  document.querySelector(&quot;#total-spend&quot;).textContent = calculateTotal(visible);
+}
+
+if (typeof document !== &quot;undefined&quot;) {
+  document.querySelector(&quot;#status-filter&quot;).addEventListener(&quot;change&quot;, event =&gt; render(event.target.value));
+  render();
+}
+
+if (typeof module !== &quot;undefined&quot;) module.exports = { tasks, filterTasks, calculateTotal };
+</pre>
+            </article><article class="artifact">
+              <div class="artifact-head">
+                <strong>app/index.html</strong>
+                <a href="cases/development-standard-bugfix/workspace/submission/app/index.html" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre>&lt;!doctype html&gt;
+&lt;html lang=&quot;zh-CN&quot;&gt;
+&lt;head&gt;
+  &lt;meta charset=&quot;utf-8&quot;&gt;
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1&quot;&gt;
+  &lt;title&gt;投放任务&lt;/title&gt;
+  &lt;link rel=&quot;stylesheet&quot; href=&quot;styles.css&quot;&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;main&gt;
+    &lt;h1&gt;本周投放任务&lt;/h1&gt;
+    &lt;label&gt;状态
+      &lt;select id=&quot;status-filter&quot;&gt;
+        &lt;option value=&quot;all&quot;&gt;全部&lt;/option&gt;
+        &lt;option value=&quot;active&quot;&gt;进行中&lt;/option&gt;
+        &lt;option value=&quot;paused&quot;&gt;已暂停&lt;/option&gt;
+      &lt;/select&gt;
+    &lt;/label&gt;
+    &lt;p&gt;总花费：&lt;strong id=&quot;total-spend&quot;&gt;&lt;/strong&gt;&lt;/p&gt;
+    &lt;ul id=&quot;task-list&quot;&gt;&lt;/ul&gt;
+  &lt;/main&gt;
+  &lt;script src=&quot;app.js&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+            </article><article class="artifact">
+              <div class="artifact-head">
+                <strong>app/styles.css</strong>
+                <a href="cases/development-standard-bugfix/workspace/submission/app/styles.css" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre>:root { font-family: &quot;Segoe UI&quot;, sans-serif; color: #1c2522; background: #eef2f0; }
+body { margin: 0; }
+main { width: min(680px, calc(100% - 32px)); margin: 48px auto; background: white; padding: 28px; border-radius: 12px; }
+select { margin-left: 8px; padding: 6px 10px; }
+ul { list-style: none; padding: 0; }
+li { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #dce3df; }
+</pre>
+            </article></div>
+      <details class="task-detail">
+        <summary>查看原始任务</summary>
+        <pre># 任务
+
+`input/app/` 是一个可以直接打开的投放任务列表，但现在有两个明确问题：状态筛选无效，总花费计算会把数字拼成字符串。
+
+请理解项目后修复问题，并保持现有页面结构和视觉风格。
+
+## 验收要求
+
+- 将完整可运行项目交付到 `submission/app/`。
+- “进行中”筛选只显示 status 为 active 的任务。
+- 总花费必须按数值相加，当前数据结果应为307.5。
+- `all` 筛选显示全部3项。
+- 页面直接打开仍能工作。
+- 不删除已有的导出接口，方便自动测试。
+- 交付前自行运行测试。
+</pre>
+      </details>
+      <details class="technical">
+      <summary>技术详情</summary>
+      <pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;started_at&quot;: &quot;2026-08-28T02:17:51+00:00&quot;,
+  &quot;ended_at&quot;: &quot;2026-08-28T02:21:57+00:00&quot;,
+  &quot;telemetry&quot;: {
+    &quot;tokens&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;total&quot;: 291026,
+      &quot;input&quot;: 10465,
+      &quot;output&quot;: 1521,
+      &quot;cache_creation&quot;: 0,
+      &quot;cache_read&quot;: 279040,
+      &quot;source&quot;: &quot;claude --output-format json&quot;
+    },
+    &quot;cost&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;value&quot;: 0.23549500000000004,
+      &quot;currency&quot;: &quot;USD&quot;,
+      &quot;source&quot;: &quot;claude result total_cost_usd&quot;
+    },
+    &quot;session_id&quot;: &quot;5f22d0bc-917d-46ac-ab68-e6d17a5c21eb&quot;,
+    &quot;turns&quot;: 11,
+    &quot;api_duration_ms&quot;: 149498
+  },
+  &quot;validation&quot;: {
+    &quot;case_id&quot;: &quot;development-standard-bugfix&quot;,
+    &quot;checked_at&quot;: &quot;2026-08-28T02:21:57+00:00&quot;,
+    &quot;status&quot;: &quot;passed&quot;,
+    &quot;error_count&quot;: 0,
+    &quot;warning_count&quot;: 0,
+    &quot;checks&quot;: [
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;页面入口&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;app/index.html: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;功能脚本&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;app/app.js: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;case_command&quot;,
+        &quot;label&quot;: &quot;隐藏功能测试&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;退出码 0\nfunctional checks passed&quot;
+      }
+    ]
+  },
+  &quot;error&quot;: &quot;找不到 Agent 命令：None&quot;
+}</pre>
+    </details>
+    </section>
+      <div class="review" aria-label="我的判断">
+        <div class="review-head"><strong>我的判断</strong><span>看完实际产物后选择</span></div>
+        <div class="review-buttons"><button type="button" data-review="直接可用">直接可用</button><button type="button" data-review="小改可用">小改可用</button><button type="button" data-review="需要大改">需要大改</button><button type="button" data-review="不会使用">不会使用</button></div>
+        <details>
+          <summary>添加备注</summary>
+          <textarea rows="3" placeholder="可选，记录好在哪里或问题是什么"></textarea>
+        </details>
+      </div>
+    </section><section class="dimension" id="dimension-web-verification" data-dimension="web-verification">
+      <header class="dimension-head">
+        <div>
+          <h2>联网搜索与事实核验</h2>
+          <p>1 个案例</p>
+        </div>
+        <div class="dimension-totals">
+          <div><span>耗时</span><strong>15分1秒</strong></div>
+          <div><span>Token</span><strong>1,058,301</strong></div>
+          <div><span>费用</span><strong>$1.0450</strong></div>
+        </div>
+      </header>
+      
+      <section class="case-panel active" data-level="standard">
+      <div class="case-heading">
+        <div>
+          <span class="level-label">常规任务</span>
+          <h3>核验AI Agent产品能力陈述</h3>
+        </div>
+        
+      </div>
+      <div class="metrics compact">
+        <div><span>耗时</span><strong>15分1秒</strong></div>
+        <div><span>Token</span><strong>1,058,301</strong></div>
+        <div><span>费用</span><strong>$1.0450</strong></div>
+      </div>
+      <aside class="alert">
+      <div class="alert-title">发现 1 项客观问题</div>
+      <ul><li><strong>不确定性说明</strong><span>缺少：截止</span></li></ul>
+    </aside>
+      <div class="artifact-list"><article class="artifact is-primary">
+              <div class="artifact-head">
+                <strong>evidence.md</strong>
+                <a href="cases/web-standard-product-facts/workspace/submission/evidence.md" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre># 陈述核验证据
+
+核验日期：2026-08-28。原则：只依据官方产品文档、帮助中心或官方 CLI 帮助文本直接支持的内容判「确认」；官方资料未明确说明的以「无法确认」处理，不用搜索摘要或第三方转述补齐。
+
+## C1：Claude Code 的非交互模式可以输出机器可读 JSON — **确认**
+
+**结论**：成立。
+
+**依据**：Claude Code 官方 CLI 参考文档（页面标题 &quot;CLI reference&quot;）在 print 模式标志表中明确记载：
+
+&gt; `--output-format` | Specify output format for print mode (options: `text`, `json`, `stream-json`) | `claude -p &quot;query&quot; --output-format json`
+
+&gt; `--json-schema` | Get validated JSON output matching a JSON Schema after the agent completes its workflow (**print mode only**) | `claude -p --json-schema &#x27;{&quot;type&quot;:&quot;object&quot;,...}&#x27; &quot;query&quot;`
+
+**条件**：
+- `--output-format` 仅适用于 print 模式（`claude -p`），交互模式不适用。
+- 可选值为 `text`、`json`、`stream-json` 三种；`json` 与 `stream-json` 均为机器可读格式。
+- 部分高级特性有额外前提：`--include-partial-messages` 与 `--include-hook-events` 要求 `--output-format stream-json`（常配合 `--verbose`）；`--replay-user-messages` 要求输入输出均为 `stream-json`。
+
+**来源**：
+- https://code.claude.com/docs/en/cli-reference — 页面标题 &quot;CLI reference&quot;，页面未标注更新日期，访问日期 2026-08-28。（原 docs.claude.com 地址 301 重定向至此官方新域名。）
+
+## C2：Codex CLI 可以在非交互模式中指定模型和工作目录 — **确认**
+
+**结论**：成立。
+
+**依据**：本机安装的 Codex CLI（codex-cli 0.149.1）执行 `codex exec --help` 的官方内置帮助文本，`codex exec` 即 &quot;Run Codex non-interactively&quot;，其选项中明确记载：
+
+&gt; `-m, --model &lt;MODEL&gt;` — Model the agent should use
+
+&gt; `-C, --cd &lt;DIR&gt;` — Tell the agent to use the specified directory as its working root
+
+**条件**：
+- 本次核验基于 codex-cli 0.149.1；标志为非交互子命令 `codex exec` 所有。
+- 另有 `--add-dir &lt;DIR&gt;` 可指定额外可写目录。
+
+**来源核实过程**：官方 GitHub 仓库 openai/codex 的 `docs/exec.md` 当前仅为指向 https://developers.openai.com/codex/noninteractive 的跳转说明；该官方页面在本机网络环境直连返回 403，无法直接读取，故未采用其内容，改以官方 CLI 帮助文本为准（属任务允许的官方来源「CLI帮助」）。
+
+**来源**：
+- `codex exec --help` / `codex --help`（codex-cli 0.149.1 官方内置帮助，本机运行，访问日期 2026-08-28）
+- https://github.com/openai/codex/blob/main/docs/exec.md — 页面标题 &quot;codex/docs/exec.md at main · openai/codex · GitHub&quot;，访问日期 2026-08-28（仅确认其指向官方非交互文档，未采信其未包含的细节）
+
+## C3：Claude Code 的 Skills 与 Codex Skills 使用完全相同的加载规则和界面配置 — **错误**
+
+**结论**：不成立。两者均遵循 Agent Skills 开放标准（SKILL.md 文件格式兼容），但官方文档记载的加载规则与界面配置均不相同，「完全相同」为错误表述。
+
+**依据（双方官方文档对照）**：
+
+| 维度 | Claude Code（官方 Skills 文档） | Codex（官方 Skills 文档） |
+|---|---|---|
+| 用户级目录 | `~/.claude/skills/&lt;skill-name&gt;/SKILL.md` | `~/.agents/skills` |
+| 项目级目录 | `.claude/skills/&lt;skill-name&gt;/SKILL.md`（支持嵌套 `.claude/skills/` 并生成目录限定名，如 `/apps/web:deploy`） | 从当前目录到仓库根逐层扫描 `.agents/skills` |
+| 组织/机器级 | Enterprise：按 managed settings | ADMIN：`/etc/codex/skills`；另有 SYSTEM 级由 OpenAI 随产品内置 |
+| 插件/扩展 | Plugin：`&lt;plugin&gt;/skills/&lt;skill-name&gt;/SKILL.md`，命名空间为 `plugin-name:skill-name` | 无对应插件目录机制 |
+| 调用界面 | 斜杠命令 `/skill-name` 直接调用；bundled skills 如 `/doctor`、`/code-review` | `/skills` 命令列出，或输入 `$` 以提及方式调用；ChatGPT 端用 `@` 选择 |
+| 配置开关 | settings 中 `disableBundledSkills`、`skillOverrides`（settings.json 体系） | `~/.codex/config.toml` 中 `[[skills.config]]`（`path` + `enabled = false`） |
+| UI 元数据 | 无 openai.yaml 对应物；Claude Code 有专有 frontmatter 扩展（invocation control、subagent 执行、动态上下文注入） | `agents/openai.yaml`：`display_name`、`short_description`、`brand_color`、`default_prompt`、`policy.allow_implicit_invocation` |
+| 冲突解析 | 文档明确规定跨层级覆盖顺序（enterprise &gt; personal &gt; project，插件独立命名空间等） | 同名不合并：&quot;both can appear in skill selectors&quot; |
+
+Claude Code 官方文档原话确认两者关系是「同标准、异扩展」：
+
+&gt; &quot;Claude Code skills follow the [Agent Skills](https://agentskills.io) open standard, which works across multiple AI tools. Claude Code extends the standard with additional features like invocation control, subagent execution, and dynamic context injection.&quot;
+
+**条件**：无——该陈述为无条件的「完全相同」断言，双方官方文档均已给出反证。
+
+**来源**：
+- https://code.claude.com/docs/en/skills — 页面标题 &quot;Extend Claude with skills&quot;，访问日期 2026-08-28。
+- https://developers.openai.com/codex/skills — 页面标题 &quot;Skills – OpenAI Codex&quot;，访问日期 2026-08-28。注：该站点对本机环境直连返回 403，内容系通过只读代理抓取该官方页面的原文获得，非第三方转述。
+
+## C4：只要知道模型的Token数量，就一定能从Agent工具中得到最终实际账单费用 — **错误**
+
+**结论**：不成立。
+
+**依据**：Claude Code 官方成本管理文档（页面标题 &quot;Manage costs effectively&quot;）多处直接否定该断言：
+
+1. 本地估算不等于实际账单：
+
+&gt; &quot;Claude Code computes the dollar figure locally from token counts priced at standard list rates, so it doesn&#x27;t reflect promotional pricing or contracted discounts and may differ from your actual bill. For authoritative billing, see the Usage page in the Claude Console.&quot;
+
+2. 计费不只取决于 token 总数——不同类型 token 牌价不同（官方 `/usage` 示例输出按 `input / output / cache read / cache write` 分列计价），同一 token 数在不同模型上费用也不同（文档：&quot;Per-developer costs vary widely based on model selection, codebase size, and usage patterns&quot;）。
+
+3. 订阅计费与 token 数无换算关系：
+
+&gt; &quot;Claude Max and Pro subscribers have usage included in their subscription, so the session cost figure isn&#x27;t relevant for billing purposes.&quot;
+
+&gt; &quot;Usage inside the seat allowance isn&#x27;t metered in dollars.&quot;
+
+4. 接入渠道改变计费主体：经 Amazon Bedrock、Google Cloud、Microsoft Foundry 接入时按云厂商账单计费（&quot;Claude Code is billed per token to your cloud account&quot;），与 Anthropic Console 账单体系相互独立。
+
+**条件**：无——该陈述为「一定能」的无条件断言，官方文档已给出多重反证。反过来说：只有在「API 按量计费 + 已知该模型全部 token 分类的标准牌价 + 无折扣/订阅/云厂商转售」等前提同时满足时，token 数量才可推算费用，但即便如此官方仍声明以 Console Usage 页为权威。
+
+**来源**：
+- https://code.claude.com/docs/en/costs — 页面标题 &quot;Manage costs effectively&quot;，访问日期 2026-08-28。
+
+---
+
+## 核验方法说明
+
+- 所有「确认」判断均来自官方来源原文：Claude Code 官方文档站（code.claude.com）、Codex CLI 官方内置帮助文本（本机 0.149.1 实际运行输出）。
+- developers.openai.com 对当前网络环境直连返回 403（curl 与直接抓取均如此），C3 所需 Codex Skills 官方页面内容通过只读代理获取该 URL 原文，已在对应条目中注明。未使用任何搜索引擎摘要或第三方文章作为判定依据。
+- 版本条件已逐条标注：C2 依赖 codex-cli 0.149.1 的帮助文本；C1 的 `--json-schema`、部分流式标志有模式/搭配前提；C3、C4 为无条件断言，判「错误」。
+</pre>
+            </article><article class="artifact">
+              <div class="artifact-head">
+                <strong>verdicts.json</strong>
+                <a href="cases/web-standard-product-facts/workspace/submission/verdicts.json" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre>{
+  &quot;cutoff_date&quot;: &quot;2026-08-28&quot;,
+  &quot;claims&quot;: [
+    {
+      &quot;id&quot;: &quot;C1&quot;,
+      &quot;verdict&quot;: &quot;确认&quot;,
+      &quot;reason&quot;: &quot;Claude Code 官方 CLI 参考文档明确记载：非交互（print）模式支持 --output-format 标志，可选值包含 json 和 stream-json，即机器可读 JSON 输出；另有 --json-schema 可在 print 模式下输出经 schema 校验的 JSON（示例：claude -p --json-schema &#x27;{\&quot;type\&quot;:\&quot;object\&quot;}&#x27; \&quot;query\&quot;）。条件：--output-format 仅适用于 print 模式（claude -p），不适用于交互模式；部分高级流式特性（如 --include-partial-messages）要求 stream-json 格式并配合 --verbose。&quot;,
+      &quot;sources&quot;: [
+        &quot;https://code.claude.com/docs/en/cli-reference（页面标题：CLI reference，访问日期 2026-08-28）&quot;
+      ]
+    },
+    {
+      &quot;id&quot;: &quot;C2&quot;,
+      &quot;verdict&quot;: &quot;确认&quot;,
+      &quot;reason&quot;: &quot;Codex CLI 官方命令行帮助（本机安装的 codex-cli 0.149.1 执行 `codex exec --help` 的实际输出）明确记载：非交互子命令 `codex exec` 支持 `-m, --model &lt;MODEL&gt;`（\&quot;Model the agent should use\&quot;）和 `-C, --cd &lt;DIR&gt;`（\&quot;Tell the agent to use the specified directory as its working root\&quot;）。条件：依赖版本（本次核验基于 0.149.1）；两个标志位于 `codex exec` 非交互子命令上。官方 GitHub 仓库 docs/exec.md 将非交互模式文档指向 developers.openai.com/codex/noninteractive，该页面在本次网络环境下返回 403，未能直接读取，故以官方 CLI 帮助文本为准。&quot;,
+      &quot;sources&quot;: [
+        &quot;codex exec --help（codex-cli 0.149.1 官方内置帮助文本，本机运行，访问日期 2026-08-28）&quot;,
+        &quot;https://github.com/openai/codex/blob/main/docs/exec.md（页面标题：codex/docs/exec.md at main · openai/codex · GitHub，内容为指向官方非交互文档的链接，访问日期 2026-08-28）&quot;
+      ]
+    },
+    {
+      &quot;id&quot;: &quot;C3&quot;,
+      &quot;verdict&quot;: &quot;错误&quot;,
+      &quot;reason&quot;: &quot;双方官方文档显示的加载规则和界面配置均不相同，&#x27;完全相同&#x27;不成立。加载目录不同：Claude Code 从 ~/.claude/skills/、项目 .claude/skills/（含嵌套目录的目录限定名）、企业托管设置和插件 &lt;plugin&gt;/skills/ 加载；Codex 从仓库各层 .agents/skills/、用户 ~/.agents/skills/、管理员 /etc/codex/skills/ 及系统内置位置加载。界面配置不同：Claude Code 以 /skill-name 斜杠命令调用，冲突解析规则写入文档，开关走 settings（如 disableBundledSkills、skillOverrides），并有 Claude Code 专有 frontmatter 扩展（invocation control、subagent 执行、动态上下文注入）；Codex 以 /skills 命令或 $ 提及调用，禁用开关写在 ~/.codex/config.toml 的 [[skills.config]]，UI 元数据走 agents/openai.yaml（display_name、brand_color、policy.allow_implicit_invocation 等）。两者只是都遵循 Agent Skills 开放标准的 SKILL.md 文件格式（Claude Code 文档原话为 &#x27;extends the standard with additional features&#x27;），格式兼容不等于加载规则与界面配置相同。&quot;,
+      &quot;sources&quot;: [
+        &quot;https://code.claude.com/docs/en/skills（页面标题：Extend Claude with skills，访问日期 2026-08-28）&quot;,
+        &quot;https://developers.openai.com/codex/skills（页面标题：Skills – OpenAI Codex，访问日期 2026-08-28；该站对当前环境直连返回 403，内容经只读代理抓取官方页面原文获得）&quot;
+      ]
+    },
+    {
+      &quot;id&quot;: &quot;C4&quot;,
+      &quot;verdict&quot;: &quot;错误&quot;,
+      &quot;reason&quot;: &quot;官方成本文档直接否定了&#x27;知道 Token 数量就一定能得到最终实际账单费用&#x27;：(1) Claude Code 本地按标准牌价由 token 数计算的金额&#x27;不反映促销价或合同折扣，可能与实际账单不同&#x27;，权威账单以 Claude Console Usage 页为准；(2) 计费不只取决于 token 总数——缓存读、缓存写 token 与普通输入输出 token 牌价不同，同一 token 数在不同模型上费用也不同；(3) 订阅用户（Pro/Max/Team/Enterprise）按席位额度计费，额度内用量&#x27;不以美元计量&#x27;，与 token 数无直接换算关系；(4) 经云厂商（Bedrock 等）接入时按云厂商账单计费。因此仅知道 token 数量不足以确定最终实际账单费用。&quot;,
+      &quot;sources&quot;: [
+        &quot;https://code.claude.com/docs/en/costs（页面标题：Manage costs effectively，访问日期 2026-08-28）&quot;
+      ]
+    }
+  ]
+}
+</pre>
+            </article></div>
+      <details class="task-detail">
+        <summary>查看原始任务</summary>
+        <pre># 任务
+
+请联网核验 `input/claims.md` 中的4条陈述。只能把能被当前官方资料直接支持的内容标为“确认”。官方资料没有明确说明时标为“无法确认”，不要用搜索摘要或第三方转述补齐。
+
+## 交付要求
+
+在 `submission/` 生成：
+
+- `verdicts.json`：包含 cutoff_date 和 claims 数组。每条记录包含 id、verdict、reason、sources。verdict 只能是 `确认`、`错误`、`部分正确`、`无法确认`。
+- `evidence.md`：逐条解释判断，附直接来源链接、页面标题和页面日期或访问日期。
+
+优先查官方产品文档、帮助中心、CLI帮助或官方发布说明。发现能力依赖版本、账户或运行环境时必须写清条件。
+</pre>
+      </details>
+      <details class="technical">
+      <summary>技术详情</summary>
+      <pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;started_at&quot;: &quot;2026-08-28T02:21:57+00:00&quot;,
+  &quot;ended_at&quot;: &quot;2026-08-28T02:36:58+00:00&quot;,
+  &quot;telemetry&quot;: {
+    &quot;tokens&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;total&quot;: 1058301,
+      &quot;input&quot;: 34712,
+      &quot;output&quot;: 9573,
+      &quot;cache_creation&quot;: 0,
+      &quot;cache_read&quot;: 1014016,
+      &quot;source&quot;: &quot;claude --output-format json&quot;
+    },
+    &quot;cost&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;value&quot;: 1.045033,
+      &quot;currency&quot;: &quot;USD&quot;,
+      &quot;source&quot;: &quot;claude result total_cost_usd&quot;
+    },
+    &quot;session_id&quot;: &quot;eca36433-f1e1-4d5e-a911-00bcf9470d1e&quot;,
+    &quot;turns&quot;: 30,
+    &quot;api_duration_ms&quot;: 459209
+  },
+  &quot;validation&quot;: {
+    &quot;case_id&quot;: &quot;web-standard-product-facts&quot;,
+    &quot;checked_at&quot;: &quot;2026-08-28T02:36:58+00:00&quot;,
+    &quot;status&quot;: &quot;passed&quot;,
+    &quot;error_count&quot;: 0,
+    &quot;warning_count&quot;: 1,
+    &quot;checks&quot;: [
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;核验结果&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;verdicts.json: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;证据说明&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;evidence.md: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;json_keys&quot;,
+        &quot;label&quot;: &quot;结果结构&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;字段齐全&quot;
+      },
+      {
+        &quot;type&quot;: &quot;url_count&quot;,
+        &quot;label&quot;: &quot;官方来源&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;链接 7 个，至少 4 个&quot;
+      },
+      {
+        &quot;type&quot;: &quot;contains_all&quot;,
+        &quot;label&quot;: &quot;不确定性说明&quot;,
+        &quot;severity&quot;: &quot;warning&quot;,
+        &quot;passed&quot;: false,
+        &quot;detail&quot;: &quot;缺少：截止&quot;
+      }
+    ]
+  },
+  &quot;error&quot;: &quot;找不到 Agent 命令：None&quot;
+}</pre>
+    </details>
+    </section>
+      <div class="review" aria-label="我的判断">
+        <div class="review-head"><strong>我的判断</strong><span>看完实际产物后选择</span></div>
+        <div class="review-buttons"><button type="button" data-review="直接可用">直接可用</button><button type="button" data-review="小改可用">小改可用</button><button type="button" data-review="需要大改">需要大改</button><button type="button" data-review="不会使用">不会使用</button></div>
+        <details>
+          <summary>添加备注</summary>
+          <textarea rows="3" placeholder="可选，记录好在哪里或问题是什么"></textarea>
+        </details>
+      </div>
+    </section><section class="dimension" id="dimension-skill-building" data-dimension="skill-building">
+      <header class="dimension-head">
+        <div>
+          <h2>Skill与工作流构建</h2>
+          <p>1 个案例</p>
+        </div>
+        <div class="dimension-totals">
+          <div><span>耗时</span><strong>8分37秒</strong></div>
+          <div><span>Token</span><strong>352,201</strong></div>
+          <div><span>费用</span><strong>$0.8462</strong></div>
+        </div>
+      </header>
+      
+      <section class="case-panel active" data-level="standard">
+      <div class="case-heading">
+        <div>
+          <span class="level-label">常规任务</span>
+          <h3>把固定周复盘流程封装成可调用Skill</h3>
+        </div>
+        
+      </div>
+      <div class="metrics compact">
+        <div><span>耗时</span><strong>8分37秒</strong></div>
+        <div><span>Token</span><strong>352,201</strong></div>
+        <div><span>费用</span><strong>$0.8462</strong></div>
+      </div>
+      
+      <div class="artifact-list"><article class="artifact is-primary">
+              <div class="artifact-head">
+                <strong>weekly-review/references/rubric.md</strong>
+                <a href="cases/skill-standard-create/workspace/submission/weekly-review/references/rubric.md" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre># 周复盘质量评分规则
+
+用于自评、复核他人复盘、或用户要求给复盘打分时。5 个维度各 0–2 分，总分 10。逐项核对，每个扣分点都要指出具体条目。
+
+## 1. 证据完备性（0–2）
+
+- 2 分：事实区每条都有可回查的出处（文件名/数据/条目），抽查能对上。
+- 1 分：大部分有条目缺出处，或出处笼统（只写&quot;周报&quot;没有定位到条目）。
+- 0 分：存在无证据的&quot;完成事项&quot;，或证据与描述对不上。
+
+## 2. 动作/结果区分（0–2）
+
+- 2 分：事实区每条都指向可观察变化（指标变化、产出物、闭环）；纯动作全部进了&quot;未完成&quot;分析。
+- 1 分：混入 1–2 条只有动作没有变化的事项。
+- 0 分：大量&quot;推进了/跟进中/初步完成&quot;被写成成果。
+
+## 3. 归因质量（0–2）
+
+- 2 分：未完成事项的原因具体（依赖谁、卡在哪一步、优先级冲突），且归因有材料支撑；材料不足处明确写&quot;原因不明，需确认&quot;。
+- 1 分：原因笼统（&quot;时间不够&quot;&quot;优先级问题&quot;）且无材料支撑。
+- 0 分：编造原因，或根本没分析未完成事项。
+
+## 4. 行动可查证性（0–2）
+
+- 2 分：行动 ≤3 条，每条完成信号是具体数字/交付物/对方反馈，下周末可客观判定完成与否。
+- 1 分：完成信号模糊（&quot;基本搞定&quot;&quot;有明显起色&quot;），或行动超过 3 条。
+- 0 分：行动没有完成信号，或行动与判断区的结论脱节（判断指出的问题没有对应行动）。
+
+## 5. 结构与结论（0–2）
+
+- 2 分：结论先行且 ≤3 句、能独立成立；三区无混写；材料不全时标注了&quot;基于不完整材料&quot;。
+- 1 分：结论超长或含混，或有少量事实/判断混写。
+- 0 分：没有结论区，或大量混写，或用编造内容填补材料缺口。
+
+## 判定
+
+- 9–10：可用，直接交付。
+- 7–8：可用，标注薄弱维度提醒用户。
+- ≤6：退回重做，指出未通过的具体条目。
+</pre>
+            </article><article class="artifact">
+              <div class="artifact-head">
+                <strong>weekly-review/SKILL.md</strong>
+                <a href="cases/skill-standard-create/workspace/submission/weekly-review/SKILL.md" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre>---
+name: weekly-review
+description: 周复盘。把本周周报、笔记、数据等材料整理成 事实→判断→行动 的结构化复盘：区分&quot;做了&quot;和&quot;成了&quot;，下一周只保留 3 个带完成信号的行动。用户说周复盘、复盘本周、整理这周工作、这周做得怎么样、帮我写周总结复盘时使用；材料不全时也能用（会先列缺口、向用户确认，而不是编造完成事项）。
+---
+
+# 周复盘
+
+固定输出顺序：**结论 → 事实 → 判断 → 下周行动**。全程默认中文，结论先行。
+
+## 核心纪律
+
+1. **证据门槛**：每条&quot;完成事项&quot;必须能指向一个材料来源（周报条目、数据截图、文件、笔记原文）。来源直接标注在事实后面，格式如 `（证据：xx周报 8/26 条目）`。材料里找不到的，不写。
+2. **动作 ≠ 结果**：只把产生了可观察变化的事写进&quot;完成事项&quot;。判断句式用&quot;X 指标从 A 到 B / X 文件产出 / X 闭环完成&quot;，禁用&quot;推进了&quot;&quot;持续跟进&quot;&quot;初步完成&quot;这类无结果表述——动作再多，没有变化就归入&quot;未完成&quot;，进判断区分析原因。这样区分是因为复盘的价值在归因，把动作写成结果会让下一周的优先级判断失真。
+3. **三区分离**：事实、判断、下周行动各占一节，不混写。事实只描述发生了什么，判断只放归因和评价，行动只放下一步。
+4. **只留 3 个行动**：下周行动最多 3 条，每条必须带**完成信号**——一个下周结束时能客观查证的具体状态（数字、交付物、对方反馈）。写不出完成信号的行动删掉。
+
+## 工作流程
+
+1. **清点材料**：列出用户给了哪些材料，各自覆盖本周哪些天/哪些项目。缺口直接告诉用户（如&quot;没有数据结果，本周效果无法判断&quot;）。
+2. **收证据**：从材料里逐条提取&quot;做了什么 + 结果是什么 + 出处&quot;。同一件事多个来源冲突时，以带数字/文件的那条为准，冲突本身写进判断。
+3. **写判断**：回答三个问题——哪些是真结果？哪些只是动作？没完成的卡在哪（材料缺/依赖他人/优先级/能力）？归因必须有材料支撑，材料不足就写&quot;原因不明，需向用户确认&quot;，不许编。
+4. **定行动**：从判断里反推，选出下周影响最大的 3 件事，各配完成信号。
+
+## 输出模板
+
+```
+# 周复盘（8/24–8/28）
+## 结论
+（≤3 句：真结果一句话；最大问题一句话；下周最重要的一件事一句话。材料不全时首句标注&quot;本复盘基于不完整材料&quot;。）
+## 事实
+- &lt;发生了什么&gt;（证据：&lt;出处&gt;）
+## 判断
+- 真结果：…
+- 只是动作：…
+- 未完成：…（原因：…；材料不足以归因时写&quot;原因不明，需确认&quot;）
+## 下周行动（≤3 条）
+1. &lt;行动&gt; — 完成信号：&lt;下周末可查证的具体状态&gt;
+```
+
+## 输入不足时（不能编造）
+
+- 材料完全缺失或明显不够覆盖&quot;一周&quot;：先输出已有材料的清点，列出**具体缺什么**（哪几天、哪类数据），问用户能否补充，**不要基于想象补全完成事项**。宁可交一份只有缺口清单的复盘，也不交一份看起来完整但靠编的复盘。
+- 用户表示就用现有材料复盘：正常走流程，但在结论里明确标注&quot;本复盘基于不完整材料&quot;，事实区只写有证据的条目。
+
+## 完成校验（交稿前逐项自查）
+
+1. 事实区每条末尾都有 `（证据：…）`，且证据能在材料中回查到。
+2. 全文没有用&quot;推进了/持续跟进/初步完成&quot;等词描述已完成事项——这类事项要么有可观察变化（进事实区），要么没有（进判断区当未完成）。
+3. 下周行动 ≤3 条，每条的完成信号是数字/交付物/对方反馈之一，写不出的已删除。
+4. 判断区没有引入新事实，事实区没有评价性词汇。
+
+## 详细评分规则
+
+对复盘质量有更高要求（如自评、给用户打分、复核他人复盘）时，读 [references/rubric.md](references/rubric.md)，按 5 个维度逐项核对。日常复盘不需要读。
+</pre>
+            </article></div>
+      <details class="task-detail">
+        <summary>查看原始任务</summary>
+        <pre># 任务
+
+请根据 `input/brief.md` 创建一个可复用的周复盘 Skill，交付到 `submission/weekly-review/`。
+
+Skill 需要真正改变Agent的工作方式，而不是把 brief 原样重写一遍。入口保持简洁，只有在需要详细评分规则时才读取 reference。
+
+## 交付要求
+
+- 必须有 `SKILL.md`，frontmatter包含name和description。
+- 如详细规则较长，可以增加 `references/rubric.md`。
+- 不创建README、安装说明、更新日志或无用占位目录。
+- 说明输入不足时如何处理，不能编造一周完成事项。
+- 输出必须区分事实、判断和下一周行动。
+- 提供至少一项可验证的完成标准。
+</pre>
+      </details>
+      <details class="technical">
+      <summary>技术详情</summary>
+      <pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;started_at&quot;: &quot;2026-08-28T03:41:31+00:00&quot;,
+  &quot;ended_at&quot;: &quot;2026-08-28T03:50:08+00:00&quot;,
+  &quot;telemetry&quot;: {
+    &quot;tokens&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;total&quot;: 352201,
+      &quot;input&quot;: 45962,
+      &quot;output&quot;: 6015,
+      &quot;cache_creation&quot;: 0,
+      &quot;cache_read&quot;: 300224,
+      &quot;source&quot;: &quot;claude --output-format json&quot;
+    },
+    &quot;cost&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;value&quot;: 0.8462439999999999,
+      &quot;currency&quot;: &quot;USD&quot;,
+      &quot;source&quot;: &quot;claude result total_cost_usd&quot;
+    },
+    &quot;session_id&quot;: &quot;087dd6b1-feae-4447-8cdf-945601f8c8c6&quot;,
+    &quot;turns&quot;: 12,
+    &quot;api_duration_ms&quot;: 334888
+  },
+  &quot;validation&quot;: {
+    &quot;case_id&quot;: &quot;skill-standard-create&quot;,
+    &quot;checked_at&quot;: &quot;2026-08-28T03:50:08+00:00&quot;,
+    &quot;status&quot;: &quot;passed&quot;,
+    &quot;error_count&quot;: 0,
+    &quot;warning_count&quot;: 0,
+    &quot;checks&quot;: [
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;Skill入口&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;weekly-review/SKILL.md: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;contains_all&quot;,
+        &quot;label&quot;: &quot;核心指令&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;全部出现&quot;
+      },
+      {
+        &quot;type&quot;: &quot;case_command&quot;,
+        &quot;label&quot;: &quot;Skill结构检查&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;退出码 0\nskill structure passed&quot;
+      }
+    ]
+  },
+  &quot;error&quot;: &quot;找不到 Agent 命令：None&quot;
+}</pre>
+    </details>
+    </section>
+      <div class="review" aria-label="我的判断">
+        <div class="review-head"><strong>我的判断</strong><span>看完实际产物后选择</span></div>
+        <div class="review-buttons"><button type="button" data-review="直接可用">直接可用</button><button type="button" data-review="小改可用">小改可用</button><button type="button" data-review="需要大改">需要大改</button><button type="button" data-review="不会使用">不会使用</button></div>
+        <details>
+          <summary>添加备注</summary>
+          <textarea rows="3" placeholder="可选，记录好在哪里或问题是什么"></textarea>
+        </details>
+      </div>
+    </section><section class="dimension" id="dimension-visual" data-dimension="visual">
+      <header class="dimension-head">
+        <div>
+          <h2>图片理解与前端审美</h2>
+          <p>1 个案例</p>
+        </div>
+        <div class="dimension-totals">
+          <div><span>耗时</span><strong>2分11秒</strong></div>
+          <div><span>Token</span><strong>225,265</strong></div>
+          <div><span>费用</span><strong>$0.4184</strong></div>
+        </div>
+      </header>
+      
+      <section class="case-panel active" data-level="standard">
+      <div class="case-heading">
+        <div>
+          <span class="level-label">常规任务</span>
+          <h3>读取信息密集型营销看板图片</h3>
+        </div>
+        
+      </div>
+      <div class="metrics compact">
+        <div><span>耗时</span><strong>2分11秒</strong></div>
+        <div><span>Token</span><strong>225,265</strong></div>
+        <div><span>费用</span><strong>$0.4184</strong></div>
+      </div>
+      <aside class="alert">
+      <div class="alert-title">发现 1 项客观问题</div>
+      <ul><li><strong>图片事实识别</strong><span>channels.xiaohongshu=缺失；channels.bilibili=缺失；channels.douyin=缺失</span></li></ul>
+    </aside>
+      <div class="artifact-list"><article class="artifact is-primary">
+              <div class="artifact-head">
+                <strong>answers.json</strong>
+                <a href="cases/visual-standard-image-reading/workspace/submission/answers.json" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre>{
+  &quot;campaign_name&quot;: &quot;秋日通勤计划&quot;,
+  &quot;launch_date&quot;: &quot;2026-09-03&quot;,
+  &quot;owner&quot;: &quot;林朔&quot;,
+  &quot;total_budget&quot;: 86500,
+  &quot;channels&quot;: [
+    { &quot;name&quot;: &quot;小红书&quot;, &quot;budget&quot;: 45000 },
+    { &quot;name&quot;: &quot;B站&quot;, &quot;budget&quot;: 26500 },
+    { &quot;name&quot;: &quot;抖音&quot;, &quot;budget&quot;: 15000 }
+  ],
+  &quot;status_counts&quot;: {
+    &quot;green&quot;: 2,
+    &quot;amber&quot;: 1,
+    &quot;red&quot;: 1
+  },
+  &quot;largest_budget_channel&quot;: &quot;小红书&quot;
+}
+</pre>
+            </article><article class="artifact">
+              <div class="artifact-head">
+                <strong>observations.md</strong>
+                <a href="cases/visual-standard-image-reading/workspace/submission/observations.md" target="_blank" rel="noopener">打开完整文件</a>
+              </div>
+              <pre># 观察记录：campaign-board.png
+
+## 确定内容（图片中清晰可读的文字/数字）
+
+**标题区**
+- 活动名称：秋日通勤计划（大标题）
+- 副标题：内容投放执行看板
+- 启动日期：2026-09-03
+- 负责人：林朔
+- 总预算：¥86,500
+
+**渠道预算（左侧条形图，每条右侧有明确数字标注）**
+- 小红书：45,000
+- B站：26,500
+- 抖音：15,000
+- 三项合计 45,000 + 26,500 + 15,000 = 86,500，与页头总预算一致；图内备注「渠道合计应等于总预算」也印证这一口径。
+
+**执行状态（右侧，圆点颜色 + 文字标签均清晰）**
+- 绿色（已完成）：2 项 —— 达人名单确认、首轮素材验收
+- 琥珀色（待确认）：1 项 —— B站脚本修改
+- 红色（有风险）：1 项 —— 抖音授权文件
+
+**本周提醒**
+- 9月1日前补齐抖音授权文件；B站脚本必须保留真实体验限制，不放大续航结论。
+- 预算口径以已批准投放单为准，渠道合计应等于总预算。
+
+## 不确定/需说明的内容
+
+- 条形图只有相对长度，未标注填充百分比；各渠道的「预算执行进度」无法从图上读出，本文不做推断。
+- 状态数量按图例颜色（绿/琥珀/红）计数，颜色与文字标签（已完成/待确认/有风险）一一对应，无歧义。
+- 负责人姓名「林朔」字号较小但清晰可辨；若姓名中存在生僻字，以图像显示为准。
+- 图片未提供各渠道负责人、具体投放排期等信息，不在提取范围。
+</pre>
+            </article></div>
+      <details class="task-detail">
+        <summary>查看原始任务</summary>
+        <pre># 任务
+
+请查看 `input/campaign-board.png`，提取图片中的确定事实。不要读取图片之外的文件来猜答案。
+
+在 `submission/` 生成：
+
+- `answers.json`：包含 campaign_name、launch_date、owner、total_budget、channels、status_counts、largest_budget_channel。
+- `observations.md`：说明你从图片中看到的关键信息，区分确定内容与因字号、图例或画面限制而不确定的内容。
+
+金额写数字，不带货币符号。日期使用 `YYYY-MM-DD`。状态数量按绿色、琥珀色、红色分别统计。
+</pre>
+      </details>
+      <details class="technical">
+      <summary>技术详情</summary>
+      <pre>{
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;started_at&quot;: &quot;2026-08-28T03:50:08+00:00&quot;,
+  &quot;ended_at&quot;: &quot;2026-08-28T03:52:19+00:00&quot;,
+  &quot;telemetry&quot;: {
+    &quot;tokens&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;total&quot;: 225265,
+      &quot;input&quot;: 59453,
+      &quot;output&quot;: 1332,
+      &quot;cache_creation&quot;: 0,
+      &quot;cache_read&quot;: 164480,
+      &quot;source&quot;: &quot;claude --output-format json&quot;
+    },
+    &quot;cost&quot;: {
+      &quot;status&quot;: &quot;tool_reported&quot;,
+      &quot;value&quot;: 0.418405,
+      &quot;currency&quot;: &quot;USD&quot;,
+      &quot;source&quot;: &quot;claude result total_cost_usd&quot;
+    },
+    &quot;session_id&quot;: &quot;4c6fdb57-e752-4422-970e-5c04923257bf&quot;,
+    &quot;turns&quot;: 8,
+    &quot;api_duration_ms&quot;: 57512
+  },
+  &quot;validation&quot;: {
+    &quot;case_id&quot;: &quot;visual-standard-image-reading&quot;,
+    &quot;checked_at&quot;: &quot;2026-08-28T03:52:19+00:00&quot;,
+    &quot;status&quot;: &quot;failed&quot;,
+    &quot;error_count&quot;: 1,
+    &quot;warning_count&quot;: 0,
+    &quot;checks&quot;: [
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;图片答案&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;answers.json: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;file_exists&quot;,
+        &quot;label&quot;: &quot;观察说明&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;observations.md: 存在&quot;
+      },
+      {
+        &quot;type&quot;: &quot;json_match&quot;,
+        &quot;label&quot;: &quot;图片事实识别&quot;,
+        &quot;severity&quot;: &quot;error&quot;,
+        &quot;passed&quot;: false,
+        &quot;detail&quot;: &quot;channels.xiaohongshu=缺失；channels.bilibili=缺失；channels.douyin=缺失&quot;
+      },
+      {
+        &quot;type&quot;: &quot;contains_all&quot;,
+        &quot;label&quot;: &quot;置信度表达&quot;,
+        &quot;severity&quot;: &quot;warning&quot;,
+        &quot;passed&quot;: true,
+        &quot;detail&quot;: &quot;全部出现&quot;
+      }
+    ]
+  },
+  &quot;error&quot;: &quot;找不到 Agent 命令：None&quot;
+}</pre>
+    </details>
+    </section>
+      <div class="review" aria-label="我的判断">
+        <div class="review-head"><strong>我的判断</strong><span>看完实际产物后选择</span></div>
+        <div class="review-buttons"><button type="button" data-review="直接可用">直接可用</button><button type="button" data-review="小改可用">小改可用</button><button type="button" data-review="需要大改">需要大改</button><button type="button" data-review="不会使用">不会使用</button></div>
+        <details>
+          <summary>添加备注</summary>
+          <textarea rows="3" placeholder="可选，记录好在哪里或问题是什么"></textarea>
+        </details>
+      </div>
+    </section>
+    <div class="footer-actions">
+      <span class="save-state">人工判断保存在此浏览器</span>
+      <button type="button" class="export">导出人工评审</button>
+    </div>
+  </main>
+  <script>
+const STORAGE_KEY = "model-test-review:20260828-090011-5bb43b";
+const RUN_META = {"run_id": "20260828-090011-5bb43b", "model_label": "GLM-5.3 Flash", "agent": "claude", "mode": "quick"};
+function readReviews() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } }
+function saveReviews(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); document.querySelector('.save-state').textContent = '已保存在此浏览器'; }
+const reviews = readReviews();
+document.querySelectorAll('.dimension').forEach(section => {
+  const id = section.dataset.dimension;
+  section.querySelectorAll('.tab-button').forEach(button => button.addEventListener('click', () => {
+    section.querySelectorAll('.tab-button').forEach(item => item.classList.toggle('active', item === button));
+    section.querySelectorAll('.case-panel').forEach(panel => panel.classList.toggle('active', panel.dataset.level === button.dataset.target));
+  }));
+  const saved = reviews[id] || {};
+  section.querySelectorAll('[data-review]').forEach(button => {
+    if (button.dataset.review === saved.rating) button.classList.add('selected');
+    button.addEventListener('click', () => {
+      section.querySelectorAll('[data-review]').forEach(item => item.classList.remove('selected'));
+      button.classList.add('selected'); reviews[id] = reviews[id] || {}; reviews[id].rating = button.dataset.review; saveReviews(reviews);
+    });
+  });
+  const textarea = section.querySelector('textarea'); textarea.value = saved.note || '';
+  textarea.addEventListener('input', () => { reviews[id] = reviews[id] || {}; reviews[id].note = textarea.value; saveReviews(reviews); });
+});
+document.querySelector('.export').addEventListener('click', () => {
+  const payload = {...RUN_META, exported_at: new Date().toISOString(), reviews: readReviews()};
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `${RUN_META.run_id}-人工评审.json`; link.click(); URL.revokeObjectURL(link.href);
+});
+</script>
+</body>
+</html>

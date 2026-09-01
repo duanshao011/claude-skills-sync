@@ -56,8 +56,9 @@ def _command(
 ) -> list[str]:
     prompt = _prompt()
     if agent == "claude":
+        exe = shutil.which("claude") or "claude"
         command = [
-            "claude",
+            exe,
             "-p",
             "--output-format",
             "json",
@@ -72,7 +73,7 @@ def _command(
         command.append(prompt)
         return command
     command = [
-        "codex",
+        shutil.which("codex") or "codex",
         "exec",
         "--json",
         "--ephemeral",

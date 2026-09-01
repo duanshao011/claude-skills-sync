@@ -1,0 +1,23 @@
+{
+  "raw_rows": 9,
+  "deduplicated_rows": 8,
+  "duplicate_note_id": "N005",
+  "total_impressions": 70000,
+  "total_clicks": 2510,
+  "total_spend": 5475,
+  "total_orders": 69,
+  "total_revenue": 20200,
+  "overall_ctr": 0.03585714285714286,
+  "overall_cpc": 2.1812749003984065,
+  "overall_roas": 3.6894977168949773,
+  "best_ctr_note": {
+    "note_id": "N002",
+    "ctr": 0.065,
+    "spend": 1040
+  },
+  "risk_note": {
+    "note_id": "N006",
+    "spend": 120,
+    "orders": 0
+  }
+}
